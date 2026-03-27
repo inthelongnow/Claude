@@ -9,30 +9,5 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
-  mem0-api:
-    image: skpassegna/openmemory-mcp:latest
-    container_name: mem0-api
-    ports:
-      - "8765:8765"
-    env_file:
-      - .env
-    depends_on:
-      - qdrant
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
-  mem0-ui:
-    image: skpassegna/openmemory-ui:latest
-    container_name: mem0-ui
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8765
-      - NEXT_PUBLIC_USER_ID=${USER_ID:-james}
-    depends_on:
-      - mem0-api
-    restart: unless-stopped
-
 volumes:
   qdrant_data:
