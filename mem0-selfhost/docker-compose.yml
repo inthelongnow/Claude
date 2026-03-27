@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   qdrant:
     image: qdrant/qdrant:latest
@@ -12,7 +10,7 @@ services:
     restart: unless-stopped
 
   mem0-api:
-    image: mem0/openmemory-api:latest
+    image: skpassegna/openmemory-mcp:latest
     container_name: mem0-api
     ports:
       - "8765:8765"
@@ -25,7 +23,7 @@ services:
     restart: unless-stopped
 
   mem0-ui:
-    image: mem0/openmemory-ui:latest
+    image: skpassegna/openmemory-ui:latest
     container_name: mem0-ui
     ports:
       - "3000:3000"
