@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barbados Guide - April 10-16</title>
+<style>
+  :root {
+    --sand: #f5f0e8;
+    --ocean: #0077b6;
+    --ocean-dark: #005f8a;
+    --sunset: #e07b39;
+    --coral: #e8655a;
+    --palm: #2d6a4f;
+    --text: #2b2b2b;
+    --light-text: #555;
+    --card-bg: #fff;
+    --divider: #e0d8cc;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--sand);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  header {
+    background: linear-gradient(135deg, var(--ocean) 0%, var(--ocean-dark) 100%);
+    color: #fff;
+    padding: 2.5rem 1.25rem 2rem;
+    text-align: center;
+  }
+  header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .25rem; }
+  header p { font-size: 1rem; opacity: .9; }
+  nav {
+    background: var(--ocean-dark);
+    padding: .6rem 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .4rem .7rem;
+    border-radius: 1rem;
+    display: inline-block;
+    margin-right: .3rem;
+    opacity: .8;
+    transition: opacity .2s;
+  }
+  nav a:active, nav a:hover { opacity: 1; background: rgba(255,255,255,.15); }
+  .container { max-width: 600px; margin: 0 auto; padding: 0 1rem 3rem; }
+  .day-card {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    margin-top: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+  .day-header {
+    padding: 1rem 1.25rem;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .day-header small { display: block; font-weight: 400; font-size: .85rem; opacity: .9; margin-top: .15rem; }
+  .d1 .day-header { background: var(--ocean); }
+  .d2 .day-header { background: var(--sunset); }
+  .d3 .day-header { background: var(--palm); }
+  .d4 .day-header { background: var(--ocean); }
+  .d5 .day-header { background: var(--coral); }
+  .d6 .day-header { background: var(--sunset); }
+  .d7 .day-header { background: var(--palm); }
+  .day-body { padding: 1rem 1.25rem; }
+  .time-block { margin-bottom: 1rem; }
+  .time-block:last-child { margin-bottom: 0; }
+  .time-label {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ocean);
+    margin-bottom: .2rem;
+  }
+  .time-block h3 {
+    font-size: .95rem;
+    font-weight: 600;
+    margin-bottom: .2rem;
+  }
+  .time-block p {
+    font-size: .9rem;
+    color: var(--light-text);
+  }
+  .highlight {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .restaurant {
+    color: var(--coral);
+    font-weight: 600;
+  }
+  .beach-tag {
+    display: inline-block;
+    background: var(--ocean);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .15rem .5rem;
+    border-radius: .75rem;
+    margin-right: .25rem;
+    margin-top: .25rem;
+  }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: .25rem;
+    color: var(--ocean-dark);
+    padding-left: .25rem;
+  }
+  .info-card {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    margin-top: .75rem;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+  .info-card h3 {
+    font-size: .95rem;
+    font-weight: 700;
+    margin-bottom: .4rem;
+    color: var(--ocean-dark);
+  }
+  .info-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .info-card ul li {
+    font-size: .88rem;
+    color: var(--light-text);
+    padding: .3rem 0;
+    border-bottom: 1px solid var(--divider);
+  }
+  .info-card ul li:last-child { border-bottom: none; }
+  .info-card ul li strong { color: var(--text); }
+  .beach-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+    margin-top: .5rem;
+  }
+  .beach-table th {
+    text-align: left;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ocean);
+    padding: .4rem .5rem;
+    border-bottom: 2px solid var(--ocean);
+  }
+  .beach-table td {
+    padding: .5rem;
+    border-bottom: 1px solid var(--divider);
+    color: var(--light-text);
+  }
+  .beach-table td:first-child { font-weight: 600; color: var(--text); }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    font-size: .88rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--divider);
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    color: var(--light-text);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border: 2px solid var(--divider);
+    border-radius: 4px;
+    margin-top: 2px;
+  }
+  .footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: .8rem;
+    color: var(--light-text);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Barbados</h1>
+  <p>April 10 - 16, 2026</p>
+</header>
+
+<nav>
+  <a href="#day1">Fri</a>
+  <a href="#day2">Sat</a>
+  <a href="#day3">Sun</a>
+  <a href="#day4">Mon</a>
+  <a href="#day5">Tue</a>
+  <a href="#day6">Wed</a>
+  <a href="#day7">Thu</a>
+  <a href="#food">Food</a>
+  <a href="#beaches">Beaches</a>
+  <a href="#tips">Tips</a>
+  <a href="#book">Book</a>
+</nav>
+
+<div class="container">
+
+<!-- DAY 1 -->
+<div class="day-card d1" id="day1">
+  <div class="day-header">Day 1 &mdash; Friday, April 10 <small>Settle In &amp; South Coast</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning / Afternoon</div>
+      <h3>South Coast Boardwalk</h3>
+      <p>Paved coastal path from Hastings to St. Lawrence Gap. Easy walk, ocean views the whole way.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Late Afternoon</div>
+      <h3>Accra Beach (Rockley Beach)</h3>
+      <p>Most popular south coast beach. Calm water, lifeguards, beach bars nearby.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <h3>Dinner</h3>
+      <p><span class="restaurant">Champers</span> (Hastings) &mdash; upscale waterfront seafood, request a balcony table at sunset. <br>Alt: <span class="restaurant">Cafe Sol</span> in St. Lawrence Gap for casual cocktails.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 2 -->
+<div class="day-card d2" id="day2">
+  <div class="day-header">Day 2 &mdash; Saturday, April 11 <small>West Coast &amp; Holetown</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning</div>
+      <h3>Mullins Beach</h3>
+      <p>Crystal-clear turquoise water on the Platinum Coast. Rent sun loungers, totally calm.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Lunch</div>
+      <p><span class="restaurant">Mullins Beach Bar</span> for fish tacos &amp; rum punch, or <span class="restaurant">Tides</span> in Holetown for upscale beachfront dining.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Afternoon</div>
+      <h3>Holetown</h3>
+      <p>Browse Limegrove Lifestyle Centre &mdash; boutiques, duty-free jewelry, gelato.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <h3>Dinner</h3>
+      <p><span class="restaurant">The Cliff</span> &mdash; one of the Caribbean's best restaurants. Torch-lit terraces over the ocean. Smart casual. Reserve ahead. <br>Alt: <span class="restaurant">Lone Star</span> in Mount Standfast.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 3 -->
+<div class="day-card d3" id="day3">
+  <div class="day-header">Day 3 &mdash; Sunday, April 12 <small>East Coast Adventure</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning</div>
+      <h3>Drive to Bathsheba</h3>
+      <p>Scenic route through the Scotland District. Stop at <span class="highlight">Hackleton's Cliff</span> for panoramic views.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Mid-Morning</div>
+      <h3>Bathsheba Beach &amp; Mushroom Rocks</h3>
+      <p>Iconic rock formations, powerful Atlantic surf. Great for photos &mdash; not ideal for swimming.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Lunch</div>
+      <p><span class="restaurant">Round House Inn</span> &mdash; hilltop restaurant overlooking the soup bowl surf break. Sunday lunch is a Barbados institution. Book ahead.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Afternoon</div>
+      <h3>Andromeda Botanic Gardens</h3>
+      <p>6-acre tropical garden &mdash; orchids, palms, frangipani. Peaceful and romantic.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <p><span class="restaurant">Just Grillin'</span> for local Bajan food, or <span class="restaurant">Tapas</span> in St. Lawrence Gap.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 4 -->
+<div class="day-card d4" id="day4">
+  <div class="day-header">Day 4 &mdash; Monday, April 13 <small>Catamaran Cruise</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">10am &ndash; 3pm</div>
+      <h3>West Coast Catamaran Cruise</h3>
+      <p>This is a must-do. Includes snorkeling over shipwrecks, <span class="highlight">swimming with sea turtles</span>, open bar (rum punch, beer), buffet lunch on board, and music. ~5 hours.</p>
+      <p style="margin-top:.4rem"><strong>Operators:</strong> Cool Runnings (most popular), Tiami, or Jammin.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Late Afternoon</div>
+      <p>Relax at hotel/villa.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <p><span class="restaurant">Salt Cafe</span> (Hastings) for modern Caribbean, or <span class="restaurant">Hugo's at Sugar Bay</span> for rooftop cocktails &amp; tapas.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 5 -->
+<div class="day-card d5" id="day5">
+  <div class="day-header">Day 5 &mdash; Tuesday, April 14 <small>Culture, History &amp; Rum</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning (2-3 hrs)</div>
+      <h3>St. Nicholas Abbey</h3>
+      <p>Stunning 1658 Jacobean plantation house. Working rum distillery with tastings, heritage railway, gorgeous gardens. No reservation needed (opens 10am).</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Lunch</div>
+      <p><span class="restaurant">The Fish Pot</span> (Shermans, north coast) &mdash; intimate beachfront restaurant in a converted fort.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Afternoon</div>
+      <h3>Animal Flower Cave</h3>
+      <p>Sea cave at the island's northern tip with natural rock pools and dramatic cliff views.</p>
+      <h3 style="margin-top:.5rem">Mount Gay Rum Distillery</h3>
+      <p>World's oldest rum brand (est. 1703). Tasting experience in Bridgetown.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <h3>Historic Bridgetown</h3>
+      <p>UNESCO World Heritage Site. Walk past Parliament Buildings and the Careenage. Dinner at <span class="restaurant">Waterfront Cafe</span>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 6 -->
+<div class="day-card d6" id="day6">
+  <div class="day-header">Day 6 &mdash; Wednesday, April 15 <small>Beaches, Spa &amp; Fish Fry</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning</div>
+      <h3>Crane Beach</h3>
+      <p>Consistently rated one of the world's best. Pink-tinged sand, dramatic cliffs. Access via The Crane Resort (small fee or buy a drink).</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Late Morning</div>
+      <h3>Bottom Bay Beach</h3>
+      <p>Secluded, framed by coral cliffs &amp; palm trees. Incredibly photogenic and less crowded.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Afternoon</div>
+      <h3>Couples Spa</h3>
+      <p><span class="highlight">The Spa at Sandy Lane</span> (splurge), <span class="highlight">Sugar Cane Spa</span>, or <span class="highlight">Karma Spa at The Crane</span>.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Evening</div>
+      <h3>Oistins Fish Fry</h3>
+      <p>Wednesday nights are lively. Fried flying fish, grilled mahi-mahi, lobster from <span class="restaurant">Uncle George's</span> or <span class="restaurant">Pat's Place</span>. Banks beer, live music.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 7 -->
+<div class="day-card d7" id="day7">
+  <div class="day-header">Day 7 &mdash; Thursday, April 16 <small>Final Morning</small></div>
+  <div class="day-body">
+    <div class="time-block">
+      <div class="time-label">Morning</div>
+      <h3>Paynes Bay</h3>
+      <p>Calm west coast beach. Wade in waist-deep and spot sea turtles &mdash; no boat needed.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Brunch</div>
+      <p><span class="restaurant">Cin Cin by the Sea</span> (Prospect) &mdash; Mediterranean-Caribbean fusion right on the water. A perfect farewell meal.</p>
+    </div>
+    <div class="time-block">
+      <div class="time-label">Afternoon</div>
+      <p>Head to the airport.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FOOD -->
+<h2 class="section-title" id="food">Must-Try Food &amp; Drink</h2>
+<div class="info-card">
+  <ul>
+    <li><strong>Flying Fish</strong> &mdash; national dish, pan-fried with Bajan seasoning</li>
+    <li><strong>Cou-Cou &amp; Flying Fish</strong> &mdash; cornmeal &amp; okra, the national plate</li>
+    <li><strong>Macaroni Pie</strong> &mdash; Bajan baked mac &amp; cheese (side dish staple)</li>
+    <li><strong>Fish Cakes</strong> &mdash; fried salt cod fritters, perfect snack</li>
+    <li><strong>Cutters</strong> &mdash; salt bread sandwich with ham, fish cake, or cheese</li>
+    <li><strong>Rum Punch</strong> &mdash; every bar has their own recipe</li>
+    <li><strong>Banks Beer</strong> &mdash; local lager, light &amp; refreshing</li>
+    <li><strong>Mount Gay Rum</strong> &mdash; try the XO or Black Barrel neat</li>
+    <li><strong>Mauby</strong> &mdash; bark-based drink, slightly bitter, worth trying</li>
+  </ul>
+</div>
+
+<!-- BEACHES -->
+<h2 class="section-title" id="beaches">Beach Guide</h2>
+<div class="info-card">
+  <table class="beach-table">
+    <thead><tr><th>Beach</th><th>Coast</th><th>Vibe</th></tr></thead>
+    <tbody>
+      <tr><td>Mullins</td><td>West</td><td>Calm, upscale, beach bar</td></tr>
+      <tr><td>Paynes Bay</td><td>West</td><td>Calm, turtles, local feel</td></tr>
+      <tr><td>Accra / Rockley</td><td>South</td><td>Popular, lively, easy access</td></tr>
+      <tr><td>Crane Beach</td><td>SE</td><td>Stunning, pink sand, cliffs</td></tr>
+      <tr><td>Bottom Bay</td><td>SE</td><td>Secluded, photogenic</td></tr>
+      <tr><td>Bathsheba</td><td>East</td><td>Wild surf, dramatic rocks</td></tr>
+      <tr><td>Carlisle Bay</td><td>SW</td><td>Snorkeling, wrecks, turtles</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PRACTICAL TIPS -->
+<h2 class="section-title" id="tips">Practical Tips</h2>
+<div class="info-card">
+  <ul>
+    <li><strong>Currency</strong> &mdash; Barbados Dollar (BBD), pegged 2:1 to USD. US dollars accepted everywhere.</li>
+    <li><strong>Driving</strong> &mdash; Left side (British style). Roads can be narrow. Use offline Google Maps.</li>
+    <li><strong>Taxis</strong> &mdash; Unmetered. Agree on fare before getting in. Hotel can advise on rates.</li>
+    <li><strong>Tipping</strong> &mdash; 10-15% at restaurants (check for service charge). 10% for taxis.</li>
+    <li><strong>Sun</strong> &mdash; SPF 50+, reapply often, hat recommended. Use reef-safe sunscreen.</li>
+    <li><strong>Water</strong> &mdash; Tap water is safe to drink.</li>
+    <li><strong>Power</strong> &mdash; 115V, US-style plugs (Type A/B). No adapter needed for US devices.</li>
+    <li><strong>Weather</strong> &mdash; Mid-80s &deg;F / ~29-30&deg;C. Mostly sunny, occasional brief showers.</li>
+    <li><strong>Safety</strong> &mdash; One of the safest Caribbean islands. Normal precautions apply.</li>
+  </ul>
+</div>
+
+<!-- BOOKING CHECKLIST -->
+<h2 class="section-title" id="book">Booking Checklist</h2>
+<div class="info-card">
+  <h3>Book in Advance</h3>
+  <ul class="checklist">
+    <li><strong>The Cliff</strong> dinner &mdash; reserve 3-5 days ahead</li>
+    <li><strong>Catamaran cruise</strong> &mdash; book 1-2 days ahead</li>
+    <li><strong>Round House Inn</strong> Sunday lunch &mdash; book ahead</li>
+    <li><strong>Couples spa</strong> &mdash; book 1-2 days ahead</li>
+    <li><strong>Cin Cin by the Sea</strong> &mdash; reserve 2 days ahead</li>
+    <li><strong>Champers</strong> balcony table &mdash; reserve day-of or 1 day ahead</li>
+  </ul>
+</div>
+
+<div class="info-card" style="margin-top:.75rem; text-align:center; background: linear-gradient(135deg, var(--ocean) 0%, var(--ocean-dark) 100%); color: #fff;">
+  <h3 style="color:#fff; font-size:1.1rem;">Have an amazing trip!</h3>
+  <p style="color:rgba(255,255,255,.85); font-size:.9rem; margin-top:.25rem;">Mid-80s, calm oceans, rum punch on deck.</p>
+</div>
+
+</div>
+
+<div class="footer">Barbados Guide &bull; April 2026</div>
+
+</body>
+</html>
