@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>the body electric — a bioelectric ASCII essay</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #04050a;
+    overflow: hidden;
+    font-family: "SFMono-Regular", ui-monospace, "Menlo", "Consolas", monospace;
+  }
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(120% 90% at 50% 42%, #0a0d1c 0%, #06070e 55%, #030308 100%);
+  }
+  /* faint vignette to deepen the field */
+  #stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+  }
+  canvas#screen { display: block; image-rendering: auto; }
+
+  /* synced caption */
+  #caption {
+    position: fixed; left: 0; right: 0; bottom: 11%;
+    text-align: center; pointer-events: none;
+    padding: 0 22px;
+    font-size: clamp(13px, 2.4vw, 22px);
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    color: #cfe9ff;
+    text-shadow: 0 0 14px rgba(80,180,255,0.55), 0 0 2px rgba(255,255,255,0.5);
+    opacity: 0; transition: opacity 0.0s linear;
+    will-change: opacity;
+  }
+  #caption .lead { color: #ffd9a0; }
+
+  /* title breath, top — quiet, fades with the resting beat */
+  #title {
+    position: fixed; left: 0; right: 0; top: 6.5%;
+    text-align: center; pointer-events: none;
+    font-size: clamp(11px, 1.8vw, 15px);
+    letter-spacing: 0.42em; text-transform: uppercase;
+    color: #6f86c8; opacity: 0;
+    text-shadow: 0 0 12px rgba(60,90,180,0.5);
+  }
+
+  /* controls */
+  #controls {
+    position: fixed; right: 14px; bottom: 14px;
+    display: flex; gap: 8px; z-index: 5;
+    opacity: 0.32; transition: opacity 0.35s ease;
+  }
+  #controls:hover { opacity: 0.95; }
+  #stage.touch #controls { opacity: 0.7; }
+  #controls button {
+    -webkit-appearance: none; appearance: none;
+    background: rgba(18,26,52,0.72);
+    color: #bcd7ff;
+    border: 1px solid rgba(120,170,255,0.28);
+    border-radius: 8px;
+    width: 40px; height: 34px;
+    font-size: 15px; line-height: 1; cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #controls button:hover { background: rgba(34,52,98,0.9); border-color: rgba(150,200,255,0.6); color:#eaf4ff; }
+  #controls button:active { transform: translateY(1px); }
+  #controls button.armed { color: #ffd9a0; border-color: rgba(255,200,120,0.5); }
+
+  #hint {
+    position: fixed; left: 14px; bottom: 16px; z-index: 5;
+    font-size: 11px; letter-spacing: 0.12em; color: #44557f;
+    opacity: 0.0; transition: opacity 0.6s ease; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="screen"></canvas>
+    <div id="title">the body electric</div>
+    <div id="caption"></div>
+    <div id="hint">tap to pause</div>
+    <div id="controls">
+      <button id="btnPlay" title="play / pause" aria-label="play or pause">❚❚</button>
+      <button id="btnRestart" title="restart" aria-label="restart">↺</button>
+      <button id="btnSound" title="sound on / off" aria-label="toggle sound">♪̸</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+(function () {
+  /* ---------- math helpers ---------- */
+  const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+  const lerp  = (a, b, t) => a + (b - a) * t;
+  const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+  const gauss = (x, s) => Math.exp(-(x * x) / (s * s));
+  const fract = x => x - Math.floor(x);
+  const hash1 = s => fract(Math.sin(s * 99.733) * 4571.317);
+  const hash2 = (x, y) => fract(Math.sin(x * 127.11 + y * 311.7) * 43758.545);
+  function vnoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = hash2(xi, yi),     b = hash2(xi + 1, yi);
+    const c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+    return lerp(lerp(a, b, u), lerp(c, d, u), v);
+  }
+
+  /* ---------- voltage colormap (indigo -> cyan -> white-hot -> amber) ---------- */
+  const STOPS = [
+    [0.00, [ 10,   8,  34]],
+    [0.16, [ 26,  26, 120]],
+    [0.36, [ 28, 110, 214]],
+    [0.55, [ 46, 214, 255]],
+    [0.72, [200, 246, 255]],
+    [0.85, [255, 255, 255]],
+    [1.00, [255, 178,  54]],
+  ];
+  const PAL_N = 96;
+  const PALETTE = new Array(PAL_N);
+  (function buildPalette() {
+    for (let i = 0; i < PAL_N; i++) {
+      const t = i / (PAL_N - 1);
+      let k = 0;
+      while (k < STOPS.length - 2 && t > STOPS[k + 1][0]) k++;
+      const [t0, c0] = STOPS[k], [t1, c1] = STOPS[k + 1];
+      const f = clamp((t - t0) / (t1 - t0), 0, 1);
+      const r = Math.round(lerp(c0[0], c1[0], f));
+      const g = Math.round(lerp(c0[1], c1[1], f));
+      const b = Math.round(lerp(c0[2], c1[2], f));
+      PALETTE[i] = "rgb(" + r + "," + g + "," + b + ")";
+    }
+  })();
+  const colorFor = c => PALETTE[clamp((c * (PAL_N - 1)) | 0, 0, PAL_N - 1)];
+
+  /* ---------- glyphs ---------- */
+  // structure codes: 0 ramp, 1 vertical, 2 wave, 3 star, 4 plus, 5 minus, 6 node
+  const RAMP = " .,:;-+=*x%#@";
+  function glyphFor(c, s) {
+    if (c < 0.05) return " ";
+    switch (s) {
+      case 1: return c > 0.82 ? "!" : c > 0.5 ? "|" : ":";
+      case 2: return c > 0.62 ? "~" : c > 0.34 ? "~" : "-";
+      case 3: return c > 0.72 ? "*" : c > 0.45 ? "+" : ".";
+      case 4: return "+";
+      case 5: return "-";
+      case 6: return c > 0.72 ? "@" : c > 0.45 ? "o" : ".";
+    }
+    return RAMP[clamp((c * (RAMP.length - 1)) | 0, 0, RAMP.length - 1)];
+  }
+
+  /* ---------- field returns into shared scratch [charge, structure] ---------- */
+  let _c = 0, _s = 0;
+  const put = (c, s) => { if (c > _c) { _c = c; _s = s; } };
+
+  /* ============================================================
+     PHASE FIELDS  fn(u, v, p, t)  ->  writes to _c/_s via put()
+     u,v in [0,1]; p = phase progress [0,1]; t = global seconds
+     ============================================================ */
+
+  function membrane(u, v, t, bright) {
+    // lipid bilayer: two faint parallel lines with a slow hum
+    const hum = 0.26 + 0.06 * Math.sin(u * 34 + t * 0.7) + 0.04 * (vnoise(u * 18, t * 0.6) - 0.5);
+    const a = gauss(v - 0.463, 0.013);
+    const b = gauss(v - 0.537, 0.013);
+    put((a + b) * hum * bright, 0);
+  }
+
+  function REST(u, v, p, t) {
+    const breath = 0.86 + 0.14 * Math.sin(t * 0.5);
+    membrane(u, v, t, breath);
+    // a few resting ions held against the gradient: + outside, - inside
+    for (let i = 0; i < 7; i++) {
+      const ux = 0.1 + 0.8 * hash1(i + 1) + 0.012 * Math.sin(t * 0.4 + i);
+      const up = gauss(u - ux, 0.01) * gauss(v - (0.40 + 0.01 * Math.sin(t * 0.6 + i)), 0.02);
+      const dn = gauss(u - (0.1 + 0.8 * hash1(i + 31)), 0.01) * gauss(v - 0.60, 0.02);
+      put(up * 0.34 * breath, 4);
+      put(dn * 0.30 * breath, 5);
+    }
+  }
+
+  function THRESHOLD(u, v, p, t) {
+    membrane(u, v, t, 0.7 - 0.3 * p);
+    const x0 = 0.5;
+    // ions converge toward the stimulus site before the spike
+    const conv = smooth(p / 0.5);
+    for (let i = 0; i < 10; i++) {
+      const side = i % 2 ? 1 : -1;
+      const start = x0 + side * (0.07 + 0.26 * hash1(i + 3));
+      const ux = lerp(start, x0, conv);
+      const vy = 0.5 + side * (0.06 + 0.12 * hash1(i + 9)) * (1 - conv);
+      put(gauss(u - ux, 0.012) * gauss(v - vy, 0.03) * 0.5 * (1 - 0.4 * p), side > 0 ? 4 : 5);
+    }
+    // the action potential: a vertical flare that erupts then overshoots
+    const env = gauss(p - 0.58, 0.2);                 // rise + fall bell
+    const overshoot = gauss(p - 0.5, 0.07);           // white-hot peak
+    const col = gauss(u - x0, 0.02);
+    const vshape = 0.55 + 0.45 * gauss(v - 0.5, 0.5);
+    const flare = env * col * vshape * (0.9 + 0.5 * overshoot);
+    put(clamp(flare, 0, 1.0), 1);
+  }
+
+  function PROPAGATION(u, v, p, t) {
+    // the axon
+    put(gauss(v - 0.5, 0.016) * 0.26, 0);
+    const x = -0.08 + p * 1.18;                       // travelling spike
+    const core = gauss(u - x, 0.045) * gauss(v - 0.5, 0.05);
+    // a small saltatory leading ripple
+    const lead = gauss(u - (x + 0.11), 0.03) * gauss(v - 0.5, 0.035) * 0.4
+               * (0.5 + 0.5 * Math.sin(t * 9));
+    // refractory dimming trailing behind
+    const refr = clamp((x - u) / 0.18, 0, 1) * gauss(u - (x - 0.12), 0.07) * gauss(v - 0.5, 0.02);
+    put(clamp(core + lead - refr * 0.15, 0, 1), 1);
+    if (core > 0.2) put(core, 1);
+  }
+
+  function SYNAPSE(u, v, p, t) {
+    // presynaptic terminal (left bulb) — the cliff's edge
+    const term = gauss(u - 0.40, 0.06) * gauss(v - 0.5, 0.07);
+    put(term * 0.6, 0);
+    put(gauss(v - 0.5, 0.015) * Math.max(0, 0.3 - u) * 0.9, 0); // incoming axon stub
+    // postsynaptic dendrite (right) — a small branching fan
+    for (let b = 0; b < 4; b++) {
+      const ang = (b - 1.5) * 0.16;
+      const dx = u - 0.60, dy = v - 0.5;
+      const along = dx;
+      const across = dy - ang * (dx * 6);
+      if (along > 0) put(gauss(across, 0.02) * gauss(dx - 0.12, 0.12) * 0.45, 0);
+    }
+    // vesicles: a scatter of charge leaping the gap
+    for (let i = 0; i < 16; i++) {
+      const li = hash1(i + 2) * 0.55;                 // launch time
+      const pr = clamp((p - li) / 0.42, 0, 1);
+      if (pr <= 0) continue;
+      const e = Math.sin(pr * Math.PI);               // bright mid-flight
+      const px = lerp(0.43, 0.60, pr) + 0.02 * Math.sin(i * 3 + t * 4);
+      const spread = (hash1(i + 17) - 0.5) * 0.16 * pr;
+      const py = 0.5 + spread + 0.03 * Math.sin(pr * 6 + i);
+      put(gauss(u - px, 0.013) * gauss(v - py, 0.02) * (0.5 + 0.6 * e), 3);
+    }
+  }
+
+  // network nodes / edges (deterministic, built once)
+  const NODES = [];
+  for (let i = 0; i < 13; i++) {
+    NODES.push({ x: 0.12 + 0.76 * hash1(i + 1.7), y: 0.16 + 0.68 * hash1(i + 5.3),
+                 app: hash1(i + 8.1) * 0.55, sp: 0.5 + hash1(i + 2.2) * 1.1, ph: hash1(i + 4) * 6.28 });
+  }
+  const EDGES = [];
+  for (let i = 0; i < NODES.length; i++) {
+    // connect to two nearest neighbours
+    const d = NODES.map((n, j) => ({ j, d: (n.x - NODES[i].x) ** 2 + (n.y - NODES[i].y) ** 2 }))
+                   .sort((a, b) => a.d - b.d);
+    for (let k = 1; k <= 2; k++) {
+      const j = d[k].j;
+      if (j > i) EDGES.push({ a: i, b: j, off: hash1(i * 7 + j), sp: 0.18 + 0.32 * hash1(i + j) });
+    }
+  }
+  function distSeg(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const l2 = dx * dx + dy * dy || 1e-6;
+    let tt = ((px - ax) * dx + (py - ay) * dy) / l2;
+    tt = clamp(tt, 0, 1);
+    const cx = ax + tt * dx, cy = ay + tt * dy;
+    return Math.hypot(px - cx, py - cy);
+  }
+  function NETWORK(u, v, p, t) {
+    // edges first (faint filaments + a travelling pulse)
+    for (let e = 0; e < EDGES.length; e++) {
+      const E = EDGES[e], A = NODES[E.a], B = NODES[E.b];
+      const av = smooth((p - Math.min(A.app, B.app)) / 0.25);
+      if (av <= 0.01) continue;
+      const ds = distSeg(u, v, A.x, A.y, B.x, B.y);
+      put(gauss(ds, 0.007) * 0.24 * av, 0);
+      const pr = fract(t * E.sp + E.off);
+      const px = lerp(A.x, B.x, pr), py = lerp(A.y, B.y, pr);
+      put(gauss(u - px, 0.012) * gauss(v - py, 0.016) * 0.85 * av, 3);
+    }
+    // nodes (stars that wake into a constellation)
+    for (let i = 0; i < NODES.length; i++) {
+      const N = NODES[i];
+      const av = smooth((p - N.app) / 0.22);
+      if (av <= 0.01) continue;
+      const pulse = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * N.sp + N.ph), 2);
+      const d2 = (u - N.x) ** 2 / 0.0009 + (v - N.y) ** 2 / 0.0014;
+      put(Math.exp(-d2) * pulse * av, 6);
+    }
+  }
+
+  const BANDS = [
+    { y: 0.84, f: 4.5,  sp: 0.55, amp: 0.045, app: 0.00, gain: 0.62 }, // delta
+    { y: 0.70, f: 8.0,  sp: 1.1,  amp: 0.040, app: 0.16, gain: 0.70 }, // theta
+    { y: 0.55, f: 13.0, sp: 1.9,  amp: 0.034, app: 0.34, gain: 0.80 }, // alpha
+    { y: 0.40, f: 20.0, sp: 3.0,  amp: 0.028, app: 0.52, gain: 0.90 }, // beta
+    { y: 0.26, f: 30.0, sp: 4.6,  amp: 0.022, app: 0.70, gain: 1.00 }, // gamma
+  ];
+  function BRAINWAVES(u, v, p, t) {
+    for (let i = 0; i < BANDS.length; i++) {
+      const B = BANDS[i];
+      const vis = smooth((p - B.app) / 0.14);
+      if (vis <= 0.01) continue;
+      const yc = B.y + B.amp * Math.sin(u * B.f + t * B.sp)
+                     + B.amp * 0.4 * Math.sin(u * B.f * 1.9 + t * B.sp * 1.3);
+      put(gauss(v - yc, 0.013) * B.gain * vis, 2);
+    }
+  }
+
+  function RESOLUTION(u, v, p, t) {
+    // the many bands fold back toward one calm breathing line, then to rest
+    const fold = smooth(p);
+    const breath = 0.55 + 0.45 * Math.sin(t * 0.45);
+    // the five bands collapse toward the centre and fade out early
+    // (entry brightness matches the brainwaves it crossfades from, then settles)
+    const bandFade = 1 - smooth(p / 0.5);
+    if (bandFade > 0.01) {
+      for (let i = 0; i < BANDS.length; i++) {
+        const B = BANDS[i];
+        const yc = lerp(B.y, 0.5, fold)
+                 + B.amp * (1 - 0.7 * fold) * Math.sin(u * lerp(B.f, 6, fold) + t * lerp(B.sp, 0.6, fold));
+        put(gauss(v - yc, 0.013) * B.gain * bandFade * 0.82 * (0.55 + 0.45 * breath), 2);
+      }
+    }
+    // one calm breathing wave at the centre, settling flatter as it resolves
+    const yc = 0.5 + 0.05 * (1 - 0.6 * fold) * Math.sin(u * 6 + t * 0.5);
+    const wave = smooth(p / 0.35) * (1 - smooth((p - 0.45) / 0.3));
+    put(gauss(v - yc, 0.014) * (0.58 + 0.3 * breath) * wave, 2);
+    // resting two-line membrane fades back in for a seamless wrap
+    if (fold > 0.4) membrane(u, v, t, smooth((fold - 0.4) / 0.6) * (0.8 + 0.2 * breath));
+  }
+
+  /* ---------- phase schedule ---------- */
+  const PHASES = [
+    { fn: REST,        dur: 9  },
+    { fn: THRESHOLD,   dur: 8  },
+    { fn: PROPAGATION, dur: 11 },
+    { fn: SYNAPSE,     dur: 11 },
+    { fn: NETWORK,     dur: 12 },
+    { fn: BRAINWAVES,  dur: 13 },
+    { fn: RESOLUTION,  dur: 11 },
+  ];
+  const OVERLAP = 1.7;
+  const STARTS = [];
+  let acc = 0;
+  for (const ph of PHASES) { STARTS.push(acc); acc += ph.dur; }
+  const TOTAL = acc; // 75s
+  const ENDS = STARTS.map((s, i) => s + PHASES[i].dur);
+
+  const CAPTIONS = [
+    "One thin membrane &mdash; a charge held in tension.",
+    "A stimulus crosses threshold; the gates fling wide.",
+    "Down the axon the spark runs, spending nothing of itself.",
+    "At the cliff&rsquo;s edge it leaps the gap &mdash; a scatter of light.",
+    "Ten billion, talking at once, and a constellation wakes.",
+    "Slow tides quicken to rhythm; the mind tunes its many bands.",
+    "<span class='lead'>You are a pattern of voltage that learned to know itself.</span>",
+  ];
+
+  /* evaluate the whole field at (u,v) for global loop time tt */
+  function fieldAt(u, v, tt, t) {
+    // find current phase
+    let i = PHASES.length - 1;
+    for (let k = 0; k < PHASES.length; k++) { if (tt < ENDS[k]) { i = k; break; } }
+    const pI = clamp((tt - STARTS[i]) / PHASES[i].dur, 0, 1);
+    _c = 0; _s = 0;
+    PHASES[i].fn(u, v, pI, t);
+    let c = _c, s = _s;
+    // crossfade into the next phase across the overlap window (wraps to phase 0)
+    if (tt >= ENDS[i] - OVERLAP) {
+      const j = (i + 1) % PHASES.length;
+      const w = smooth((tt - (ENDS[i] - OVERLAP)) / OVERLAP);
+      _c = 0; _s = 0;
+      PHASES[j].fn(u, v, 0, t);
+      const cN = _c, sN = _s;
+      const cm = lerp(c, cN, w);
+      s = (cN * w >= c * (1 - w)) ? sN : s;
+      c = cm;
+    }
+    return { c, s };
+  }
+
+  /* ---------- renderer ---------- */
+  const canvas = document.getElementById("screen");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const stage = document.getElementById("stage");
+  const captionEl = document.getElementById("caption");
+  const titleEl = document.getElementById("title");
+
+  let COLS = 0, ROWS = 0, CW = 0, CH = 0, FS = 0, dpr = 1;
+
+  function resize() {
+    const W = window.innerWidth, H = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // choose a font size that yields a readable column count on phones
+    FS = clamp(Math.round(Math.min(W, H) / 34), 9, 17);
+    CW = FS * 0.6;          // monospace advance width
+    CH = FS * 1.08;         // line height
+    COLS = clamp(Math.floor(W / CW), 40, 150);
+    ROWS = clamp(Math.floor(H / CH), 24, 90);
+    canvas.width  = Math.floor(COLS * CW * dpr);
+    canvas.height = Math.floor(ROWS * CH * dpr);
+    canvas.style.width  = (COLS * CW) + "px";
+    canvas.style.height = (ROWS * CH) + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = FS + "px ui-monospace, monospace";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+  }
+  window.addEventListener("resize", resize, { passive: true });
+  resize();
+
+  /* ---------- audio (off by default) ---------- */
+  let audioCtx = null, master = null, drone = null, droneGain = null;
+  let soundOn = false, lastBlip = 0, prevEnergy = 0;
+  function initAudio() {
+    if (audioCtx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = new AC();
+    master = audioCtx.createGain();
+    master.gain.value = 0.0;
+    master.connect(audioCtx.destination);
+    drone = audioCtx.createOscillator();
+    drone.type = "sine";
+    drone.frequency.value = 55;
+    droneGain = audioCtx.createGain();
+    droneGain.gain.value = 0.0;
+    drone.connect(droneGain).connect(master);
+    drone.start();
+  }
+  function blip(freq, when, dur, vol) {
+    if (!audioCtx || !soundOn) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(freq, when);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.6, when + dur);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(g).connect(master);
+    o.start(when); o.stop(when + dur + 0.02);
+  }
+  const PHASE_PITCH = [196, 262, 330, 392, 523, 659, 294];
+
+  /* ---------- main loop ---------- */
+  let clockMs = 0, lastNow = performance.now(), playing = true;
+  let curCaption = -1;
+
+  function setCaption(i, tt) {
+    if (i !== curCaption) {
+      captionEl.innerHTML = CAPTIONS[i];
+      curCaption = i;
+    }
+    // fade within the phase window
+    const s = STARTS[i], d = PHASES[i].dur;
+    const local = tt - s;
+    let op = 0;
+    const fin = 1.0, fout = 1.2;
+    if (local < fin) op = smooth(local / fin);
+    else if (local > d - fout) op = smooth((d - local) / fout);
+    else op = 1;
+    // hold the closing line a touch longer / brighter
+    if (i === PHASES.length - 1) op = Math.max(op, smooth(local / 1.4) * smooth((d - local + 0.3) / 1.0));
+    captionEl.style.opacity = (op * 0.96).toFixed(3);
+    // title breathes only during the resting beat
+    titleEl.style.opacity = (i === 0 ? smooth(local / 1.5) * smooth((d - local) / 1.5) * 0.6 : 0).toFixed(3);
+  }
+
+  function frame(now) {
+    const dt = Math.min(now - lastNow, 60);
+    lastNow = now;
+    if (playing) clockMs += dt;
+    const t = clockMs / 1000;
+    const tt = ((t % TOTAL) + TOTAL) % TOTAL;
+
+    // current phase index for captions / audio pitch
+    let pi = PHASES.length - 1;
+    for (let k = 0; k < PHASES.length; k++) { if (tt < ENDS[k]) { pi = k; break; } }
+    setCaption(pi, tt);
+
+    ctx.fillStyle = "#04050a";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let energy = 0;
+    for (let r = 0; r < ROWS; r++) {
+      const v = (r + 0.5) / ROWS;
+      const y = r * CH;
+      for (let col = 0; col < COLS; col++) {
+        const u = (col + 0.5) / COLS;
+        const f = fieldAt(u, v, tt, t);
+        if (f.c < 0.05) continue;
+        const g = glyphFor(f.c, f.s);
+        if (g === " ") continue;
+        ctx.fillStyle = colorFor(f.c);
+        ctx.fillText(g, col * CW, y);
+        if (f.c > energy) energy = f.c;
+      }
+    }
+
+    // audio: drone follows the arc, blips fire on bright spikes
+    if (soundOn && audioCtx) {
+      const ph = pi;
+      droneGain.gain.value += (0.018 * (0.4 + energy * 0.6) - droneGain.gain.value) * 0.05;
+      drone.frequency.value += ((48 + ph * 7) - drone.frequency.value) * 0.02;
+      if (energy > 0.78 && energy > prevEnergy + 0.04 && (t - lastBlip) > 0.12) {
+        const base = PHASE_PITCH[ph];
+        blip(base * (1 + 0.5 * Math.random()), audioCtx.currentTime, 0.18, 0.10);
+        lastBlip = t;
+      }
+    }
+    prevEnergy = energy;
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- controls ---------- */
+  const btnPlay = document.getElementById("btnPlay");
+  const btnRestart = document.getElementById("btnRestart");
+  const btnSound = document.getElementById("btnSound");
+  const hint = document.getElementById("hint");
+
+  function setPlay(p) {
+    playing = p;
+    btnPlay.textContent = p ? "❚❚" : "►";
+    if (p) lastNow = performance.now();
+  }
+  btnPlay.addEventListener("click", e => { e.stopPropagation(); setPlay(!playing); });
+  btnRestart.addEventListener("click", e => { e.stopPropagation(); clockMs = 0; curCaption = -1; setPlay(true); });
+  btnSound.addEventListener("click", e => {
+    e.stopPropagation();
+    initAudio();
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    soundOn = !soundOn;
+    master.gain.value = soundOn ? 0.5 : 0.0;
+    btnSound.textContent = soundOn ? "♪" : "♪̸";
+    btnSound.classList.toggle("armed", soundOn);
+  });
+
+  // tap the field to pause/play (ignore taps on the controls)
+  stage.addEventListener("click", e => {
+    if (e.target.closest("#controls")) return;
+    setPlay(!playing);
+  });
+  // detect touch to keep controls visible on mobile
+  window.addEventListener("touchstart", () => stage.classList.add("touch"), { once: true, passive: true });
+
+  // brief hint then fade
+  setTimeout(() => { hint.style.opacity = "0.7"; }, 1200);
+  setTimeout(() => { hint.style.opacity = "0"; }, 5200);
+
+  document.addEventListener("keydown", e => {
+    if (e.key === " ") { e.preventDefault(); setPlay(!playing); }
+    else if (e.key.toLowerCase() === "r") { clockMs = 0; curCaption = -1; setPlay(true); }
+  });
+})();
+</script>
+</body>
+</html>
