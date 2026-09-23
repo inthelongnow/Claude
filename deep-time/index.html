@@ -1,0 +1,1339 @@
+<title>Deep Time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;1,300;1,500&family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Schibsted+Grotesk:wght@400;600;900&family=Shippori+Mincho:wght@500;800&display=swap">
+<style>
+:root{
+  --hud-h: calc(48px + env(safe-area-inset-top, 0px));
+  --void:#05060B; --star:#EEE8DA; --star-dim:#A9ADBF;
+  --magma-bg:#140806; --magma-ink:#F6E3C8; --ember:#FF7A2E; --magma-mute:#C9A48A;
+  --paper:#E8DFCF; --paper-ink:#2B2320; --paper-mute:#6B5D52; --paper-edge:#CFC3AE;
+  --engr-paper:#F1E8D4; --engr-ink:#3A2A1D; --engr-mute:#7A6450;
+  --wb-paper:#EFE4CC; --wb-indigo:#1F3A5F; --wb-red:#C4422F; --wb-ochre:#D6A24A; --wb-sumi:#1C1B1A;
+  --sw-bg:#F4F4F1; --sw-ink:#111111; --sw-red:#E2231A; --sw-grey:#77776F; --sw-line:#DADAD3; --sw-track:#E6E6E0;
+  --stone:#221F1D; --stone-2:#312D29; --brass:#C9A15B; --brass-hi:#F1D99B; --bone:#E6DDCB; --bone-mute:#A89F8E;
+  --hud-fg:#EEE8DA; --hud-bg:rgba(5,6,11,.55); --hud-line:rgba(238,232,218,.35);
+  --grain:none;
+  --f-cosmos:'Cormorant Garamond', Cormorant, Georgia, serif;
+  --f-mono:'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --f-magma:'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --f-cut:'Archivo Black', 'Arial Black', Impact, sans-serif;
+  --f-engr:'IM Fell English', 'Iowan Old Style', 'Times New Roman', serif;
+  --f-engr-sc:'IM Fell English SC', 'IM Fell English', 'Times New Roman', serif;
+  --f-wb:'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+  --f-swiss:'Schibsted Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --f-clock:'Cinzel', 'Trajan Pro', Georgia, serif;
+}
+*,*::before,*::after{ box-sizing:border-box }
+html{ scroll-behavior:auto; -webkit-text-size-adjust:100% }
+body{ background:var(--void); color:var(--star); overflow-x:hidden; font-family:var(--f-mono) }
+button{ font:inherit; color:inherit; cursor:pointer }
+:focus-visible{ outline:2px solid currentColor; outline-offset:3px }
+h1,h2,h3{ text-wrap:balance; margin:0 }
+p{ margin:0 }
+.col{ width:100%; max-width:36rem; margin-inline:auto; padding-inline:20px 34px }
+
+/* ---------- HUD + cosmic calendar rail ---------- */
+.hud{ position:fixed; z-index:50; top:0; left:0; right:0; height:var(--hud-h);
+  padding:env(safe-area-inset-top,0px) 34px 0 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:var(--hud-bg); color:var(--hud-fg); -webkit-backdrop-filter:blur(10px) saturate(1.2); backdrop-filter:blur(10px) saturate(1.2);
+  border-bottom:1px solid var(--hud-line); transition:background .5s, color .5s, border-color .5s }
+.hud-read{ display:flex; flex-direction:column; gap:1px; min-width:0 }
+.hud-date{ font:500 13px/1.1 var(--f-mono); font-variant-numeric:tabular-nums; letter-spacing:.02em; white-space:nowrap }
+.hud-ago{ font:400 10px/1.2 var(--f-mono); text-transform:uppercase; letter-spacing:.12em; opacity:.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.hud-sound{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--hud-line); background:transparent; border-radius:999px;
+  padding:6px 11px; font:500 10.5px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap }
+.hud-sound svg{ width:14px; height:14px }
+.hud-sound[aria-pressed="true"]{ background:var(--hud-fg); color:var(--void) }
+html[data-hud="light"] .hud-sound[aria-pressed="true"]{ color:#F4EFE4 }
+html[data-hud="light"]{ --hud-fg:#221C18; --hud-bg:rgba(242,236,224,.72); --hud-line:rgba(34,28,24,.22) }
+.rail{ position:fixed; z-index:49; right:0; width:26px; top:calc(var(--hud-h) + 14px); bottom:calc(18px + env(safe-area-inset-bottom,0px)); pointer-events:none; color:var(--hud-fg) }
+.rail::before{ content:""; position:absolute; left:17px; top:0; bottom:0; width:1px; background:currentColor; opacity:.3 }
+.rail span{ position:absolute; left:2px; font:500 8px/1 var(--f-mono); opacity:.55; transform:translateY(-50%) }
+.rail i{ position:absolute; left:14px; width:7px; height:1px; background:currentColor; opacity:.5 }
+.rail-mark{ position:absolute; left:13px; width:9px; height:9px; margin-top:-4.5px; border-radius:50%; background:currentColor; box-shadow:0 0 0 3px var(--hud-bg), 0 0 12px currentColor; transition:top .12s linear }
+
+/* ---------- shared bits ---------- */
+.eyebrow{ font:500 10.5px/1.3 var(--f-mono); letter-spacing:.16em; text-transform:uppercase }
+.grain{ position:relative; isolation:isolate }
+.grain::after{ content:""; position:absolute; inset:0; background-image:var(--grain); background-size:160px; mix-blend-mode:multiply; opacity:.5; pointer-events:none; z-index:3 }
+.hint{ display:inline-flex; gap:8px; align-items:center; font:500 10.5px/1.4 var(--f-mono); letter-spacing:.08em; text-transform:uppercase }
+.hint::before{ content:""; width:18px; height:1px; background:currentColor; opacity:.6; flex:none }
+
+/* ---------- I · Cosmos ---------- */
+.cosmos{ position:relative; background:var(--void); color:var(--star) }
+.cosmos-stage{ position:sticky; top:0; height:100vh; height:100svh; margin-bottom:-100vh; margin-bottom:-100svh; overflow:hidden;
+  touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none }
+.cosmos-stage canvas{ position:absolute; inset:0; width:100%; height:100%; display:block }
+.cosmos-copy{ position:relative; z-index:1; pointer-events:none; text-shadow:0 1px 18px rgba(5,6,11,.9), 0 0 2px rgba(5,6,11,.6) }
+.hero{ min-height:100vh; min-height:100svh; display:flex; flex-direction:column; justify-content:flex-end; gap:18px; padding-block:calc(var(--hud-h) + 24px) 56px }
+.hero h1{ font:300 italic clamp(72px, 24vw, 168px)/.82 var(--f-cosmos); letter-spacing:-.03em; margin-left:-.04em }
+.hero .lede{ font:300 22px/1.3 var(--f-cosmos); max-width:22ch; color:var(--star) }
+.hero .hint{ color:var(--star-dim) }
+.scroll-cue{ font:500 10.5px/1 var(--f-mono); letter-spacing:.18em; text-transform:uppercase; color:var(--star-dim); display:flex; align-items:center; gap:10px }
+.scroll-cue b{ display:block; width:1px; height:34px; background:linear-gradient(var(--star), transparent); animation:cue 2.4s ease-in-out infinite }
+@keyframes cue{ 0%,100%{ transform:scaleY(.4); transform-origin:top } 50%{ transform:scaleY(1); transform-origin:top } }
+.beat{ min-height:92vh; min-height:92svh; display:flex; flex-direction:column; justify-content:center; gap:12px }
+.beat .eyebrow{ color:var(--star-dim) }
+.beat h2{ font:300 italic clamp(38px, 11vw, 64px)/.98 var(--f-cosmos); letter-spacing:-.01em }
+.beat p{ font:300 20px/1.42 var(--f-cosmos); max-width:30ch; color:#DCD6C8 }
+.beat .when{ font:500 13px/1 var(--f-mono); letter-spacing:.06em; color:#FFC98A }
+
+/* ---------- II · Earth ---------- */
+.earth{ position:relative; background:var(--magma-bg); color:var(--magma-ink) }
+.earth-stage{ position:sticky; top:var(--hud-h); z-index:2; height:56vh; height:56svh; overflow:hidden; background:#140806;
+  touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none }
+.earth-stage canvas{ width:100%; height:100%; display:block }
+.earth-stage::after{ opacity:.35; mix-blend-mode:overlay }
+.earth-read{ position:absolute; z-index:4; left:16px; bottom:12px; font:500 11px/1.3 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:#FFE9CC; text-shadow:0 1px 8px rgba(0,0,0,.7) }
+.earth-read b{ display:block; font:400 24px/1 var(--f-magma); letter-spacing:0; text-transform:none; margin-top:4px; font-variant-numeric:tabular-nums }
+.earth-copy{ position:relative; z-index:1 }
+.earth-head{ padding-block:28px 12px; display:flex; flex-direction:column; gap:12px }
+.earth-head .eyebrow{ color:var(--ember) }
+.earth-head h2{ font:400 clamp(38px, 11vw, 60px)/1 var(--f-magma) }
+.earth-head .hint{ color:var(--magma-mute) }
+.ebeat{ min-height:44vh; min-height:44svh; padding-block:28px; display:flex; flex-direction:column; gap:8px; justify-content:center }
+.ebeat .when{ font:italic 400 15px/1 var(--f-magma); color:var(--ember) }
+.ebeat p{ font:400 19px/1.45 var(--f-magma); max-width:30ch; color:var(--magma-ink) }
+.ebeat:last-child{ padding-bottom:18vh }
+
+/* ---------- III · Strata ---------- */
+.strata{ background:var(--paper); color:var(--paper-ink); padding-block:72px 64px }
+.strata-head{ display:flex; flex-direction:column; gap:14px; margin-bottom:28px }
+.strata-head .eyebrow{ color:var(--paper-mute) }
+.strata-head h2{ font:400 clamp(44px, 14vw, 76px)/.9 var(--f-cut); letter-spacing:-.02em; text-transform:uppercase }
+.strata-head p{ font:400 16px/1.5 var(--f-swiss); max-width:34ch; color:var(--paper-ink) }
+.strata-stage{ position:relative; height:min(60vh, 520px); height:min(60svh, 520px); border-radius:4px; overflow:hidden; background:#F3EDE2;
+  box-shadow:inset 0 0 0 1px var(--paper-edge); cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent }
+.strata-svg{ position:absolute; inset:0; width:100%; height:100%; display:block }
+.strata-svg .band{ transition:transform .9s cubic-bezier(.22,1.35,.4,1) }
+.strata-cap{ display:grid; grid-template-columns:auto 1fr; gap:4px 14px; align-items:baseline; padding-block:18px 14px; border-bottom:1px solid var(--paper-edge) }
+.strata-cap .age{ font:400 30px/1 var(--f-cut); grid-row:span 2 }
+.strata-cap .name{ font:600 15px/1.2 var(--f-swiss) }
+.strata-cap .count{ font:500 10.5px/1.2 var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--paper-mute) }
+.strata-note{ font:400 15px/1.5 var(--f-swiss); padding-block:12px 18px; min-height:5.5em; color:var(--paper-ink) }
+.btn-cut{ display:inline-flex; align-items:center; gap:10px; background:var(--paper-ink); color:var(--paper); border:0; border-radius:3px; padding:14px 18px;
+  font:400 13px/1 var(--f-cut); letter-spacing:.06em; text-transform:uppercase; box-shadow:0 3px 0 #0f0b09; transition:transform .1s, box-shadow .1s }
+.btn-cut:active{ transform:translateY(3px); box-shadow:0 0 0 #0f0b09 }
+
+/* ---------- IV · Engraved plates ---------- */
+.plates{ background:var(--engr-paper); color:var(--engr-ink); padding-block:80px 72px }
+.plates-head{ display:flex; flex-direction:column; gap:14px; margin-bottom:30px; text-align:center; align-items:center }
+.plates-head .eyebrow{ font-family:var(--f-engr-sc); font-size:14px; letter-spacing:.14em; text-transform:none; color:var(--engr-mute) }
+.plates-head h2{ font:400 clamp(40px, 12vw, 64px)/1 var(--f-engr) }
+.plates-head h2 i{ font-style:italic }
+.plates-head p{ font:400 18px/1.45 var(--f-engr); max-width:32ch }
+.rule{ width:120px; height:7px; border-block:1px solid var(--engr-ink); position:relative }
+.rule::after{ content:""; position:absolute; left:50%; top:50%; width:5px; height:5px; background:var(--engr-ink); transform:translate(-50%,-50%) rotate(45deg) }
+.plate-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px }
+.plate{ display:flex; flex-direction:column; gap:6px; padding:8px 8px 10px; background:transparent; border:1px solid var(--engr-ink);
+  outline:1px solid var(--engr-ink); outline-offset:-5px; text-align:center; -webkit-tap-highlight-color:transparent; transition:transform .25s, background .25s }
+.plate:active{ transform:scale(.98) }
+.plate[aria-expanded="true"]{ background:#E9DDC3 }
+.plate svg{ width:100%; height:auto; aspect-ratio:1; display:block; max-width:100% }
+.plate .pl-no{ font:400 12px/1 var(--f-engr-sc); letter-spacing:.1em; color:var(--engr-mute) }
+.plate .pl-name{ font:italic 400 15px/1.1 var(--f-engr) }
+.extinct{ margin-top:36px; padding:20px 18px; border-top:1px solid var(--engr-ink); border-bottom:1px solid var(--engr-ink); font:400 17px/1.5 var(--f-engr); text-align:center }
+.extinct b{ font:400 14px/1 var(--f-engr-sc); letter-spacing:.1em; display:block; margin-bottom:8px; font-weight:400 }
+.tag{ position:fixed; z-index:60; left:0; right:0; bottom:0; padding:0 14px calc(14px + env(safe-area-inset-bottom,0px)); perspective:900px; pointer-events:none }
+.tag-card{ pointer-events:auto; position:relative; max-width:30rem; margin-inline:auto; background:#FBF4E2; color:var(--engr-ink); border:1px solid #BDA888;
+  border-radius:3px 3px 3px 3px; padding:22px 20px 18px 56px; box-shadow:0 18px 40px rgba(40,24,10,.35), 0 2px 0 #E6D7B8;
+  transform-origin:50% 100%; transform:rotateX(70deg) translateY(40px); opacity:0; transition:transform .55s cubic-bezier(.2,1.1,.3,1), opacity .3s;
+  background-image:repeating-linear-gradient(transparent 0 23px, rgba(90,120,160,.16) 23px 24px); background-position:0 12px }
+.tag.open .tag-card{ transform:none; opacity:1 }
+.tag-card::before{ content:""; position:absolute; left:18px; top:50%; width:16px; height:16px; margin-top:-8px; border-radius:50%; background:var(--engr-paper); box-shadow:inset 0 0 0 3px #CDB68E, inset 0 1px 3px rgba(0,0,0,.3) }
+.tag-card::after{ content:""; position:absolute; left:38px; top:12px; bottom:12px; border-left:1px solid rgba(196,66,47,.45) }
+.tag-plate{ font:400 12px/1 var(--f-engr-sc); letter-spacing:.12em; color:var(--engr-mute) }
+.tag-card h3{ font:italic 400 26px/1.1 var(--f-engr); margin:6px 0 10px }
+.tag-card dl{ display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:0 0 10px; font:400 13px/1.4 var(--f-mono) }
+.tag-card dt{ color:var(--engr-mute) }
+.tag-card dd{ margin:0 }
+.tag-note{ font:400 17px/1.45 var(--f-engr) }
+.tag-close{ position:absolute; top:10px; right:10px; border:1px solid #BDA888; background:transparent; border-radius:50%; width:32px; height:32px; font:400 18px/1 var(--f-engr); color:var(--engr-ink) }
+
+/* ---------- V · Woodblock ---------- */
+.wood{ background:var(--wb-paper); color:var(--wb-sumi); padding-block:80px 72px }
+.wood-head{ display:flex; flex-direction:column; gap:14px; margin-bottom:26px }
+.wood-head .eyebrow{ color:var(--wb-red) }
+.wood-head h2{ font:800 clamp(46px, 14vw, 80px)/.95 var(--f-wb); letter-spacing:-.01em }
+.wood-head p{ font:500 17px/1.6 var(--f-wb); max-width:32ch }
+.print{ position:relative; margin-inline:-4px; padding:10px; background:#F6EEDA; box-shadow:0 1px 0 #d9ccb0, 0 10px 30px rgba(60,40,10,.18) }
+.print canvas{ display:block; width:100%; height:auto; max-width:100% }
+.print figcaption{ font:500 12.5px/1.5 var(--f-wb); color:#5a4f40; padding-top:10px }
+.tl{ margin-top:34px; display:flex; flex-direction:column; gap:12px }
+.tl-read{ font:500 14.5px/1.55 var(--f-wb); min-height:4.8em }
+.tl-read b{ font-weight:800; color:var(--wb-red) }
+.tl-canvas{ display:block; width:100%; height:210px; touch-action:none; background:#F6EEDA; border-top:2px solid var(--wb-sumi); border-bottom:2px solid var(--wb-sumi); cursor:ew-resize }
+.tl-ctrl{ display:flex; align-items:center; gap:10px }
+.tl-ctrl button{ flex:none; width:40px; height:40px; border:2px solid var(--wb-sumi); background:var(--wb-paper); font:800 20px/1 var(--f-wb); color:var(--wb-sumi); border-radius:2px }
+.tl-ctrl input{ flex:1; min-width:0; accent-color:var(--wb-red) }
+.tl-help{ font:500 10.5px/1.4 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:#6d6150 }
+
+/* ---------- VI · Now (Swiss) ---------- */
+.now{ background:var(--sw-bg); color:var(--sw-ink); padding-block:72px 72px; font-family:var(--f-swiss) }
+.now-grid{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); column-gap:10px; border-top:6px solid var(--sw-ink); padding-top:10px }
+.now-grid .eyebrow{ grid-column:1 / -1; color:var(--sw-ink); font-family:var(--f-swiss); font-weight:600; letter-spacing:.04em; text-transform:none; font-size:13px }
+.now h2{ grid-column:1 / -1; font:900 clamp(96px, 34vw, 200px)/.8 var(--f-swiss); letter-spacing:-.06em; margin:22px 0 26px -.04em }
+.now h2 span{ color:var(--sw-red) }
+.now-lede{ grid-column:1 / 6; font:400 17px/1.45 var(--f-swiss) }
+.counter{ margin-top:40px; border-top:1px solid var(--sw-ink); padding-top:8px; display:flex; flex-direction:column; gap:6px }
+.counter .lab{ display:flex; justify-content:space-between; gap:12px; font:600 12px/1.3 var(--f-swiss) }
+.counter .lab span:last-child{ color:var(--sw-grey); font-weight:400; text-align:right }
+.counter .num{ font:600 clamp(26px, 8.4vw, 54px)/1 var(--f-swiss); letter-spacing:-.03em; font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
+.counter .num em{ font-style:normal; color:var(--sw-red) }
+.counter .fine{ font:400 12.5px/1.45 var(--f-swiss); color:var(--sw-grey); max-width:44ch }
+.visit{ margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:10px; border-top:1px solid var(--sw-ink); padding-top:8px }
+.visit div{ display:flex; flex-direction:column; gap:4px }
+.visit .k{ font:600 12px/1.3 var(--f-swiss) }
+.visit .v{ font:600 24px/1 var(--f-swiss); font-variant-numeric:tabular-nums; letter-spacing:-.02em }
+.visit .v.red{ color:var(--sw-red) }
+.chart-wrap{ margin-top:48px; border-top:6px solid var(--sw-ink); padding-top:10px }
+.chart-wrap h3{ font:900 30px/1 var(--f-swiss); letter-spacing:-.03em; margin:8px 0 8px }
+.chart-wrap .sub{ font:400 14px/1.45 var(--f-swiss); max-width:40ch; margin-bottom:18px }
+.chart-wrap .sub b{ color:var(--sw-red); font-weight:600 }
+.chart{ position:relative }
+.chart svg{ display:block; width:100%; overflow:visible }
+.chart text{ font-family:var(--f-swiss) }
+.tip{ position:absolute; z-index:5; pointer-events:none; background:var(--sw-ink); color:var(--sw-bg); padding:8px 10px; font:400 12px/1.35 var(--f-swiss); min-width:150px; max-width:220px; transform:translateY(-100%); opacity:0; transition:opacity .15s }
+.tip.on{ opacity:1 }
+.tip b{ display:block; font-weight:600; font-size:13px }
+.tip span{ display:block; color:#BDBDB6; font-variant-numeric:tabular-nums }
+.now details{ margin-top:18px; border-top:1px solid var(--sw-line); padding-top:10px; font:400 13px/1.4 var(--f-swiss) }
+.now summary{ cursor:pointer; font-weight:600 }
+.tbl-wrap{ overflow-x:auto; margin-top:10px }
+.now table{ border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums }
+.now th, .now td{ text-align:left; padding:6px 10px 6px 0; border-bottom:1px solid var(--sw-line); white-space:nowrap }
+.now th{ font-weight:600 }
+
+/* ---------- VII · Clock ---------- */
+.clock{ background:var(--stone); color:var(--bone); padding-block:84px calc(96px + env(safe-area-inset-bottom,0px)); text-align:center;
+  background-image:radial-gradient(120% 70% at 50% 40%, var(--stone-2), var(--stone) 70%) }
+.clock::after{ opacity:.4; mix-blend-mode:overlay }
+.clock-head{ display:flex; flex-direction:column; gap:14px; align-items:center; margin-bottom:26px; position:relative; z-index:4 }
+.clock-head .eyebrow{ font-family:var(--f-clock); letter-spacing:.3em; color:var(--brass) }
+.clock-head h2{ font:400 clamp(40px, 12vw, 70px)/1 var(--f-clock); letter-spacing:.06em; color:var(--brass-hi) }
+.clock-head p{ font:300 italic 21px/1.4 var(--f-cosmos); max-width:28ch; color:var(--bone) }
+.clock-head p cite{ font-style:normal; font:500 10.5px/1 var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--bone-mute); display:block; margin-top:10px }
+.dial{ position:relative; z-index:4; display:flex; flex-direction:column; align-items:center; gap:14px }
+.clock-canvas{ display:block; touch-action:none; -webkit-user-select:none; user-select:none; max-width:100%; cursor:grab }
+.clock-status{ font:500 11px/1.4 var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--bone-mute); min-height:1.4em; font-variant-numeric:tabular-nums }
+.btn-brass{ border:1px solid var(--brass); background:transparent; color:var(--brass-hi); padding:12px 18px; border-radius:999px; font:400 12px/1 var(--f-clock); letter-spacing:.2em; text-transform:uppercase }
+.btn-brass:disabled{ opacity:.35; cursor:default }
+.clock-after{ position:relative; z-index:4; display:flex; flex-direction:column; align-items:center; gap:18px; margin-top:34px }
+.clock-after p{ font:300 21px/1.45 var(--f-cosmos); max-width:28ch; opacity:0; transform:translateY(8px); transition:opacity 1.6s, transform 1.6s }
+.clock-after p b{ font:500 14px/1 var(--f-mono); color:var(--brass-hi); font-weight:500 }
+.clock-after p.on{ opacity:1; transform:none }
+.clock-after .fin{ font:400 italic 34px/1.1 var(--f-cosmos); color:var(--brass-hi) }
+.clock-after .btn-brass{ opacity:0; transition:opacity 1.2s }
+.clock-after .btn-brass.on{ opacity:1 }
+.foot{ position:relative; z-index:4; margin-top:64px; font:400 10.5px/1.6 var(--f-mono); letter-spacing:.06em; color:var(--bone-mute) }
+
+@media (min-width:760px){
+  .col{ padding-inline:32px 40px }
+  .plate-grid{ grid-template-columns:repeat(3, minmax(0,1fr)) }
+}
+@media (prefers-reduced-motion: reduce){
+  .scroll-cue b{ animation:none }
+  .strata-svg .band{ transition:none }
+  .tag-card, .clock-after p{ transition:none }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="hL" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#3A2A1D" stroke-width=".6"/></pattern>
+    <pattern id="hM" width="3.2" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3.2" stroke="#3A2A1D" stroke-width=".75"/></pattern>
+    <pattern id="hD" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M0,0 L3,3 M3,0 L0,3" stroke="#3A2A1D" stroke-width=".6" fill="none"/></pattern>
+    <filter id="paperShadow" x="-5%" y="-20%" width="110%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="2.6" flood-color="#1b120c" flood-opacity=".38"/></filter>
+  </defs>
+</svg>
+
+<header class="hud" id="hud">
+  <div class="hud-read">
+    <span class="hud-date" id="hudDate">Jan 01 · 00:00:00</span>
+    <span class="hud-ago" id="hudAgo">13.8 billion years ago</span>
+  </div>
+  <button class="hud-sound" id="soundBtn" type="button" aria-pressed="false">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor" stroke="none"/><path id="soundWaves" d="M11.5 5.5c1 1.4 1 3.6 0 5M13.5 3.8c1.9 2.4 1.9 6 0 8.4" opacity=".35"/></svg>
+    <span id="soundLabel">Sound off</span>
+  </button>
+</header>
+<nav class="rail" id="rail" aria-hidden="true"><div class="rail-mark" id="railMark"></div></nav>
+
+<main>
+<!-- I · COSMOS -->
+<section class="cosmos" id="ch1" data-from="13.787e9" data-to="4.6e9" data-hud="dark" data-mode="sticky">
+  <div class="cosmos-stage" id="cosmosStage"><canvas class="gl"></canvas><canvas class="fx"></canvas></div>
+  <div class="cosmos-copy">
+    <header class="hero col">
+      <span class="eyebrow" style="color:var(--star-dim)">A journey in seven chapters</span>
+      <h1>Deep Time</h1>
+      <p class="lede">13.8 billion years in one scroll. Each era is drawn in its own style.</p>
+      <p class="hint">Drag sideways to stir the young universe</p>
+      <div class="scroll-cue"><b></b>Scroll to begin</div>
+    </header>
+    <article class="beat col">
+      <span class="eyebrow">Chapter I · The Cosmos</span>
+      <span class="when">13.8 billion years ago</span>
+      <h2>Everything, everywhere, at once.</h2>
+      <p>The observable universe is smaller than an atom and hotter than anything since. In its first fraction of a second it swells by a factor of at least 10<sup>26</sup>.</p>
+    </article>
+    <article class="beat col">
+      <span class="when">380,000 years later</span>
+      <h2>Light breaks free.</h2>
+      <p>The fog of plasma clears and light travels freely for the first time. That glow still reaches us from every direction, cooled to 2.725 K: the cosmic microwave background.</p>
+    </article>
+    <article class="beat col">
+      <span class="when">~200 million years later</span>
+      <h2>The first stars.</h2>
+      <p>Gravity pulls the dark into knots. Stars hundreds of times the Sun’s mass ignite, burn out within a few million years, and scatter carbon, oxygen and iron.</p>
+    </article>
+    <article class="beat col">
+      <span class="when">4.6 billion years ago</span>
+      <h2>A star is born from others’ ashes.</h2>
+      <p>In a quiet arm of the Milky Way, a collapsing cloud of recycled stardust becomes the Sun. <em>Press and hold anywhere</em> to set off the supernova that may have triggered it.</p>
+    </article>
+  </div>
+</section>
+
+<!-- II · EARTH -->
+<section class="earth" id="ch2" data-from="4.54e9" data-to="3.9e9" data-hud="dark" data-mode="sticky">
+  <div class="earth-stage grain" id="earthStage">
+    <canvas></canvas>
+    <div class="earth-read">Surface<b id="earthTemp">≈ 1,600 °C</b></div>
+  </div>
+  <div class="earth-copy">
+    <header class="earth-head col">
+      <span class="eyebrow">Chapter II · Hadean Eon</span>
+      <h2>A world of molten rock</h2>
+      <p class="hint">Drag sideways to tilt the magma ocean</p>
+    </header>
+    <div class="ebeat col"><span class="when">4.54 billion years ago</span><p>Earth assembles from rubble. Heat from collisions and radioactive decay keeps the whole surface molten.</p></div>
+    <div class="ebeat col"><span class="when">~4.5 billion years ago</span><p>A Mars-sized world, Theia, strikes the young Earth. The debris forms the Moon, which then orbits so close it looks enormous. It is still drifting away, 3.8 cm a year.</p></div>
+    <div class="ebeat col"><span class="when">4.4 billion years ago</span><p>Zircon crystals from Jack Hills, Western Australia, the oldest pieces of Earth yet found, suggest liquid water already exists.</p></div>
+    <div class="ebeat col"><span class="when">~4.0 billion years ago</span><p>Steam rains out for millions of years. The crust hardens and the oceans fill. The stage is set.</p></div>
+  </div>
+</section>
+
+<!-- III · STRATA -->
+<section class="strata" id="ch3" data-from="3.9e9" data-to="5.39e8" data-hud="light">
+  <div class="col">
+    <header class="strata-head">
+      <span class="eyebrow">Chapter III · Archean → Ediacaran</span>
+      <h2>The rock record</h2>
+      <p>Stone keeps a diary. Each layer settles on the one before, so reading down means reading back in time. Tap the stack to lay down 3.5 billion years.</p>
+    </header>
+    <div class="strata-stage grain" id="strataStage" role="button" tabindex="0" aria-label="Deposit the next rock layer">
+      <svg class="strata-svg" id="strataSvg" aria-hidden="true"></svg>
+    </div>
+    <div class="strata-cap" aria-live="polite">
+      <span class="age" id="stAge">4.0 Ga</span>
+      <span class="name" id="stName">Acasta Gneiss</span>
+      <span class="count" id="stCount">Layer 1 of 8</span>
+    </div>
+    <p class="strata-note" id="stNote"></p>
+    <button class="btn-cut" id="depositBtn" type="button">Deposit next layer ↑</button>
+  </div>
+</section>
+
+<!-- IV · PLATES -->
+<section class="plates" id="ch4" data-from="5.39e8" data-to="6.6e7" data-hud="light">
+  <div class="col">
+    <header class="plates-head">
+      <span class="eyebrow">Chapter IV · The Phanerozoic Eon</span>
+      <h2>A Bestiary of <i>Deep Time</i></h2>
+      <div class="rule" aria-hidden="true"></div>
+      <p>539 million years ago, animals with shells, eyes and legs arrive in a geological rush: the Cambrian explosion. Tap a plate to read its specimen tag.</p>
+    </header>
+    <div class="plate-grid" id="plateGrid"></div>
+    <p class="extinct"><b>66 million years ago</b>A 10-kilometre asteroid strikes Chicxulub, on the coast of Mexico. About three-quarters of all species disappear. Small, furry survivors inherit the Earth.</p>
+  </div>
+</section>
+<div class="tag" id="tag" hidden>
+  <div class="tag-card" role="dialog" aria-modal="false" aria-labelledby="tagName">
+    <button class="tag-close" id="tagClose" type="button" aria-label="Close specimen tag">×</button>
+    <p class="tag-plate" id="tagPlate">Plate I</p>
+    <h3 id="tagName">Paradoxides</h3>
+    <dl><dt>Lived</dt><dd id="tagAge"></dd><dt>Found</dt><dd id="tagWhere"></dd></dl>
+    <p class="tag-note" id="tagNote"></p>
+  </div>
+</div>
+
+<!-- V · WOODBLOCK -->
+<section class="wood" id="ch5" data-from="6.6e7" data-to="150" data-hud="light">
+  <div class="col">
+    <header class="wood-head">
+      <span class="eyebrow">Chapter V · The Cenozoic Era</span>
+      <h2>The blink</h2>
+      <p>Mammals have had 66 million years since the asteroid. Our species has had about 300,000. Pinch or drag the timeline to find us.</p>
+    </header>
+    <figure class="print" style="margin-block:0">
+      <canvas id="woodCanvas" aria-label="A woodblock-style print of a great wave before a snow-capped mountain and a red sun"></canvas>
+      <figcaption>After Hokusai’s <i>Great Wave</i>, printed from carved cherry-wood blocks around 1831: one block per colour, one colour per pass.</figcaption>
+    </figure>
+    <div class="tl">
+      <p class="tl-read" id="tlRead" aria-live="polite"></p>
+      <canvas class="tl-canvas" id="tlCanvas" aria-label="Zoomable timeline of the last 66 million years"></canvas>
+      <div class="tl-ctrl">
+        <button type="button" id="tlOut" aria-label="Zoom out">−</button>
+        <input type="range" id="tlZoom" min="0" max="1000" value="0" aria-label="Timeline zoom">
+        <button type="button" id="tlIn" aria-label="Zoom in">+</button>
+      </div>
+      <p class="tl-help">Pinch · drag left to zoom in · or use the slider</p>
+    </div>
+  </div>
+</section>
+
+<!-- VI · NOW -->
+<section class="now" id="ch6" data-from="150" data-to="0" data-hud="light">
+  <div class="col">
+    <div class="now-grid">
+      <span class="eyebrow">Chapter VI · The present</span>
+      <h2>Now<span>.</span></h2>
+      <p class="now-lede">Squeeze the universe’s history into one calendar year, and everything humans have ever written happens in the last twelve seconds before midnight.</p>
+    </div>
+    <div class="counter">
+      <div class="lab"><span>Seconds since the Big Bang</span><span>live</span></div>
+      <div class="num" id="bigNum">435,085,471,200,000,000</div>
+      <p class="fine">Counting from 13.787 billion years (Planck satellite, 2018). The uncertainty is ±20 million years, so only the last digits ticking are exact; the first few are not.</p>
+    </div>
+    <div class="visit">
+      <div><span class="k">Your visit so far</span><span class="v" id="visitReal">0:00</span></div>
+      <div><span class="k">On the cosmic calendar</span><span class="v red" id="visitCosmic">0 ns</span></div>
+    </div>
+    <div class="chart-wrap">
+      <span class="eyebrow" style="font-family:var(--f-swiss);letter-spacing:.04em;text-transform:none;font-size:13px;font-weight:600">Figure 1</span>
+      <h3>The cosmic calendar, zoomed</h3>
+      <p class="sub">Each row magnifies the <b>red slice</b> of the row above it. Tap a mark for its date.</p>
+      <div class="chart" id="calChart" role="img" aria-label="Five stacked timelines, from the whole cosmic year down to its final minute, showing when key events fall."></div>
+      <details>
+        <summary>Show as a table</summary>
+        <div class="tbl-wrap"><table id="calTable"><thead><tr><th>Event</th><th>Years ago</th><th>Cosmic calendar</th></tr></thead><tbody></tbody></table></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- VII · CLOCK -->
+<section class="clock grain" id="ch7" data-from="0" data-to="-10000" data-hud="dark">
+  <div class="col">
+    <header class="clock-head">
+      <span class="eyebrow">Chapter VII · The next 10,000 years</span>
+      <h2>The Long Now</h2>
+      <p>“It ticks once a year, bongs once a century, and the cuckoo comes out every millennium.”<cite>Danny Hillis, on the 10,000-year clock being built inside a Texas mountain</cite></p>
+    </header>
+    <div class="dial">
+      <canvas class="clock-canvas" id="clockCanvas" aria-label="A brass clock dial. Drag clockwise around it to wind."></canvas>
+      <p class="clock-status" id="clockStatus" aria-live="polite">Drag clockwise around the dial · 3 turns</p>
+      <button class="btn-brass" id="windBtn" type="button">Wind a quarter turn</button>
+    </div>
+    <div class="clock-after" id="clockAfter">
+      <p data-step>Tick. One year has passed.</p>
+      <p data-step>Today’s melody was sequence <b id="permNo">#1</b> of 3,628,800, the number of ways to order ten bells: enough for a new one every day for almost 10,000 years.</p>
+      <p data-step>The century bong is <b id="centYrs">73</b> years away. The millennium cuckoo, <b id="millYrs">973</b>.</p>
+      <p data-step class="fin">Then, silence.</p>
+      <button class="btn-brass" id="againBtn" type="button" hidden>Begin again ↑</button>
+    </div>
+    <p class="foot">Dates follow current scientific consensus. Many carry uncertainties of millions of years.</p>
+  </div>
+</section>
+</main>
+
+<script>
+(() => {
+'use strict';
+const TAU = Math.PI * 2;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => { t = clamp(t); return t * t * (3 - 2 * t); };
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hex(h){ const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mix(a, b, t){ const A = hex(a), B = hex(b); return `rgb(${Math.round(lerp(A[0],B[0],t))},${Math.round(lerp(A[1],B[1],t))},${Math.round(lerp(A[2],B[2],t))})`; }
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+
+/* ---------- grain texture, shared ---------- */
+(() => {
+  const c = document.createElement('canvas'); c.width = c.height = 160;
+  const x = c.getContext('2d'), img = x.createImageData(160, 160), r = mulberry32(3);
+  for (let i = 0; i < img.data.length; i += 4){ const v = 150 + r() * 105; img.data[i] = v; img.data[i+1] = v * .97; img.data[i+2] = v * .92; img.data[i+3] = 255; }
+  x.putImageData(img, 0, 0);
+  try { document.documentElement.style.setProperty('--grain', `url(${c.toDataURL()})`); } catch (e) {}
+})();
+
+/* ---------- sound (off until asked) ---------- */
+const Sound = {
+  ctx: null, on: false, master: null,
+  init(){
+    if (this.ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+    this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = .55;
+    const comp = this.ctx.createDynamicsCompressor(); this.master.connect(comp); comp.connect(this.ctx.destination);
+    return true;
+  },
+  toggle(){ if (!this.on){ if (!this.init()) return false; this.ctx.resume(); this.on = true; } else this.on = false; return this.on; },
+  env(g, t, a, peak, d){ g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); },
+  noise(dur){ const c = this.ctx, b = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = c.createBufferSource(); s.buffer = b; return s; },
+  bell(f, when = 0, vol = .22){
+    if (!this.on) return; const c = this.ctx, t = c.currentTime + when;
+    [[.5,.3,3.6],[1,1,2.8],[1.19,.3,1.9],[1.56,.28,1.5],[2,.4,1.2],[2.74,.18,.8],[3.76,.1,.5]].forEach(([r, a, d]) => {
+      const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f * r; this.env(g, t, .004, vol * a, d); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + d + .1);
+    });
+  },
+  boom(){
+    if (!this.on) return; const c = this.ctx, t = c.currentTime;
+    const n = this.noise(2.4), f = c.createBiquadFilter(), g = c.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(2200, t); f.frequency.exponentialRampToValueAtTime(50, t + 2.2);
+    this.env(g, t, .01, .9, 2.2); n.connect(f); f.connect(g); g.connect(this.master); n.start(t);
+    const o = c.createOscillator(), g2 = c.createGain(); o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(28, t + 1.6); this.env(g2, t, .01, .7, 1.6); o.connect(g2); g2.connect(this.master); o.start(t); o.stop(t + 1.8);
+  },
+  thud(){
+    if (!this.on) return; const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + .25); this.env(g, t, .005, .6, .28); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + .35);
+    const n = this.noise(.2), f = c.createBiquadFilter(), g2 = c.createGain(); f.type = 'lowpass'; f.frequency.value = 900; this.env(g2, t, .003, .35, .15); n.connect(f); f.connect(g2); g2.connect(this.master); n.start(t);
+  },
+  click(){
+    if (!this.on) return; const c = this.ctx, t = c.currentTime;
+    const n = this.noise(.04), f = c.createBiquadFilter(), g = c.createGain(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 4; this.env(g, t, .001, .5, .03); n.connect(f); f.connect(g); g.connect(this.master); n.start(t);
+  },
+  tock(){
+    if (!this.on) return; const c = this.ctx, t = c.currentTime;
+    [[620, .5, .25], [1240, .2, .12], [180, .6, .4]].forEach(([fr, v, d]) => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = fr; this.env(g, t, .002, v, d); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + d + .05); });
+  }
+};
+const soundBtn = document.getElementById('soundBtn');
+soundBtn.addEventListener('click', () => {
+  const on = Sound.toggle();
+  soundBtn.setAttribute('aria-pressed', String(on));
+  document.getElementById('soundLabel').textContent = on ? 'Sound on' : 'Sound off';
+  document.getElementById('soundWaves').setAttribute('opacity', on ? '1' : '.35');
+  if (on) Sound.bell(587.33, 0, .15);
+});
+
+/* ---------- module loop ---------- */
+const modules = [];
+const io = new IntersectionObserver(es => { for (const e of es){ const m = modules.find(m => m.el === e.target); if (m) m.active = e.isIntersecting; } }, { rootMargin: '120px 0px' });
+function register(el, m){ m.el = el; m.active = false; modules.push(m); io.observe(el); if (m.resize) m.resize(); }
+
+/* ---------- HUD: cosmic calendar ---------- */
+const T_AGE = 13.787e9, YEAR_S = 365 * 86400;
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MDAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+const NOW_YEAR = new Date().getFullYear();
+const pad = (n, w = 2) => String(n).padStart(w, '0');
+const calSec = ya => (1 - ya / T_AGE) * YEAR_S;
+function fmtCal(sec, fine){
+  let next = false; if (sec >= YEAR_S){ next = true; sec -= YEAR_S; }
+  sec = Math.max(0, sec);
+  let day = Math.min(364, Math.floor(sec / 86400)), m = 0;
+  while (day >= MDAYS[m]){ day -= MDAYS[m]; m++; }
+  const s = sec % 86400, hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+  const secStr = fine ? ss.toFixed(2).padStart(5, '0') : pad(Math.floor(ss));
+  return `${next ? 'Next ' : ''}${MONTHS[m]} ${pad(day + 1)} · ${pad(hh)}:${pad(mm)}:${secStr}`;
+}
+function fmtAgo(ya){
+  if (ya >= 1e9) return `${(ya / 1e9).toFixed(2).replace(/0$/, '')} billion years ago`;
+  if (ya >= 1e6) return `${fmtInt(ya / 1e6)} million years ago`;
+  if (ya >= 1e4) return `${fmtInt(Math.round(ya / 1e3) * 1e3)} years ago`;
+  if (ya >= 1.5) return `${fmtInt(ya)} years ago`;
+  if (ya > -0.5) return `Now · year ${pad(NOW_YEAR, 5)}`;
+  return `Year ${pad(Math.round(NOW_YEAR - ya), 5)} · ${fmtInt(-ya)} years from now`;
+}
+const sections = [...document.querySelectorAll('main > section')].map(el => ({ el, from: +el.dataset.from, to: +el.dataset.to, hud: el.dataset.hud, sticky: el.dataset.mode === 'sticky' }));
+const rail = document.getElementById('rail'), railMark = document.getElementById('railMark');
+(() => { let acc = 0; MONTHS.forEach((m, i) => { const f = acc / 365; rail.insertAdjacentHTML('beforeend', `<span style="top:${f * 100}%">${m[0]}</span><i style="top:${f * 100}%"></i>`); acc += MDAYS[i]; }); })();
+const hudDate = document.getElementById('hudDate'), hudAgo = document.getElementById('hudAgo');
+let lastHud = '', lastScroll = -1, lastTheme = '';
+function updateHud(){
+  const y = window.scrollY, vh = innerHeight;
+  if (y === lastScroll) return; lastScroll = y;
+  const mid = y + vh * .5;
+  let sec = sections[0], p = 0;
+  for (const s of sections){ const top = s.el.offsetTop, h = s.el.offsetHeight; if (mid >= top && mid < top + h){ sec = s; p = s.sticky ? (y - top) / Math.max(1, h - vh) : (mid - top) / h; break; } if (mid >= top + h) { sec = s; p = 1; } }
+  p = clamp(p);
+  let ya;
+  if (sec.to < 0 || sec.from <= 0) ya = lerp(sec.from, sec.to, p);
+  else if (sec.to === 0) ya = p > .92 ? 0 : Math.exp(lerp(Math.log(sec.from), 0, p / .92));
+  else ya = Math.exp(lerp(Math.log(sec.from), Math.log(sec.to), p));
+  const cs = calSec(ya), f = clamp(cs / YEAR_S);
+  const d = fmtCal(cs, ya < 5e4 && ya >= 0), a = fmtAgo(ya);
+  if (d + a !== lastHud){ hudDate.textContent = d; hudAgo.textContent = a; lastHud = d + a; }
+  railMark.style.top = (f * 100) + '%';
+  if (sec.hud !== lastTheme){ document.documentElement.dataset.hud = sec.hud; lastTheme = sec.hud; }
+}
+
+/* =========================================================
+   I · COSMOS — WebGL particles
+   ========================================================= */
+function Cosmos(sec){
+  const stage = sec.querySelector('.cosmos-stage'), cv = stage.querySelector('.gl'), fxc = stage.querySelector('.fx'), fx = fxc.getContext('2d');
+  const small = Math.min(screen.width, screen.height) < 700;
+  const N = small ? 4200 : 7000;
+  const px = new Float32Array(N), py = new Float32Array(N), vx = new Float32Array(N), vy = new Float32Array(N), heat = new Float32Array(N), seed = new Float32Array(N);
+  const dxa = new Float32Array(N), dya = new Float32Array(N), spd = new Float32Array(N), r0 = new Float32Array(N), th0 = new Float32Array(N), fxp = new Float32Array(N), fyp = new Float32Array(N);
+  const gal = new Uint8Array(N);
+  const GALS = [{x:.3,y:.32,s:.95,dir:1,tilt:.55},{x:.7,y:.58,s:1.15,dir:-1,tilt:.68},{x:.3,y:.8,s:.65,dir:1,tilt:.42},{x:.8,y:.2,s:.5,dir:-1,tilt:.8}];
+  const W8 = [.3,.36,.2,.14];
+  const rnd = mulberry32(7);
+  for (let i = 0; i < N; i++){
+    seed[i] = rnd(); const a = rnd() * TAU; dxa[i] = Math.cos(a); dya[i] = Math.sin(a); spd[i] = Math.sqrt(rnd());
+    if (rnd() < .2) gal[i] = 255; else { let q = rnd(), g = 0; while (g < 3 && q > W8[g]){ q -= W8[g]; g++; } gal[i] = g; }
+    r0[i] = Math.min(.5, -Math.log(1 - rnd() * .995) * .11);
+    th0[i] = rnd() < .72 ? (rnd() - .5) * .8 + (rnd() < .5 ? 0 : Math.PI) : rnd() * TAU;
+    fxp[i] = rnd(); fyp[i] = rnd();
+  }
+  const data = new Float32Array(N * 4);
+  let W = 1, H = 1, dpr = 1, gl = null, uni = {}, started = false, simT = 0, t0 = performance.now();
+  const rings = [];
+  try {
+    gl = cv.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false });
+    if (gl){
+      const vs = `attribute vec4 a; uniform vec2 u_res; uniform float u_dpr, u_temp, u_ign, u_time;
+        varying float v_heat, v_seed, v_tw;
+        void main(){ vec2 c = a.xy / u_res * 2.0 - 1.0; c.y = -c.y; gl_Position = vec4(c, 0.0, 1.0);
+          float big = step(0.985, a.w) * 2.4 + step(0.93, a.w) * 0.9;
+          gl_PointSize = (1.5 + big * u_ign + a.z * 7.0) * (1.0 + u_temp * 1.4) * u_dpr * 2.4;
+          v_heat = a.z; v_seed = a.w; v_tw = 0.65 + 0.35 * sin(u_time * (1.2 + a.w * 3.0) + a.w * 80.0); }`;
+      const fs = `precision mediump float; uniform float u_temp, u_ign, u_bright; varying float v_heat, v_seed, v_tw;
+        void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard;
+          float core = exp(-d * d * 10.0), halo = exp(-d * d * 2.6) * 0.22;
+          vec3 cool = mix(vec3(0.62, 0.72, 1.0), vec3(1.0, 0.86, 0.70), fract(v_seed * 7.13));
+          vec3 col = mix(cool, vec3(1.0, 0.56, 0.26), u_temp);
+          col = mix(col, vec3(1.0, 0.95, 0.88), clamp(v_heat, 0.0, 1.0));
+          float b = u_bright * mix(1.0, v_tw, u_ign) + v_heat * 1.4;
+          gl_FragColor = vec4(col * (core + halo) * b, 1.0); }`;
+      const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+      const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error('link');
+      gl.useProgram(prog);
+      const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, gl.DYNAMIC_DRAW);
+      const loc = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, 0, 0);
+      ['u_res','u_dpr','u_temp','u_ign','u_time','u_bright'].forEach(n => uni[n] = gl.getUniformLocation(prog, n));
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    }
+  } catch (e) { gl = null; }
+
+  function resize(){
+    W = stage.clientWidth; H = stage.clientHeight; dpr = Math.min(devicePixelRatio || 1, small ? 2 : 1.5);
+    for (const c of [cv, fxc]){ c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+    fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (gl) gl.viewport(0, 0, cv.width, cv.height);
+    if (!started){ for (let i = 0; i < N; i++){ px[i] = W / 2 + dxa[i] * 4 * spd[i]; py[i] = H / 2 + dya[i] * 4 * spd[i]; heat[i] = .6; } started = true; }
+  }
+  let ptr = null, mouse = null;
+  const local = e => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  function stir(x, y, mx, my, k = 1){
+    const R = 120, R2 = R * R, sw = Math.sign(mx) || 1;
+    for (let i = 0; i < N; i++){ const dx = px[i] - x, dy = py[i] - y, d2 = dx * dx + dy * dy; if (d2 < R2){ const f = (1 - Math.sqrt(d2) / R) * k; vx[i] += mx * .2 * f - dy * .006 * f * sw; vy[i] += my * .2 * f + dx * .006 * f * sw; heat[i] = Math.max(heat[i], f * .22); } }
+  }
+  function nova(x, y, big = true){
+    const R = Math.max(W, H) * (big ? .5 : .16), pow = big ? 26 : 7;
+    for (let i = 0; i < N; i++){ const dx = px[i] - x, dy = py[i] - y, d = Math.sqrt(dx * dx + dy * dy) + .01; if (d < R){ let f = 1 - d / R; f *= f; vx[i] += dx / d * f * pow; vy[i] += dy / d * f * pow; heat[i] = Math.min(1, Math.max(heat[i], f * (big ? 1.3 : .5))); } }
+    rings.push({ x, y, t: performance.now(), big });
+    if (big){ Sound.boom(); try { navigator.vibrate && navigator.vibrate(35); } catch (e) {} }
+  }
+  stage.addEventListener('pointerdown', e => {
+    const [x, y] = local(e);
+    ptr = { id: e.pointerId, x, y, sx: x, sy: y, moved: false, fired: false };
+    ptr.timer = setTimeout(() => { if (ptr && !ptr.moved){ nova(ptr.x, ptr.y, true); ptr.fired = true; } }, 450);
+  });
+  stage.addEventListener('pointermove', e => {
+    const [x, y] = local(e);
+    if (ptr && e.pointerId === ptr.id){
+      if (Math.hypot(x - ptr.sx, y - ptr.sy) > 10) ptr.moved = true;
+      stir(x, y, x - ptr.x, y - ptr.y); ptr.x = x; ptr.y = y;
+    } else if (e.pointerType === 'mouse'){
+      if (mouse) stir(x, y, x - mouse[0], y - mouse[1], .35); mouse = [x, y];
+    }
+  });
+  const end = e => { if (!ptr) return; clearTimeout(ptr.timer); if (e.type === 'pointerup' && !ptr.moved && !ptr.fired) nova(ptr.x, ptr.y, false); ptr = null; };
+  stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+  stage.addEventListener('pointerleave', e => { mouse = null; end(e); });
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+
+  function tick(now, dt){
+    const r = sec.getBoundingClientRect();
+    const p = clamp(-r.top / Math.max(1, r.height - innerHeight));
+    const intro = reduced ? 1 : smooth((performance.now() - t0) / 3200);
+    const temp = 1 - smooth(p / .3), form = smooth((p - .28) / .42), ign = smooth((p - .5) / .3);
+    const bright = lerp(.22, .6, temp) * (1 - form * .25) + ign * .5;
+    simT += dt * (reduced ? .15 : 1);
+    const k = Math.min(2.5, dt * 60), follow = 1 - Math.pow(.95, k), damp = Math.pow(.92, k), cool = Math.pow(.965, k);
+    const cx = W / 2, cy = H * .5, maxD = Math.max(W, H), minD = Math.min(W, H);
+    const R = minD * .5 * (.07 + .93 * intro) * (1 + p * 2.2);
+    for (let i = 0; i < N; i++){
+      const s = seed[i];
+      const bx = cx + dxa[i] * R * spd[i] + Math.sin(simT * .6 + s * 40) * 6, by = cy + dya[i] * R * spd[i] + Math.cos(simT * .5 + s * 31) * 6;
+      let gx, gy; const g = gal[i];
+      if (g === 255){ gx = fxp[i] * W; gy = fyp[i] * H; }
+      else { const G = GALS[g], rr = r0[i] * G.s * minD, th = th0[i] + Math.log(1 + r0[i] * 9) * 2.3 * G.dir + simT * G.dir * .3 / (.35 + r0[i] * 6); gx = G.x * W + Math.cos(th) * rr; gy = G.y * H + Math.sin(th) * rr * G.tilt; }
+      const tx = bx + (gx - bx) * form, ty = by + (gy - by) * form;
+      px[i] += (tx - px[i]) * follow + vx[i] * k; py[i] += (ty - py[i]) * follow + vy[i] * k;
+      vx[i] *= damp; vy[i] *= damp; heat[i] *= cool;
+      const j = i * 4; data[j] = px[i]; data[j + 1] = py[i]; data[j + 2] = heat[i]; data[j + 3] = s;
+    }
+    const bg = [lerp(5, 38, temp * .85), lerp(6, 13, temp * .85), lerp(11, 7, temp * .85)];
+    if (gl){
+      gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
+      gl.uniform2f(uni.u_res, W, H); gl.uniform1f(uni.u_dpr, dpr); gl.uniform1f(uni.u_temp, temp); gl.uniform1f(uni.u_ign, ign); gl.uniform1f(uni.u_time, reduced ? 0 : now); gl.uniform1f(uni.u_bright, bright);
+      gl.drawArrays(gl.POINTS, 0, N);
+      fx.clearRect(0, 0, W, H);
+    } else {
+      fx.globalCompositeOperation = 'source-over'; fx.fillStyle = `rgb(${bg.map(Math.round)})`; fx.fillRect(0, 0, W, H);
+      fx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < N; i += 2){ const h = heat[i]; fx.fillStyle = temp > .5 ? `rgba(255,150,80,${.35 + h})` : `rgba(210,220,255,${.3 + h + bright * .4})`; fx.fillRect(px[i], py[i], 1.6 + h * 3, 1.6 + h * 3); }
+    }
+    fx.globalCompositeOperation = 'lighter';
+    if (temp > .01){
+      const gr = R * 1.05, hg = fx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+      hg.addColorStop(0, `rgba(255,236,200,${.55 * temp})`); hg.addColorStop(.25, `rgba(255,150,70,${.32 * temp})`); hg.addColorStop(.65, `rgba(150,40,15,${.14 * temp})`); hg.addColorStop(1, 'rgba(60,10,5,0)');
+      fx.fillStyle = hg; fx.fillRect(cx - gr, cy - gr, gr * 2, gr * 2);
+    }
+    const tn = performance.now();
+    for (let i = rings.length - 1; i >= 0; i--){
+      const rg = rings[i], a = (tn - rg.t) / (rg.big ? 1900 : 700);
+      if (a >= 1){ rings.splice(i, 1); continue; }
+      const rad = a * maxD * (rg.big ? .55 : .12), al = 1 - a;
+      if (rg.big){ const gr = fx.createRadialGradient(rg.x, rg.y, 0, rg.x, rg.y, 40 + a * 220); gr.addColorStop(0, `rgba(255,245,225,${al * al * al})`); gr.addColorStop(1, 'rgba(255,160,90,0)'); fx.fillStyle = gr; fx.beginPath(); fx.arc(rg.x, rg.y, 40 + a * 220, 0, TAU); fx.fill(); }
+      fx.strokeStyle = `rgba(255,228,200,${al * .7})`; fx.lineWidth = 1 + al * (rg.big ? 9 : 2); fx.beginPath(); fx.arc(rg.x, rg.y, rad, 0, TAU); fx.stroke();
+    }
+    fx.globalCompositeOperation = 'source-over';
+  }
+  return { resize, tick };
+}
+
+/* =========================================================
+   II · EARTH — painterly magma ocean
+   ========================================================= */
+function Earth(sec){
+  const stage = sec.querySelector('.earth-stage'), cv = stage.querySelector('canvas'), ctx = cv.getContext('2d'), tempEl = document.getElementById('earthTemp');
+  const N = 48, h = new Float32Array(N), v = new Float32Array(N);
+  let W = 1, H = 1, tilt = 0, tiltT = 0, drag = null, orient = null, askedOrient = false, lastTemp = '', flash = 0, prevP = 0, simT = 0;
+  const rnd = mulberry32(21);
+  const blobs = Array.from({ length: 10 }, () => ({ x: rnd(), y: .2 + rnd() * .8, r: .1 + rnd() * .16, s: .15 + rnd() * .4, ph: rnd() * TAU }));
+  const strokes = Array.from({ length: 46 }, () => ({ x: rnd(), d: .04 + rnd() * .9, w: 14 + rnd() * 50, lw: 2 + rnd() * 6, ph: rnd() * TAU, lite: rnd() < .55 }));
+  const steam = Array.from({ length: 7 }, () => ({ x: rnd(), y: rnd() * .5, r: .12 + rnd() * .2, s: .01 + rnd() * .02 }));
+  const meteors = [];
+  function resize(){
+    const dpr = Math.min(devicePixelRatio || 1, 2); W = stage.clientWidth; H = stage.clientHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (let i = 0; i < N; i++){ h[i] = H * .56; v[i] = 0; }
+  }
+  const lx = e => e.clientX - stage.getBoundingClientRect().left;
+  stage.addEventListener('pointerdown', e => {
+    drag = { id: e.pointerId, sx: lx(e) };
+    if (!askedOrient && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      askedOrient = true; DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenOrient(); }).catch(() => {});
+    }
+  });
+  stage.addEventListener('pointermove', e => { if (drag && e.pointerId === drag.id) tiltT = clamp((lx(e) - drag.sx) / (W * .38), -1, 1); });
+  const release = () => { drag = null; tiltT = 0; };
+  stage.addEventListener('pointerup', release); stage.addEventListener('pointercancel', release); stage.addEventListener('pointerleave', release);
+  function listenOrient(){ addEventListener('deviceorientation', e => { if (e.gamma == null) return; orient = clamp(e.gamma / 30, -1, 1); }); }
+  if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== 'function') listenOrient();
+
+  function surface(){
+    ctx.moveTo(0, h[0]);
+    for (let i = 0; i < N - 1; i++){ const x0 = i / (N - 1) * W, x1 = (i + 1) / (N - 1) * W; ctx.quadraticCurveTo(x0, h[i], (x0 + x1) / 2, (h[i] + h[i + 1]) / 2); }
+    ctx.lineTo(W, h[N - 1]);
+  }
+  function tick(now, dt){
+    const r = sec.getBoundingClientRect();
+    const p = clamp(-r.top / Math.max(1, r.height - innerHeight));
+    const c = smooth((p - .12) / .8);
+    const k = Math.min(2.5, dt * 60); simT += dt;
+    const target = drag ? tiltT : (orient != null ? orient : tiltT);
+    tilt += (target - tilt) * (1 - Math.pow(.9, k));
+    if (prevP < .24 && p >= .24) flash = 1; prevP = p;
+    flash *= Math.pow(.94, k);
+    const level = H * .56, damp = Math.pow(.984, k);
+    for (let i = 0; i < N; i++){
+      const x = i / (N - 1), tgt = level - tilt * (x - .5) * H * .5;
+      const nb = (i > 0 ? h[i - 1] : h[i]) + (i < N - 1 ? h[i + 1] : h[i]) - 2 * h[i];
+      v[i] = (v[i] + ((tgt - h[i]) * .018 + nb * .22) * k) * damp;
+      if (!reduced) v[i] += Math.sin(simT * 1.3 + i * .7) * .015 * (1 - c * .6);
+    }
+    for (let i = 0; i < N; i++) h[i] += v[i] * k;
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H * .7);
+    sky.addColorStop(0, mix('#1A0503', '#162634', c)); sky.addColorStop(1, mix('#6A1A06', '#6B7F86', c));
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    // steam clouds as it cools
+    const steamA = smooth((c - .25) / .3) * (1 - smooth((c - .85) / .15));
+    if (steamA > .01) for (const s of steam){ const x = ((s.x + simT * s.s) % 1.4 - .2) * W, y = s.y * H, rr = s.r * W; const g = ctx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, `rgba(235,232,225,${.35 * steamA})`); g.addColorStop(1, 'rgba(235,232,225,0)'); ctx.fillStyle = g; ctx.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+    // moon
+    if (p > .2){
+      const ma = smooth((p - .2) / .06), mp = smooth((p - .24) / .7);
+      const mr = lerp(W * .24, W * .065, mp), mx = lerp(W * .7, W * .8, mp), my = lerp(H * .25, H * .17, mp);
+      ctx.globalAlpha = ma;
+      const mg = ctx.createRadialGradient(mx - mr * .35, my - mr * .35, mr * .1, mx, my, mr);
+      mg.addColorStop(0, mix('#FFE0B0', '#F2EEE4', c)); mg.addColorStop(.7, mix('#E0885A', '#C9C4B8', c)); mg.addColorStop(1, mix('#8A3A20', '#8C897F', c));
+      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(90,70,60,${.18 + c * .1})`;
+      [[.3,-.2,.22],[-.25,.25,.16],[.1,.4,.12],[-.4,-.3,.1]].forEach(([a, b, s]) => { ctx.beginPath(); ctx.ellipse(mx + a * mr, my + b * mr, s * mr, s * mr * .8, .4, 0, TAU); ctx.fill(); });
+      const halo = ctx.createRadialGradient(mx, my, mr, mx, my, mr * 1.8); halo.addColorStop(0, `rgba(255,${Math.round(lerp(150, 235, c))},${Math.round(lerp(90, 225, c))},.18)`); halo.addColorStop(1, 'rgba(255,200,150,0)');
+      ctx.fillStyle = halo; ctx.fillRect(mx - mr * 2, my - mr * 2, mr * 4, mr * 4);
+      ctx.globalAlpha = 1;
+    }
+    // meteors
+    if (!reduced && Math.random() < (1 - c) * .05 * k) meteors.push({ x: Math.random() * W * 1.2, y: -20, vx: -3 - Math.random() * 3, vy: 6 + Math.random() * 4 });
+    for (let i = meteors.length - 1; i >= 0; i--){
+      const m = meteors[i]; m.x += m.vx * k; m.y += m.vy * k;
+      const col = clamp(Math.round(m.x / W * (N - 1)), 0, N - 1);
+      if (m.y > h[col]){ v[col] += 5; if (col > 0) v[col - 1] += 2.5; if (col < N - 1) v[col + 1] += 2.5; meteors.splice(i, 1); continue; }
+      const g = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * 7, m.y - m.vy * 7); g.addColorStop(0, 'rgba(255,240,200,.95)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x - m.vx * 7, m.y - m.vy * 7); ctx.stroke();
+    }
+    // ocean body (magma → water)
+    ctx.save(); ctx.beginPath(); surface(); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    const top = Math.min(...h);
+    const g = ctx.createLinearGradient(0, top, 0, H);
+    g.addColorStop(0, mix('#FFD27A', '#6FA7B4', c)); g.addColorStop(.35, mix('#FF7420', '#255565', c)); g.addColorStop(1, mix('#6E1506', '#0A1B24', c));
+    ctx.fillStyle = g; ctx.fill(); ctx.clip();
+    ctx.globalCompositeOperation = c < .5 ? 'lighter' : 'source-over';
+    for (const b of blobs){ const x = (b.x + Math.sin(simT * b.s + b.ph) * .08) * W, y = top + b.y * (H - top), rr = b.r * W * 1.4; const bg = ctx.createRadialGradient(x, y, 0, x, y, rr); const a = lerp(.32, .07, c); bg.addColorStop(0, c < .5 ? `rgba(255,210,110,${a})` : `rgba(170,215,222,${a})`); bg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = bg; ctx.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineCap = 'round';
+    for (const s of strokes){ const i = clamp(Math.round(s.x * (N - 1)), 0, N - 1); const y = h[i] + s.d * (H - h[i]) + Math.sin(simT * .7 + s.ph) * 3; const x = s.x * W + Math.sin(simT * .3 + s.ph) * 10; ctx.strokeStyle = s.lite ? (c < .5 ? 'rgba(255,236,170,.14)' : 'rgba(200,232,236,.1)') : (c < .5 ? 'rgba(90,10,0,.16)' : 'rgba(5,20,30,.16)'); ctx.lineWidth = s.lw; ctx.beginPath(); ctx.moveTo(x - s.w / 2, y); ctx.quadraticCurveTo(x, y - 4, x + s.w / 2, y + 1); ctx.stroke(); }
+    ctx.restore();
+    // watercolour edges
+    const edges = [[-2.5, 7, c < .5 ? 'rgba(255,244,190,.35)' : 'rgba(236,246,244,.35)'], [1.5, 3, c < .5 ? 'rgba(255,250,220,.7)' : 'rgba(245,250,248,.65)'], [5, 1.5, c < .5 ? 'rgba(70,8,0,.35)' : 'rgba(10,30,40,.35)']];
+    for (const [off, lw, col] of edges){ ctx.save(); ctx.translate(0, off); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); surface(); ctx.stroke(); ctx.restore(); }
+    if (flash > .01){ ctx.fillStyle = `rgba(255,248,235,${flash * .85})`; ctx.fillRect(0, 0, W, H); }
+    const temp = `≈ ${fmtInt(Math.round(lerp(1600, 70, c) / 10) * 10)} °C`;
+    if (temp !== lastTemp){ tempEl.textContent = temp; lastTemp = temp; }
+  }
+  return { resize, tick };
+}
+
+/* =========================================================
+   III · STRATA — paper-cut layers
+   ========================================================= */
+const LAYERS = [
+  { age:'4.0 Ga', name:'Acasta Gneiss', col:'#4A3B34', fos:'gneiss', note:'The oldest intact rock yet found, in Canada’s Northwest Territories. Everything above it is younger.' },
+  { age:'3.7 Ga', name:'Stromatolites', col:'#6B5344', fos:'strom', note:'Microbial mats trap sediment in slow, layered domes: the first widespread signature of life.' },
+  { age:'2.4 Ga', name:'Banded iron', col:'#8E3A28', fos:'bif', note:'Photosynthesis floods the seas with oxygen, and dissolved iron rusts out in red stripes. This is the Great Oxidation Event.' },
+  { age:'1.6 Ga', name:'The Boring Billion', col:'#B08B6B', fos:'cells', note:'A billion quiet years, but not idle ones: complex cells with nuclei appear.' },
+  { age:'1.05 Ga', name:'Bangiomorpha', col:'#857259', fos:'fil', note:'A red alga from Arctic Canada, among the first many-celled organisms and the oldest known to reproduce sexually.' },
+  { age:'0.72 Ga', name:'Snowball Earth', col:'#D6DEDF', fos:'drop', note:'Ice reaches the tropics. Stones dropped from icebergs dent the seafloor mud: dropstones.' },
+  { age:'0.575 Ga', name:'Ediacaran fronds', col:'#737D57', fos:'frond', note:'Soft, quilted fronds such as Charnia: the first large, complex living things.' },
+  { age:'0.539 Ga', name:'Cambrian base', col:'#A4845F', fos:'burrow', note:'Treptichnus pedum, a scribbled burrow, records animals starting to dig. Geologists use it to mark the start of the Cambrian.' },
+];
+function Strata(sec){
+  const stage = document.getElementById('strataStage'), svg = document.getElementById('strataSvg'), btn = document.getElementById('depositBtn');
+  const elAge = document.getElementById('stAge'), elName = document.getElementById('stName'), elCount = document.getElementById('stCount'), elNote = document.getElementById('stNote');
+  const rnd = mulberry32(11);
+  const P = LAYERS.map(() => ({ a1: 3 + rnd() * 5, f1: .012 + rnd() * .02, p1: rnd() * 6, a2: 1 + rnd() * 2.2, f2: .05 + rnd() * .05, p2: rnd() * 6, s: Math.floor(rnd() * 1e6) }));
+  let W = 1, H = 1, bh = 40, n = 1;
+  const top = (k, x) => { if (k < 0) return H + 4; const q = P[k]; const j = ((Math.imul(Math.floor(x) + 1, 2654435761) ^ q.s) >>> 0) / 4294967296; return H - 10 - (k + 1) * bh + q.a1 * Math.sin(x * q.f1 + q.p1) + q.a2 * Math.sin(x * q.f2 + q.p2) + (j - .5) * 1.4; };
+  const f1 = n => n.toFixed(1);
+  function bandPath(k){
+    let d = ''; const step = 8;
+    for (let x = -4; x <= W + 4; x += step) d += (d ? 'L' : 'M') + f1(x) + ',' + f1(top(k, x));
+    for (let x = W + 4; x >= -4; x -= step) d += 'L' + f1(x) + ',' + f1(top(k - 1, x));
+    return d + 'Z';
+  }
+  function fossils(k){
+    const L = LAYERS[k], r = mulberry32(100 + k), T = x => top(k, x), B = x => top(k - 1, x), mid = x => (T(x) + B(x)) / 2, th = x => B(x) - T(x);
+    let s = '';
+    switch (L.fos){
+      case 'gneiss': for (let j = 0; j < 5; j++){ let d = ''; for (let x = -4; x <= W + 4; x += 6){ const y = mid(x) + (j - 2) * th(x) * .16 + Math.sin(x * .045 + j * 1.7) * 3.5; d += (d ? 'L' : 'M') + f1(x) + ',' + f1(y); } s += `<path d="${d}" fill="none" stroke="#6E5A4E" stroke-width="${1 + (j % 2) * .8}"/>`; } break;
+      case 'strom': for (let d = 0; d < 5; d++){ const x = W * (.1 + d * .2 + (r() - .5) * .05), base = B(x) - 1, hmax = th(x) * .85; for (let i = 0; i < 5; i++){ const rw = 7 + i * 5, rh = Math.min(hmax, 5 + i * 5.5); s += `<path d="M${f1(x - rw)},${f1(base)} A${rw} ${f1(rh)} 0 0 1 ${f1(x + rw)},${f1(base)}" fill="none" stroke="#9C8270" stroke-width="1.4"/>`; } } break;
+      case 'bif': { const cnt = Math.max(3, Math.floor(bh / 5)); for (let j = 1; j < cnt; j++){ let d = ''; for (let x = -4; x <= W + 4; x += 8){ const y = T(x) + th(x) * j / cnt; d += (d ? 'L' : 'M') + f1(x) + ',' + f1(y); } s += `<path d="${d}" fill="none" stroke="${j % 2 ? '#C9684A' : '#4E4545'}" stroke-width="${j % 2 ? 2.4 : 1.4}"/>`; } } break;
+      case 'cells': for (let i = 0; i < 16; i++){ const x = r() * W, y = T(x) + th(x) * (.25 + r() * .5), rr = 3.5 + r() * 4; s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(rr)}" fill="#D8BE9E" stroke="#806049" stroke-width="1"/><circle cx="${f1(x + rr * .2)}" cy="${f1(y - rr * .1)}" r="${f1(rr * .35)}" fill="#806049"/>`; } break;
+      case 'fil': for (let i = 0; i < 7; i++){ let x = r() * W * .85, y = T(x) + th(x) * (.3 + r() * .4); const a = (r() - .5) * .6; for (let j = 0; j < 11; j++){ s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="2.1" fill="#C6B394" stroke="#5E4E3C" stroke-width=".7"/>`; x += Math.cos(a) * 4.4; y += Math.sin(a + j * .15) * 1.2; } } break;
+      case 'drop': { const peb = Array.from({ length: 4 }, (_, i) => ({ x: W * (.15 + i * .23 + (r() - .5) * .06), rr: 4 + r() * 4 })); for (let j = 1; j < 4; j++){ let d = ''; for (let x = -4; x <= W + 4; x += 4){ let y = T(x) + th(x) * j / 4; for (const pb of peb){ const dd = Math.abs(x - pb.x); if (dd < pb.rr * 2.4) y += (1 - dd / (pb.rr * 2.4)) * 4; } d += (d ? 'L' : 'M') + f1(x) + ',' + f1(y); } s += `<path d="${d}" fill="none" stroke="#AAB6B9" stroke-width="1.1"/>`; } for (const pb of peb){ const y = mid(pb.x) + 2; let d = ''; for (let a = 0; a < 7; a++){ const an = a / 7 * TAU, rr = pb.rr * (.75 + r() * .4); d += (a ? 'L' : 'M') + f1(pb.x + Math.cos(an) * rr * 1.2) + ',' + f1(y + Math.sin(an) * rr); } s += `<path d="${d}Z" fill="#8C9497" stroke="#5B6366" stroke-width="1"/>`; } } break;
+      case 'frond': for (let i = 0; i < 5; i++){ const x = W * (.1 + i * .2 + (r() - .5) * .05), y = mid(x), hh = Math.max(10, th(x) * .42), rot = (r() - .5) * 50 + 70; let ribs = ''; for (let j = -3; j <= 3; j++) ribs += `M0,${f1(j * hh / 4)} l${f1(-hh * .3)},${f1(-hh * .12)} M0,${f1(j * hh / 4)} l${f1(hh * .3)},${f1(-hh * .12)} `; s += `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(rot)})"><ellipse rx="${f1(hh * .38)}" ry="${f1(hh)}" fill="#C4C8A2" stroke="#4A5236" stroke-width="1"/><path d="M0,${f1(-hh)} L0,${f1(hh + 6)} ${ribs}" fill="none" stroke="#4A5236" stroke-width=".9"/></g>`; } break;
+      case 'burrow': for (let i = 0; i < 3; i++){ let x = W * (.08 + i * .32), y = mid(x) + (r() - .5) * 6, d = `M${f1(x)},${f1(y)}`; for (let j = 0; j < 7; j++){ const nx = x + 9 + r() * 4, ny = y + (j % 2 ? 1 : -1) * (3 + r() * 3); d += ` Q${f1(x + 2)},${f1(ny - (j % 2 ? -6 : 6))} ${f1(nx)},${f1(ny)}`; x = nx; y = ny; } s += `<path d="${d}" fill="none" stroke="#4E3A29" stroke-width="2.4" stroke-linecap="round"/>`; } break;
+    }
+    return s;
+  }
+  function bandMarkup(k){ const d = bandPath(k); return `<g class="band" data-k="${k}" filter="url(#paperShadow)"><clipPath id="bc${k}"><path d="${d}"/></clipPath><path d="${d}" fill="${LAYERS[k].col}"/><g clip-path="url(#bc${k})">${fossils(k)}</g></g>`; }
+  function caption(){
+    const L = LAYERS[n - 1];
+    elAge.textContent = L.age; elName.textContent = L.name; elCount.textContent = `Layer ${n} of ${LAYERS.length}`; elNote.textContent = L.note;
+    btn.textContent = n >= LAYERS.length ? 'Erode and start over' : 'Deposit next layer ↑';
+  }
+  function render(){ let s = ''; for (let k = 0; k < n; k++) s += bandMarkup(k); svg.innerHTML = s; caption(); }
+  function resize(){ W = stage.clientWidth; H = stage.clientHeight; bh = (H - 34) / LAYERS.length; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); render(); }
+  function deposit(){
+    if (n >= LAYERS.length){ n = 1; render(); return; }
+    n++; svg.insertAdjacentHTML('beforeend', bandMarkup(n - 1));
+    const g = svg.lastElementChild;
+    if (!reduced){ g.style.transition = 'none'; g.style.transform = `translateY(${-H}px)`; g.getBoundingClientRect(); g.style.transition = ''; requestAnimationFrame(() => { g.style.transform = 'translateY(0)'; }); setTimeout(() => Sound.thud(), 520); }
+    else Sound.thud();
+    caption();
+  }
+  stage.addEventListener('click', deposit);
+  stage.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); deposit(); } });
+  btn.addEventListener('click', deposit);
+  return { resize };
+}
+
+/* =========================================================
+   IV · ENGRAVED PLATES
+   ========================================================= */
+const INK = '#3A2A1D', PAPER = '#F1E8D4';
+let uid = 0;
+const r1 = n => (Math.round(n * 10) / 10);
+function ell(cx, cy, rx, ry, rot = 0){ const a = rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); const x1 = cx - rx * c, y1 = cy - rx * s, x2 = cx + rx * c, y2 = cy + rx * s; return `M${r1(x1)},${r1(y1)} A${rx} ${ry} ${rot} 1 0 ${r1(x2)},${r1(y2)} A${rx} ${ry} ${rot} 1 0 ${r1(x1)},${r1(y1)} Z`; }
+function shade(d, o = {}){
+  const id = 'sc' + (uid++), off = o.off ?? 5, fill = o.fill || 'url(#hL)';
+  return `<clipPath id="${id}"><path d="${d}"/></clipPath><path d="${d}" fill="${PAPER}"/><g clip-path="url(#${id})"><path d="${d}" fill="url(#hD)"/><path d="${d}" transform="translate(${-off} ${-off})" fill="${PAPER}"/><path d="${d}" transform="translate(${-off} ${-off})" fill="${fill}"/></g><path d="${d}" fill="none" stroke="${INK}" stroke-width="${o.sw || 1.1}" stroke-linejoin="round"/>`;
+}
+const poly = pts => 'M' + pts.map(p => r1(p[0]) + ',' + r1(p[1])).join('L');
+function trilobite(){
+  let s = '';
+  s += shade('M44,74 C36,92 31,112 24,136 C38,116 47,98 58,80 Z', { off: 2 });
+  s += shade('M156,74 C164,92 169,112 176,136 C162,116 153,98 142,80 Z', { off: 2 });
+  s += shade('M72,148 C70,178 130,178 128,148 Z', { off: 4 });
+  for (let j = 10; j >= 0; j--){
+    const y = 78 + j * 6.4, hw = 58 - j * 2.7;
+    s += shade(`M${r1(100 - hw)},${r1(y)} Q${r1(100 - hw - 5)},${r1(y + 3.5)} ${r1(100 - hw + 2)},${r1(y + 6.8)} L${r1(100 + hw - 2)},${r1(y + 6.8)} Q${r1(100 + hw + 5)},${r1(y + 3.5)} ${r1(100 + hw)},${r1(y)} Z`, { off: 2, sw: .9 });
+    s += shade(ell(100, y + 3.4, 14 - j * .45, 3.7), { off: 1.5, fill: 'url(#hM)', sw: .8 });
+  }
+  s += shade('M38,80 C36,44 68,22 100,22 C132,22 164,44 162,80 C140,72 60,72 38,80 Z', { off: 6 });
+  s += shade(ell(100, 50, 15, 21), { off: 4, fill: 'url(#hM)' });
+  s += shade('M68,60 C72,48 84,48 88,57 C82,55 74,55 68,60 Z', { off: 1.5 }) + shade('M132,60 C128,48 116,48 112,57 C118,55 126,55 132,60 Z', { off: 1.5 });
+  return s;
+}
+function ammonite(){
+  const cx = 100, cy = 100, b = Math.log(2.1) / TAU, TH = 3 * TAU, a = 84 / Math.exp(b * TH);
+  const rr = th => a * Math.exp(b * th), P = (th, rad) => [cx + Math.cos(th) * rad, cy + Math.sin(th) * rad];
+  const outer = []; for (let th = TH - TAU; th <= TH + 1e-6; th += .05) outer.push(P(th, rr(th)));
+  outer.push(P(TH, rr(TH - TAU)));
+  let s = shade(poly(outer) + 'Z', { off: 7 });
+  const inner = []; for (let th = TH - 2 * TAU; th <= TH - TAU + 1e-6; th += .05) inner.push(P(th, rr(th)));
+  s += `<path d="${poly(inner)}Z" fill="url(#hM)" stroke="${INK}" stroke-width="1"/>`;
+  const coil = []; for (let th = TAU * .6; th <= TH - TAU + 1e-6; th += .05) coil.push(P(th, rr(th)));
+  s += `<path d="${poly(coil)}" fill="none" stroke="${INK}" stroke-width="1.1"/>`;
+  let ribs = '';
+  for (let th = TAU + .3; th < TH - .06; th += (th > TH - TAU ? .15 : .22)){
+    const ri = rr(th - TAU) * 1.03, ro = rr(th) * .985, rm = (ri + ro) / 2;
+    const A = P(th, ri), C = P(th + .09, rm), Bp = P(th, ro);
+    ribs += `M${r1(A[0])},${r1(A[1])} Q${r1(C[0])},${r1(C[1])} ${r1(Bp[0])},${r1(Bp[1])} `;
+  }
+  s += `<path d="${ribs}" fill="none" stroke="${INK}" stroke-width=".85"/>`;
+  const e1 = P(TH, rr(TH)), e2 = P(TH, rr(TH - TAU));
+  s += `<path d="M${r1(e1[0])},${r1(e1[1])} L${r1(e2[0])},${r1(e2[1])}" stroke="${INK}" stroke-width="2"/>`;
+  return s;
+}
+function anomalocaris(){
+  let s = '';
+  for (let k = 0; k < 3; k++) for (const sg of [-1, 1]) s += shade(ell(166 + k * 7, 100 + sg * (6 + k * 5), 13, 4, sg * (22 + k * 14)), { off: 1.5, sw: .9 });
+  for (let k = 10; k >= 0; k--){ const cx = 62 + k * 9, spread = 17 + Math.sin(k / 10 * Math.PI) * 5; for (const sg of [-1, 1]) s += shade(ell(cx, 100 + sg * spread, 9.5, 13.5, sg * 18), { off: 2.5, sw: .9 }); }
+  s += shade(ell(108, 100, 60, 13), { off: 4, fill: 'url(#hM)' });
+  s += shade(ell(47, 100, 13, 15), { off: 3 });
+  s += `<path d="M46,88 L40,76 M46,112 L40,124" stroke="${INK}" stroke-width="2"/>`;
+  s += shade(ell(38, 73, 6, 4.5, -20), { off: 1.5, fill: 'url(#hD)' }) + shade(ell(38, 127, 6, 4.5, 20), { off: 1.5, fill: 'url(#hD)' });
+  for (const sg of [-1, 1]){
+    const P0 = [38, 100 + sg * 8], P1 = [-2, 100 + sg * 26], P2 = [18, 100 + sg * 3];
+    for (let i = 0; i <= 11; i++){
+      const t = i / 11, u = 1 - t, x = u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0], y = u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1], sz = 5.6 - i * .3;
+      s += `<path d="M${r1(x)},${r1(y)} L${r1(x + (100 - y > 0 ? 1 : -1) * 0 + 2)},${r1(y - sg * 7)}" stroke="${INK}" stroke-width=".9"/>`;
+      s += shade(ell(x, y, sz, sz * .78), { off: 1.2, sw: .8 });
+    }
+  }
+  return s;
+}
+function hallucigenia(){
+  let s = '';
+  const cl = x => 118 + Math.sin(x / 26) * 5;
+  for (let k = 0; k < 7; k++){ const x = 60 + k * 15, y = cl(x) + 3; s += shade(`M${r1(x - 1.8)},${r1(y)} C${r1(x - 3)},${r1(y + 14)} ${r1(x - 7)},${r1(y + 24)} ${r1(x - 6)},${r1(y + 34)} L${r1(x - 2)},${r1(y + 34)} C${r1(x - 2)},${r1(y + 22)} ${r1(x + 1)},${r1(y + 12)} ${r1(x + 1.8)},${r1(y)} Z`, { off: 1, sw: .8 }); s += `<path d="M${r1(x - 6)},${r1(y + 34)} q-3,2 -5,0" fill="none" stroke="${INK}" stroke-width="1"/>`; }
+  for (let k = 0; k < 3; k++){ const x = 36 + k * 7, y = cl(x) + 3; s += `<path d="M${r1(x)},${r1(y)} Q${r1(x - 2)},${r1(y + 10)} ${r1(x - 7)},${r1(y + 18)}" fill="none" stroke="${INK}" stroke-width="1.3"/>`; }
+  for (let k = 0; k < 7; k++){ const x = 58 + k * 15, y = cl(x) - 4, tx = x - 9, ty = y - 42 - (k % 2) * 4; s += shade(`M${r1(x - 3.4)},${r1(y + 2)} L${r1(tx)},${r1(ty)} L${r1(x + 3.4)},${r1(y + 2)} Z`, { off: 1.4, fill: 'url(#hM)', sw: .9 }); }
+  const top = [], bot = []; for (let x = 24; x <= 172; x += 4){ const w = 5 + (x > 150 ? (x - 150) * .08 : 0) - (x < 40 ? (40 - x) * .12 : 0), y = cl(x); top.push([x, y - w]); bot.unshift([x, y + w]); }
+  s += shade(poly(top.concat(bot)) + 'Z', { off: 2.5 });
+  s += shade(ell(176, cl(176) - 1, 9, 7.5), { off: 2.5 });
+  return s;
+}
+function fern(){
+  let s = ''; const P0 = [100, 194], P1 = [82, 100], P2 = [112, 12];
+  const B = t => { const u = 1 - t; return [u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0], u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1]]; };
+  const Tg = t => { const x = 2 * (1 - t) * (P1[0] - P0[0]) + 2 * t * (P2[0] - P1[0]), y = 2 * (1 - t) * (P1[1] - P0[1]) + 2 * t * (P2[1] - P1[1]), l = Math.hypot(x, y); return [x / l, y / l]; };
+  for (let k = 0; k < 15; k++){
+    const t = .07 + k * .058, side = k % 2 ? 1 : -1, b = B(t), tg = Tg(t), nx = -tg[1] * side, ny = tg[0] * side;
+    let dx = nx * .72 + tg[0] * .7, dy = ny * .72 + tg[1] * .7; const dl = Math.hypot(dx, dy); dx /= dl; dy /= dl;
+    const L = 60 * Math.pow(1 - t, .75) + 6, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    s += `<path d="M${r1(b[0])},${r1(b[1])} l${r1(dx * L)},${r1(dy * L)}" stroke="${INK}" stroke-width=".9"/>`;
+    const m = Math.floor(L / 5.6);
+    for (let j = 0; j < m; j++){ const d = 4 + j * 5.6, sc = 1 - j / (m + 2) * .6, cx = b[0] + dx * d, cy = b[1] + dy * d; for (const sd of [-1, 1]) s += `<path d="${ell(cx - dy * sd * 3.3 * sc, cy + dx * sd * 3.3 * sc, 3.4 * sc, 2.2 * sc, ang + sd * 60)}" fill="url(#hL)" stroke="${INK}" stroke-width=".6"/>`; }
+  }
+  const rach = []; for (let t = 0; t <= 1.0001; t += .02) rach.push(B(t));
+  s += `<path d="${poly(rach)}" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><path d="${poly(rach)}" fill="none" stroke="${PAPER}" stroke-width=".8"/>`;
+  return s;
+}
+function feather(){
+  let s = '', outR = [], outL = []; const P0 = [62, 194], P1 = [92, 104], P2 = [150, 12];
+  const B = t => { const u = 1 - t; return [u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0], u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1]]; };
+  const Tg = t => { const x = 2 * (1 - t) * (P1[0] - P0[0]) + 2 * t * (P2[0] - P1[0]), y = 2 * (1 - t) * (P1[1] - P0[1]) + 2 * t * (P2[1] - P1[1]), l = Math.hypot(x, y); return [x / l, y / l]; };
+  let barbs = '';
+  for (let t = .15; t <= .985; t += .0105){
+    const b = B(t), tg = Tg(t), env = Math.pow(Math.sin(Math.PI * Math.min(1, (t - .12) / .9)), .6);
+    for (const side of [1, -1]){
+      const nx = tg[1] * side, ny = -tg[0] * side, w = (side > 0 ? 36 : 15) * env + 1;
+      let dx = nx * .6 + tg[0] * .8, dy = ny * .6 + tg[1] * .8; const l = Math.hypot(dx, dy); dx /= l; dy /= l;
+      const ex = b[0] + dx * w, ey = b[1] + dy * w;
+      barbs += `M${r1(b[0])},${r1(b[1])} Q${r1(b[0] + dx * w * .5 + tg[0] * 2)},${r1(b[1] + dy * w * .5 + tg[1] * 2)} ${r1(ex)},${r1(ey)} `;
+      (side > 0 ? outR : outL).push([ex, ey]);
+    }
+  }
+  s += `<path d="${barbs}" fill="none" stroke="${INK}" stroke-width=".55"/>`;
+  s += `<path d="${poly(outR)}" fill="none" stroke="${INK}" stroke-width=".9"/><path d="${poly(outL)}" fill="none" stroke="${INK}" stroke-width=".9"/>`;
+  const rach = []; for (let t = 0; t <= 1.0001; t += .02) rach.push(B(t));
+  s += `<path d="${poly(rach)}" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><path d="${poly(rach.slice(0, 40))}" fill="none" stroke="${PAPER}" stroke-width="1"/>`;
+  return s;
+}
+const PLATES = [
+  { no:'I', name:'Paradoxides', latin:'Trilobita', draw: trilobite, age:'521 – 252 million years ago', where:'Worldwide; this genus in Cambrian seas', note:'Among the first animals with complex eyes, their lenses made of crystal calcite. Trilobites lasted almost 270 million years.' },
+  { no:'II', name:'Anomalocaris', latin:'Anomalocaris canadensis', draw: anomalocaris, age:'~508 million years ago', where:'Burgess Shale, British Columbia', note:'The Cambrian’s great predator: grasping front limbs, a disc-shaped mouth, and huge compound eyes on stalks.' },
+  { no:'III', name:'Hallucigenia', latin:'Hallucigenia sparsa', draw: hallucigenia, age:'~508 million years ago', where:'Burgess Shale, British Columbia', note:'First drawn upside down and back to front: its “legs” were spines. A 2015 study finally found its head.' },
+  { no:'IV', name:'Ammonite', latin:'Ammonoidea', draw: ammonite, age:'409 – 66 million years ago', where:'Worldwide', note:'Their shells changed so fast over time that geologists use them as clocks, dating rocks to within a few hundred thousand years.' },
+  { no:'V', name:'Tree fern', latin:'Pecopteris', draw: fern, age:'359 – 299 million years ago', where:'Carboniferous coal swamps', note:'Forests like this were buried and pressed into coal: the fuel of the Industrial Revolution.' },
+  { no:'VI', name:'Archaeopteryx', latin:'Archaeopteryx lithographica', draw: feather, age:'~150 million years ago', where:'Solnhofen limestone, Bavaria', note:'A single fossil feather surfaced in 1861, two years after Darwin’s Origin of Species: a dinosaur with flight feathers.' },
+];
+function Plates(){
+  const grid = document.getElementById('plateGrid'), tag = document.getElementById('tag');
+  grid.innerHTML = PLATES.map((p, i) => `<button class="plate" type="button" data-i="${i}" aria-expanded="false" aria-controls="tag"><span class="pl-no">Plate ${p.no}</span><svg viewBox="0 0 200 200" aria-hidden="true">${p.draw()}</svg><span class="pl-name">${p.name}</span></button>`).join('');
+  let openBtn = null, hideT = 0;
+  function open(btn){
+    const p = PLATES[+btn.dataset.i];
+    document.getElementById('tagPlate').textContent = `Plate ${p.no} · ${p.latin}`;
+    document.getElementById('tagName').textContent = p.name;
+    document.getElementById('tagAge').textContent = p.age;
+    document.getElementById('tagWhere').textContent = p.where;
+    document.getElementById('tagNote').textContent = p.note;
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+    openBtn = btn; btn.setAttribute('aria-expanded', 'true');
+    clearTimeout(hideT); tag.hidden = false; tag.classList.remove('open'); tag.getBoundingClientRect();
+    requestAnimationFrame(() => tag.classList.add('open'));
+    Sound.bell(880, 0, .06);
+  }
+  function close(){ if (!openBtn) return; openBtn.setAttribute('aria-expanded', 'false'); const b = openBtn; openBtn = null; tag.classList.remove('open'); hideT = setTimeout(() => { tag.hidden = true; }, reduced ? 0 : 450); b.focus({ preventScroll: true }); }
+  grid.addEventListener('click', e => { const b = e.target.closest('.plate'); if (!b) return; if (b === openBtn) close(); else open(b); });
+  document.getElementById('tagClose').addEventListener('click', close);
+  addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  new IntersectionObserver(es => { if (!es[0].isIntersecting) close(); }).observe(document.getElementById('ch4'));
+}
+
+/* =========================================================
+   V · WOODBLOCK print + pinch timeline
+   ========================================================= */
+function Woodblock(){
+  const cv = document.getElementById('woodCanvas'), ctx = cv.getContext('2d');
+  const P = '#EFE4CC', IND = '#1F3A5F', RED = '#C4422F', OCH = '#D6A24A', SUMI = '#1C1B1A';
+  function draw(){
+    const W = cv.clientWidth, H = Math.round(W * 1.12), dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const rnd = mulberry32(1831), mis = () => (rnd() - .5) * 2.4;
+    ctx.fillStyle = P; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,100,70,.08)'; ctx.lineWidth = .7;
+    for (let i = 0; i < 380; i++){ const x = rnd() * W, y = rnd() * H, a = rnd() * TAU, l = 3 + rnd() * 9; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke(); }
+    const grain = (path, col) => { ctx.save(); ctx.clip(path); ctx.strokeStyle = col; ctx.lineWidth = 1; for (let y = 0; y < H; y += 3.2){ ctx.beginPath(); for (let x = 0; x <= W; x += 12){ const yy = y + Math.sin(x * .02 + y * .13) * 1.4 + Math.sin(x * .007 + y) * 2; x ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); } ctx.stroke(); } for (let i = 0; i < 260; i++){ ctx.fillStyle = 'rgba(239,228,204,.35)'; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1); } ctx.restore(); };
+    // sky bokashi
+    let o = [mis(), mis()];
+    const sky = ctx.createLinearGradient(0, 0, 0, H * .38); sky.addColorStop(0, 'rgba(31,58,95,.9)'); sky.addColorStop(1, 'rgba(31,58,95,0)');
+    ctx.fillStyle = sky; ctx.fillRect(o[0], o[1], W, H * .38);
+    // sun
+    o = [mis(), mis()];
+    const sun = new Path2D(); sun.arc(W * .74 + o[0], H * .24 + o[1], W * .12, 0, TAU); ctx.fillStyle = RED; ctx.fill(sun); grain(sun, 'rgba(120,20,10,.12)');
+    // mountain
+    o = [mis(), mis()];
+    const fuji = new Path2D(); fuji.moveTo(W * .44 + o[0], H * .68); fuji.quadraticCurveTo(W * .6, H * .56, W * .665 + o[0], H * .445 + o[1]); fuji.lineTo(W * .705 + o[0], H * .445 + o[1]); fuji.quadraticCurveTo(W * .78, H * .56, W * .98 + o[0], H * .68); fuji.closePath();
+    ctx.fillStyle = 'rgba(31,58,95,.62)'; ctx.fill(fuji); grain(fuji, 'rgba(10,25,45,.14)');
+    const snow = new Path2D(); snow.moveTo(W * .617, H * .5); snow.quadraticCurveTo(W * .64, H * .47, W * .665 + o[0], H * .445 + o[1]); snow.lineTo(W * .705 + o[0], H * .445 + o[1]); snow.quadraticCurveTo(W * .73, H * .47, W * .762, H * .5);
+    for (let x = W * .762; x > W * .617; x -= W * .018) snow.lineTo(x - W * .009, H * (.5 + (Math.floor(x) % 3) * .008 + .012));
+    snow.closePath(); ctx.fillStyle = P; ctx.fill(snow);
+    ctx.strokeStyle = SUMI; ctx.lineWidth = 1.4; ctx.stroke(fuji);
+    // horizon sea
+    o = [mis(), mis()];
+    const sea = new Path2D(); sea.rect(0, H * .68 + o[1], W, H * .32); ctx.fillStyle = 'rgba(31,58,95,.38)'; ctx.fill(sea); grain(sea, 'rgba(10,25,45,.12)');
+    // small swell right
+    const sw = new Path2D(); sw.moveTo(W * .55, H); sw.quadraticCurveTo(W * .7, H * .74, W * .86, H * .76); sw.quadraticCurveTo(W * .96, H * .78, W * .92, H * .83); sw.quadraticCurveTo(W * 1.02, H * .86, W, H); sw.closePath();
+    ctx.fillStyle = IND; ctx.fill(sw); grain(sw, 'rgba(239,228,204,.14)'); ctx.strokeStyle = SUMI; ctx.lineWidth = 1.6; ctx.stroke(sw);
+    // great wave
+    o = [mis(), mis()];
+    const wv = new Path2D();
+    wv.moveTo(-4, H); wv.bezierCurveTo(W * .04, H * .72, W * .16, H * .5, W * .36 + o[0], H * .43);
+    wv.bezierCurveTo(W * .5, H * .39, W * .6, H * .47, W * .56, H * .56);
+    wv.bezierCurveTo(W * .52, H * .62, W * .44, H * .58, W * .46, H * .53);
+    wv.bezierCurveTo(W * .38, H * .58, W * .3, H * .74, W * .38, H); wv.closePath();
+    ctx.fillStyle = IND; ctx.fill(wv); grain(wv, 'rgba(239,228,204,.16)');
+    const face = new Path2D(); face.moveTo(W * .1, H); face.bezierCurveTo(W * .14, H * .76, W * .24, H * .56, W * .4, H * .5); face.bezierCurveTo(W * .32, H * .6, W * .26, H * .78, W * .3, H); face.closePath();
+    ctx.fillStyle = 'rgba(239,228,204,.28)'; ctx.fill(face);
+    ctx.strokeStyle = SUMI; ctx.lineWidth = 2; ctx.stroke(wv);
+    // foam fingers along the lip
+    ctx.lineWidth = 1.1;
+    const lip = t => { const u = 1 - t, p0 = [W * .36, H * .43], p1 = [W * .5, H * .39], p2 = [W * .6, H * .47], p3 = [W * .56, H * .56]; return [u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0], u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]]; };
+    for (let i = 0; i < 26; i++){ const t = i / 25, [x, y] = lip(t), r = W * (.008 + .01 * Math.sin(t * Math.PI)); for (let j = 0; j < 2; j++){ const fx = x + (rnd() - .3) * r * 1.5, fy = y - r * .6 + (rnd() - .5) * r; ctx.beginPath(); ctx.arc(fx, fy, r, 0, TAU); ctx.fillStyle = P; ctx.fill(); ctx.strokeStyle = SUMI; ctx.stroke(); } }
+    for (let i = 0; i < 14; i++){ const t = i / 13, x = W * lerp(.06, .34, t), y = H * lerp(.86, .47, Math.pow(t, .8)) + (rnd() - .5) * 6; ctx.beginPath(); ctx.arc(x, y, 2 + rnd() * 2.5, 0, TAU); ctx.fillStyle = P; ctx.fill(); ctx.stroke(); }
+    // spray
+    for (let i = 0; i < 40; i++){ const x = W * (.4 + rnd() * .22), y = H * (.34 + rnd() * .12); ctx.fillStyle = P; ctx.beginPath(); ctx.arc(x, y, 1 + rnd() * 1.8, 0, TAU); ctx.fill(); }
+    // cartouche with vertical title
+    o = [mis(), mis()];
+    const cw = W * .1, ch = H * .29, cx = W * .06 + o[0], cy = H * .06 + o[1];
+    ctx.fillStyle = OCH; ctx.fillRect(cx, cy, cw, ch); ctx.strokeStyle = SUMI; ctx.lineWidth = 1.4; ctx.strokeRect(cx + .5, cy + .5, cw, ch); ctx.strokeRect(cx + 3.5, cy + 3.5, cw - 6, ch - 6);
+    ctx.fillStyle = SUMI; ctx.font = `800 ${Math.round(cw * .58)}px 'Shippori Mincho', 'Hiragino Mincho ProN', serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ['深', '時', '間'].forEach((ch2, i) => ctx.fillText(ch2, cx + cw / 2, cy + ch * (.2 + i * .3)));
+    // seal
+    const ss = W * .07, sx = W * .86, sy = H * .06;
+    ctx.fillStyle = RED; ctx.fillRect(sx, sy, ss, ss); ctx.fillStyle = P; ctx.font = `800 ${Math.round(ss * .7)}px 'Shippori Mincho', serif`; ctx.fillText('時', sx + ss / 2, sy + ss / 2 + 1);
+    ctx.strokeStyle = P; ctx.lineWidth = 1.5; ctx.strokeRect(sx + 3, sy + 3, ss - 6, ss - 6);
+  }
+  return { resize: draw };
+}
+const TL_EVENTS = [
+  { ya:66e6, n:'Asteroid strikes' }, { ya:55e6, n:'Early primates' }, { ya:7e6, n:'Hominins split from apes' }, { ya:3.3e6, n:'First stone tools' },
+  { ya:300e3, n:'Homo sapiens' }, { ya:51e3, n:'Oldest cave painting' }, { ya:12e3, n:'Farming begins' }, { ya:5.2e3, n:'Writing (Sumer)' },
+  { ya:4586, n:'Great Pyramid' }, { ya:NOW_YEAR - 868, n:'Diamond Sutra printed' }, { ya:NOW_YEAR - 1831, n:'Hokusai’s Great Wave' }, { ya:NOW_YEAR - 1969, n:'Moon landing' },
+];
+function Timeline(){
+  const cv = document.getElementById('tlCanvas'), ctx = cv.getContext('2d'), zoom = document.getElementById('tlZoom'), read = document.getElementById('tlRead');
+  const MAXS = 66e6, MINS = 120; let S = MAXS, W = 1, H = 210;
+  const sToV = s => Math.log(MAXS / s) / Math.log(MAXS / MINS) * 1000, vToS = v => MAXS * Math.pow(MINS / MAXS, v / 1000);
+  const fmtShort = v => v >= 1e6 ? (v / 1e6) + 'M' : v >= 1e3 ? (v / 1e3) + 'k' : String(v);
+  const pxStr = px => px < .01 ? 'under 0.01 px' : px < 10 ? px.toFixed(2) + ' px' : fmtInt(px) + ' px';
+  function set(s){ S = clamp(s, MINS, MAXS); zoom.value = String(Math.round(sToV(S))); draw(); }
+  function draw(){
+    const dpr = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight;
+    if (cv.width !== Math.round(W * dpr)){ cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const pl = 12, pr = 30, base = H - 46, span = W - pl - pr, X = ya => W - pr - ya / S * span;
+    const hx = X(Math.min(300e3, S));
+    ctx.fillStyle = 'rgba(214,162,74,.55)'; ctx.fillRect(Math.min(hx, W - pr - 1), base - 6, Math.max(1, W - pr - hx), 12);
+    ctx.strokeStyle = '#1C1B1A'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(pl, base); ctx.lineTo(W - pr, base); ctx.stroke();
+    const raw = S / 4, p10 = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p10, step = (m >= 5 ? 5 : m >= 2 ? 2 : 1) * p10;
+    ctx.font = "500 10px 'IBM Plex Mono', monospace"; ctx.fillStyle = '#4a4135'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineWidth = 1;
+    for (let v = 0; v <= S + 1e-6; v += step){ const x = X(v); ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x, base + 7); ctx.stroke(); if (x > pl + 12) ctx.fillText(v === 0 ? 'now' : fmtShort(v), x, base + 11); }
+    ctx.textAlign = 'left'; ctx.fillText('years ago', pl, base + 27);
+    const ev = TL_EVENTS.filter(e => e.ya <= S).sort((a, b) => a.ya - b.ya);
+    let lastX = Infinity;
+    ctx.font = "500 11.5px 'Shippori Mincho', serif"; ctx.textBaseline = 'middle';
+    for (const e of ev){
+      const x = X(e.ya);
+      ctx.strokeStyle = '#1C1B1A'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x, base - 18); ctx.stroke();
+      ctx.fillStyle = '#C4422F'; ctx.fillRect(x - 3.5, base - 25, 7, 7);
+      if (lastX - x > 14){ ctx.save(); ctx.translate(x, base - 31); ctx.rotate(-Math.PI / 2); ctx.fillStyle = '#1C1B1A'; ctx.fillText(e.n, 0, 0); ctx.restore(); lastX = x; }
+    }
+    read.innerHTML = `Showing the last <b>${fmtInt(S)}</b> years. On this ${fmtInt(span)} px strip, <i>Homo sapiens</i> takes up <b>${pxStr(Math.min(300e3, S) / S * span)}</b> and written history <b>${pxStr(5200 / S * span)}</b>.`;
+  }
+  zoom.addEventListener('input', () => { S = vToS(+zoom.value); draw(); });
+  document.getElementById('tlIn').addEventListener('click', () => set(S / 6));
+  document.getElementById('tlOut').addEventListener('click', () => set(S * 6));
+  const pts = new Map(); let g0 = null;
+  const gesture = () => { const a = [...pts.values()]; return a.length > 1 ? { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), s: S } : { x: a[0].x, s: S }; };
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); g0 = gesture(); });
+  cv.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const a = [...pts.values()];
+    if (a.length > 1 && g0.d){ const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); set(g0.s * g0.d / Math.max(10, d)); }
+    else if (a.length === 1 && g0.x != null){ set(g0.s * Math.exp((a[0].x - g0.x) / W * 5)); }
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size) g0 = gesture(); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', e => { e.preventDefault(); set(S * Math.exp(e.deltaY * .003)); }, { passive: false });
+  return { resize: draw };
+}
+
+/* =========================================================
+   VI · NOW — counter + zoomed cosmic calendar
+   ========================================================= */
+const CAL_EVENTS = [
+  { ya:13.787e9, n:'Big Bang' }, { ya:13.6e9, n:'First stars' }, { ya:4.6e9, n:'Sun forms' }, { ya:3.7e9, n:'First life' }, { ya:2.4e9, n:'Oxygen rises' },
+  { ya:539e6, n:'Cambrian explosion' }, { ya:470e6, n:'Plants on land' }, { ya:233e6, n:'First dinosaurs' }, { ya:66e6, n:'Asteroid' },
+  { ya:7e6, n:'Hominins' }, { ya:3.3e6, n:'Stone tools' }, { ya:300e3, n:'Homo sapiens' }, { ya:51e3, n:'Cave painting' },
+  { ya:12e3, n:'Farming' }, { ya:5.2e3, n:'Writing' }, { ya:NOW_YEAR - 1969, n:'Moon landing' },
+];
+function Now(sec){
+  const numEl = document.getElementById('bigNum'), vr = document.getElementById('visitReal'), vc = document.getElementById('visitCosmic');
+  const BASE = 13787000000n * 31557600n, t0 = Date.now();
+  let lastS = -1;
+  function tick(){
+    const el = Math.floor((Date.now() - t0) / 1000);
+    if (el === lastS) return; lastS = el;
+    const s = (BASE + BigInt(el)).toString(), grp = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    numEl.innerHTML = grp.slice(0, -3) + '<em>' + grp.slice(-3) + '</em>';
+    vr.textContent = `${Math.floor(el / 60)}:${pad(el % 60)}`;
+    const ns = el / 13.787e9 * 1e9; vc.textContent = ns < 1000 ? `${ns.toFixed(ns < 10 ? 2 : 1)} ns` : `${(ns / 1000).toFixed(2)} µs`;
+  }
+  // chart
+  const box = document.getElementById('calChart'), tip = document.createElement('div'); tip.className = 'tip';
+  const DAY = 86400;
+  const ROWS = [
+    { a:0, b:YEAR_S, t:'The whole year', span:'365 days = 13.8 billion years', ax: MONTHS.map((m, i) => [MDAYS.slice(0, i).reduce((x, y) => x + y, 0) * DAY, m[0]]) },
+    { a:334 * DAY, b:YEAR_S, t:'December', span:'1 day = 37.8 million years', ax:[1, 8, 15, 22, 29].map(d => [(333 + d) * DAY, String(d)]) },
+    { a:364 * DAY, b:YEAR_S, t:'December 31', span:'1 hour = 1.6 million years', ax:[0, 6, 12, 18].map(h => [364 * DAY + h * 3600, pad(h) + ':00']).concat([[YEAR_S, '24:00']]) },
+    { a:YEAR_S - 3600, b:YEAR_S, t:'The last hour', span:'1 minute = 26,000 years', ax:[0, 15, 30, 45].map(m => [YEAR_S - 3600 + m * 60, '23:' + pad(m)]).concat([[YEAR_S, '24:00']]) },
+    { a:YEAR_S - 60, b:YEAR_S, t:'The last minute', span:'1 second = 437 years', ax:[0, 15, 30, 45, 60].map(s => [YEAR_S - 60 + s, s === 60 ? 'midnight' : ':' + pad(s)]) },
+  ];
+  const tb = document.querySelector('#calTable tbody');
+  tb.innerHTML = CAL_EVENTS.map(e => `<tr><td>${e.n}</td><td>${fmtInt(e.ya)}</td><td>${fmtCal(calSec(e.ya), e.ya < 5e4)}</td></tr>`).join('');
+  function build(){
+    const w = box.clientWidth, RH = 112, pad2 = 6, Hh = ROWS.length * RH - 22, X = (row, s) => pad2 + (s - row.a) / (row.b - row.a) * (w - pad2 * 2);
+    let s = `<svg viewBox="0 0 ${w} ${Hh}" height="${Hh}">`;
+    ROWS.forEach((row, i) => {
+      const y0 = i * RH, ty = y0 + 58;
+      s += `<text x="0" y="${y0 + 11}" font-size="12" font-weight="600" fill="#111111">${row.t}</text><text x="${w}" y="${y0 + 11}" font-size="11" fill="#77776F" text-anchor="end">${row.span}</text>`;
+      s += `<rect x="${pad2}" y="${ty}" width="${w - pad2 * 2}" height="8" fill="#E6E6E0"/>`;
+      const nx = ROWS[i + 1];
+      if (nx){
+        const xa = X(row, nx.a), xb = X(row, nx.b);
+        s += `<rect x="${xa}" y="${ty}" width="${Math.max(2, xb - xa)}" height="8" fill="#E2231A"/>`;
+        s += `<path d="M${xa},${ty + 8} L${Math.max(2, xa)},${y0 + 88} L${pad2},${y0 + RH - 2} L${w - pad2},${y0 + RH - 2} L${xb},${y0 + 88} L${xb},${ty + 8} Z" fill="#E2231A" fill-opacity=".07"/>`;
+        s += `<path d="M${xa},${ty + 8} L${xa},${y0 + 88} L${pad2},${y0 + RH - 2} M${xb},${ty + 8} L${xb},${y0 + 88} L${w - pad2},${y0 + RH - 2}" fill="none" stroke="#E2231A" stroke-width="1"/>`;
+      }
+      for (const [v, l] of row.ax){ const x = X(row, v); s += `<line x1="${x}" x2="${x}" y1="${ty + 8}" y2="${ty + 12}" stroke="#77776F"/><text x="${x}" y="${ty + 23}" font-size="10" fill="#77776F" text-anchor="${x < 14 ? 'start' : x > w - 20 ? 'end' : 'middle'}">${l}</text>`; }
+      const evs = CAL_EVENTS.map(e => ({ e, x: X(row, calSec(e.ya)) })).filter(o => calSec(o.e.ya) >= row.a - 1e-6 && calSec(o.e.ya) <= row.b).sort((a, b) => a.x - b.x);
+      const lanes = [-1e9, -1e9]; let ticks = '', labels = '', hits = '';
+      for (const o of evs){
+        const tw = o.e.n.length * 5.9 + 4; let left = o.x - 1, anchor = 'start';
+        if (left + tw > w){ left = o.x - tw + 1; anchor = 'end'; }
+        let lane = -1; for (let L = 0; L < 2; L++) if (left > lanes[L] + 5){ lane = L; break; }
+        const ly = lane === 0 ? y0 + 44 : y0 + 30;
+        ticks += `<line x1="${o.x}" x2="${o.x}" y1="${lane >= 0 ? ly + 4 : ty - 6}" y2="${ty + 8}" stroke="#111111" stroke-width="1.5"/>`;
+        if (lane >= 0){ lanes[lane] = left + tw; labels += `<text x="${o.x + (anchor === 'start' ? 3 : -3)}" y="${ly}" font-size="10.5" fill="#111111" text-anchor="${anchor}" stroke="#F4F4F1" stroke-width="4" paint-order="stroke" stroke-linejoin="round">${o.e.n}</text>`; }
+        hits += `<g class="ev" data-n="${o.e.n}" data-ya="${o.e.ya}"><rect x="${o.x - 9}" y="${y0 + 18}" width="18" height="${ty - y0 - 10}" fill="transparent"/></g>`;
+      }
+      s += ticks + labels + hits;
+    });
+    box.innerHTML = s + '</svg>'; box.appendChild(tip);
+  }
+  function showTip(g){
+    const ya = +g.dataset.ya, r = g.getBoundingClientRect(), br = box.getBoundingClientRect();
+    tip.innerHTML = `<b>${g.dataset.n}</b><span>${fmtCal(calSec(ya), ya < 5e4)}</span><span>${fmtAgo(ya)}</span>`;
+    const x = clamp(r.left + r.width / 2 - br.left - 80, 0, Math.max(0, br.width - 170));
+    tip.style.left = x + 'px'; tip.style.top = (r.top - br.top - 4) + 'px'; tip.classList.add('on');
+  }
+  box.addEventListener('pointerover', e => { const g = e.target.closest('.ev'); if (g) showTip(g); });
+  box.addEventListener('pointerout', e => { if (e.pointerType === 'mouse' && !e.relatedTarget?.closest?.('.ev')) tip.classList.remove('on'); });
+  box.addEventListener('click', e => { const g = e.target.closest('.ev'); if (g) showTip(g); else tip.classList.remove('on'); });
+  return { resize: build, tick };
+}
+
+/* =========================================================
+   VII · THE LONG NOW — windable clock
+   ========================================================= */
+function Clock(sec){
+  const cv = document.getElementById('clockCanvas'), ctx = cv.getContext('2d'), status = document.getElementById('clockStatus'), windBtn = document.getElementById('windBtn');
+  const after = [...document.querySelectorAll('#clockAfter [data-step]')], again = document.getElementById('againBtn');
+  const FREQ = [293.66, 329.63, 369.99, 440, 493.88, 587.33, 659.26, 739.99, 880, 987.77];
+  const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+  const dayN = Math.floor(Date.now() / 864e5) % FACT[10];
+  const perm = (() => { const items = [0,1,2,3,4,5,6,7,8,9], out = []; let n = dayN; for (let i = 10; i > 0; i--){ const f = FACT[i - 1], idx = Math.floor(n / f); n %= f; out.push(items.splice(idx, 1)[0]); } return out; })();
+  document.getElementById('permNo').textContent = '#' + fmtInt(dayN + 1);
+  const next = (y, m) => { const r = m - (y % m); return r; };
+  document.getElementById('centYrs').textContent = fmtInt(next(NOW_YEAR + 1, 100));
+  document.getElementById('millYrs').textContent = fmtInt(next(NOW_YEAR + 1, 1000));
+  const NEED = TAU * 3;
+  let S = 300, wound = 0, windAng = 0, lastClick = 0, state = 'idle', prevA = null, rollT = 1, yearFrom = NOW_YEAR, year = NOW_YEAR;
+  const lit = new Float32Array(10), timers = [];
+  function resize(){ S = Math.min(cv.parentElement.clientWidth, 340); const dpr = Math.min(devicePixelRatio || 1, 2); cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr); cv.style.width = cv.style.height = S + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(); }
+  const ang = e => { const r = cv.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2); };
+  function addWind(da){
+    if (state !== 'idle') return;
+    wound += da; windAng += da;
+    if (wound - lastClick > Math.PI / 7){ lastClick = wound; Sound.click(); }
+    status.textContent = `Wound ${Math.min(100, Math.round(wound / NEED * 100))}%`;
+    if (wound >= NEED) strike();
+    draw();
+  }
+  cv.addEventListener('pointerdown', e => { if (state !== 'idle') return; cv.setPointerCapture(e.pointerId); prevA = ang(e); cv.style.cursor = 'grabbing'; });
+  cv.addEventListener('pointermove', e => { if (prevA === null) return; const a = ang(e); let d = a - prevA; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; prevA = a; if (d > 0) addWind(d); });
+  const up = () => { prevA = null; cv.style.cursor = ''; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  windBtn.addEventListener('click', () => addWind(Math.PI / 2));
+  function strike(){
+    state = 'tick'; wound = NEED; windBtn.disabled = true; status.textContent = 'Tick';
+    Sound.tock(); yearFrom = year; year = NOW_YEAR + 1; rollT = reduced ? 1 : 0;
+    const gap = .62;
+    perm.forEach((b, i) => { Sound.bell(FREQ[b], 1.1 + i * gap); timers.push(setTimeout(() => { lit[b] = 1; status.textContent = `Bell ${i + 1} of 10`; }, (1.1 + i * gap) * 1000)); });
+    const endAt = (1.1 + 10 * gap + 1.4) * 1000;
+    after.forEach((p, i) => timers.push(setTimeout(() => p.classList.add('on'), i === 0 ? 900 : endAt + (i - 1) * 1600)));
+    timers.push(setTimeout(() => { state = 'silent'; status.textContent = 'Silence'; again.hidden = false; requestAnimationFrame(() => again.classList.add('on')); }, endAt + after.length * 1600));
+  }
+  again.addEventListener('click', () => {
+    timers.forEach(clearTimeout); timers.length = 0;
+    state = 'idle'; wound = 0; lastClick = 0; year = NOW_YEAR; yearFrom = NOW_YEAR; lit.fill(0); windBtn.disabled = false;
+    after.forEach(p => p.classList.remove('on')); again.classList.remove('on'); again.hidden = true;
+    status.textContent = 'Drag clockwise around the dial · 3 turns';
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  });
+  function draw(){
+    const c = S / 2, R = c - 4;
+    ctx.clearRect(0, 0, S, S);
+    ctx.save(); ctx.translate(c, c);
+    let g = ctx.createRadialGradient(-R * .3, -R * .3, R * .2, 0, 0, R);
+    g.addColorStop(0, '#F1D99B'); g.addColorStop(.55, '#C9A15B'); g.addColorStop(1, '#6E5226');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+    ctx.save(); ctx.rotate(windAng); ctx.fillStyle = 'rgba(50,34,10,.45)';
+    for (let i = 0; i < 90; i++){ ctx.rotate(TAU / 90); ctx.fillRect(R - 7, -1.1, 7, 2.2); }
+    ctx.restore();
+    g = ctx.createRadialGradient(0, -R * .2, R * .1, 0, 0, R * .9); g.addColorStop(0, '#34302A'); g.addColorStop(1, '#151311');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * .9, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(201,161,91,.35)'; ctx.lineWidth = 1;
+    for (const k of [.84, .56, .2]){ ctx.beginPath(); ctx.arc(0, 0, R * k, 0, TAU); ctx.stroke(); }
+    const yr = lerp(yearFrom, year, smooth(rollT));
+    for (let i = 0; i < 100; i++){
+      const a = i / 100 * TAU - Math.PI / 2, l = i % 10 ? 4 : 10;
+      ctx.strokeStyle = i % 10 ? 'rgba(201,161,91,.55)' : '#E3C47E'; ctx.lineWidth = i % 10 ? 1 : 1.6;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * .83, Math.sin(a) * R * .83); ctx.lineTo(Math.cos(a) * (R * .83 - l), Math.sin(a) * (R * .83 - l)); ctx.stroke();
+    }
+    ctx.fillStyle = '#C9A15B'; ctx.font = `400 ${Math.round(R * .055)}px 'Cinzel', Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 10; i++){ const a = i / 10 * TAU - Math.PI / 2; ctx.fillText(pad(i * 10), Math.cos(a) * R * .7, Math.sin(a) * R * .7); }
+    if (wound > 0){ ctx.strokeStyle = '#F1D99B'; ctx.lineWidth = 3; ctx.shadowColor = 'rgba(241,217,155,.7)'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(0, 0, R * .87, -Math.PI / 2, -Math.PI / 2 + Math.min(1, wound / NEED) * TAU); ctx.stroke(); ctx.shadowBlur = 0; }
+    for (let i = 0; i < 10; i++){
+      const a = i / 10 * TAU - Math.PI / 2 + Math.PI / 10, x = Math.cos(a) * R * .56, y = Math.sin(a) * R * .56, br = R * .045;
+      if (lit[i] > .01){ const gg = ctx.createRadialGradient(x, y, 0, x, y, br * 4); gg.addColorStop(0, `rgba(241,217,155,${.7 * lit[i]})`); gg.addColorStop(1, 'rgba(241,217,155,0)'); ctx.fillStyle = gg; ctx.fillRect(x - br * 4, y - br * 4, br * 8, br * 8); }
+      ctx.fillStyle = lit[i] > .01 ? mix('#3A332B', '#F1D99B', lit[i]) : '#3A332B'; ctx.strokeStyle = '#C9A15B'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(x, y, br, 0, TAU); ctx.fill(); ctx.stroke();
+    }
+    const ca = (yr % 100) / 100 * TAU - Math.PI / 2, ma = (yr % 1000) / 1000 * TAU - Math.PI / 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#C9A15B'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-Math.cos(ma) * R * .08, -Math.sin(ma) * R * .08); ctx.lineTo(Math.cos(ma) * R * .4, Math.sin(ma) * R * .4); ctx.stroke();
+    ctx.strokeStyle = '#F1D99B'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-Math.cos(ca) * R * .14, -Math.sin(ca) * R * .14); ctx.lineTo(Math.cos(ca) * R * .78, Math.sin(ca) * R * .78); ctx.stroke();
+    ctx.fillStyle = '#F1D99B'; ctx.beginPath(); ctx.arc(0, 0, R * .035, 0, TAU); ctx.fill();
+    const doy = (Date.now() - Date.UTC(NOW_YEAR, 0, 1)) / (365.25 * 864e5), sa = doy * TAU - Math.PI / 2;
+    ctx.fillStyle = '#FFF3D0'; ctx.shadowColor = '#FFD27A'; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(Math.cos(sa) * R * .945, Math.sin(sa) * R * .945, R * .022, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+    const pw = R * .62, ph = R * .2, py = R * .3;
+    ctx.fillStyle = '#12100E'; ctx.strokeStyle = '#C9A15B'; ctx.lineWidth = 1; ctx.fillRect(-pw / 2, py - ph / 2, pw, ph); ctx.strokeRect(-pw / 2 + .5, py - ph / 2 + .5, pw - 1, ph - 1);
+    ctx.save(); ctx.beginPath(); ctx.rect(-pw / 2, py - ph / 2, pw, ph); ctx.clip();
+    ctx.font = `700 ${Math.round(R * .12)}px 'Cinzel', Georgia, serif`; ctx.fillStyle = '#F1D99B';
+    const e = smooth(rollT);
+    if (e < 1){ ctx.globalAlpha = 1 - e; ctx.fillText(pad(yearFrom, 5), 0, py - e * ph); ctx.globalAlpha = e; ctx.fillText(pad(year, 5), 0, py + (1 - e) * ph); ctx.globalAlpha = 1; }
+    else ctx.fillText(pad(year, 5), 0, py + 1);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(201,161,91,.8)'; ctx.font = `400 ${Math.round(R * .045)}px 'IBM Plex Mono', monospace`; ctx.fillText('YEAR', 0, py - ph / 2 - R * .05);
+    ctx.restore();
+  }
+  function tick(now, dt){
+    if (rollT < 1) rollT = Math.min(1, rollT + dt / .9);
+    for (let i = 0; i < 10; i++) if (lit[i] > 0) lit[i] = Math.max(state === 'silent' ? 0 : .18, lit[i] - dt * .9);
+    if (state === 'silent') for (let i = 0; i < 10; i++) lit[i] = Math.max(0, lit[i] - dt * .3);
+    draw();
+  }
+  return { resize, tick };
+}
+
+/* ---------- boot ---------- */
+register(document.getElementById('ch1'), Cosmos(document.getElementById('ch1')));
+register(document.getElementById('ch2'), Earth(document.getElementById('ch2')));
+register(document.getElementById('ch3'), Strata(document.getElementById('ch3')));
+Plates();
+const wood = Woodblock(), tl = Timeline();
+register(document.getElementById('ch5'), { resize(){ wood.resize(); tl.resize(); } });
+register(document.getElementById('ch6'), Now(document.getElementById('ch6')));
+register(document.getElementById('ch7'), Clock(document.getElementById('ch7')));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { wood.resize(); tl.resize(); modules.forEach(m => m.el.id === 'ch7' && m.resize()); lastScroll = -1; });
+let rt = 0, lastW = innerWidth;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const wChanged = innerWidth !== lastW; lastW = innerWidth; modules.forEach(m => { if (m.resize && (wChanged || m.el.id === 'ch1' || m.el.id === 'ch2')) m.resize(); }); lastScroll = -1; }, 150); });
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  for (const m of modules) if (m.active && m.tick) m.tick(now / 1000, dt);
+  updateHud();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
