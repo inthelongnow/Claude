@@ -1,0 +1,793 @@
+<title>Phase Nest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+  /* Single deliberate dark world: an oscilloscope in a dark room. */
+  :root {
+    color-scheme: dark;
+    --ink: #06070c;
+    --panel: #0e1019;
+    --bone: #ece6d6;
+    --dim: #80859a;
+    --line: rgba(236, 230, 214, 0.16);
+    --amber: #ffb000;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--bone);
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .wrap {
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding-inline: 16px;
+    padding-block: 10px;
+  }
+  .stage {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    height: min(calc(100% - 58px), calc((100vw - 32px) * 16 / 9));
+    max-width: 100%;
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .gate {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: radial-gradient(ellipse at 50% 45%, rgba(6,7,12,0.35), rgba(6,7,12,0.88) 70%);
+    text-align: center; padding-inline: 16px;
+  }
+  .gate[hidden] { display: none; }
+  .gate h1 {
+    margin: 0;
+    font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-weight: 400;
+    font-size: clamp(40px, 11vmin, 76px); line-height: 0.95; letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .gate p { margin: 0; color: var(--dim); font-size: 12px; letter-spacing: 0.06em; max-width: 30ch; line-height: 1.55; }
+  .go {
+    font: 600 13px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink); background: var(--amber); border: 0; border-radius: 999px;
+    padding: 13px 22px; cursor: pointer; font-variant-numeric: tabular-nums; min-width: 220px;
+  }
+  .go:disabled { background: var(--panel); color: var(--dim); cursor: progress; outline: 1px solid var(--line); }
+  .go:focus-visible, .bar button:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+  .bar {
+    display: flex; gap: 6px; align-items: center; max-width: 100%;
+    overflow-x: auto; padding-block: 2px; scrollbar-width: none;
+  }
+  .bar button {
+    flex: none;
+    font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.04em;
+    color: var(--dim); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 9px 12px; cursor: pointer;
+  }
+  .bar button[aria-current="true"] { color: var(--ink); background: var(--bone); border-color: var(--bone); }
+  .bar #play { color: var(--bone); min-width: 74px; }
+</style>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <canvas id="fx"></canvas>
+    <canvas id="hud"></canvas>
+    <div class="gate" id="gate">
+      <h1>Phase Nest</h1>
+      <p>Carrier waves, θ–γ coupling and ephaptic sync, rendered sample by sample in plain JavaScript.</p>
+      <button class="go" id="go" disabled>Synthesizing 0%</button>
+    </div>
+  </div>
+  <nav class="bar" id="bar" aria-label="Scenes">
+    <button id="play" type="button">Play</button>
+  </nav>
+</div>
+
+<script>
+"use strict";
+/* ───────────────────────── shared math ───────────────────────── */
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
+const ramp = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const smooth = x => x * x * (3 - 2 * x);
+function mulberry(seed) {
+  return () => {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const C = {
+  ink: "#06070c", bone: "#ece6d6", dim: "#80859a", faint: "rgba(236,230,214,0.16)",
+  d: "#7483ff", th: "#ffb000", al: "#ff5d8f", be: "#35d6c8", ga: "#c9a6ff",
+};
+
+/* ───────────────────────── timeline ───────────────────────── */
+const SR = 44100;
+const S1 = [0, 10];
+const S2 = [10, 24], S2B = 14, S2C = 4 / 3;           // slowed θ cycle: 6 Hz ÷ 8
+const COMO_SPEC = [[6,7],[5,9],[8,5],[4,11],[7,9],[8,11],[10,7],[12,5],[12,7],[14,5]];
+const BARS = [];
+{ let t0 = 24; for (const [fp, n] of COMO_SPEC) { const dur = 8 / fp; BARS.push({ t0, t1: t0 + dur, fp, n, fa: fp * n, dur }); t0 += dur; } }
+const S3 = [24, BARS[BARS.length - 1].t1];
+const S4 = [S3[1], S3[1] + 16];
+const S5 = [S4[1], S4[1] + 14];
+const END = S5[1] + 3.5;
+const N = Math.ceil(END * SR);
+const SCENES = [
+  { title: "Carrier", chip: "Carrier", r: S1 },
+  { title: "θ nests γ", chip: "θ–γ", r: S2 },
+  { title: "Comodulogram", chip: "Comod", r: S3 },
+  { title: "Ephaptic field", chip: "Field", r: S4 },
+  { title: "Band chord", chip: "Bands", r: S5 },
+];
+const sceneAt = t => { for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].r[0]) return i; return 0; };
+
+/* Scene 1: carrier, AM at 40 Hz, binaural 6 Hz */
+const s1d = t => smooth(ramp(t, 3, 4.2)) * (1 - smooth(ramp(t, 6, 6.8)));
+const s1b = t => smooth(ramp(t, 6, 6.8));
+const S1G = 0.22;
+const s1g = t => S1G * smooth(ramp(t, 0, 0.25)) * (1 - smooth(ramp(t, 9.75, 10.15)));
+const s1am = t => 1 - s1d(t) * 0.5 * (1 - Math.cos(TAU * 40 * t));
+function s1dphi(t) {                   // ∫ 2π·6·b(t) dt, closed form
+  if (t < 6) return 0;
+  if (t > 6.8) return TAU * 6 * (0.4 + (t - 6.8));
+  const x = (t - 6) / 0.8; return TAU * 6 * 0.8 * (x * x * x - x * x * x * x / 2);
+}
+
+/* Scene 2: θ–γ phase–amplitude coupling */
+const CHORDS = [[1, 5/4, 3/2, 15/8], [5/6, 1, 5/4, 3/2], [2/3, 5/6, 1, 5/4], [3/4, 15/16, 9/8, 4/3]];
+const CHORD_NAMES = ["I", "vi", "IV", "V⁷"];
+const A_pac = (phi, chi, ps) => { const v = (1 + chi * Math.cos(phi - ps)) / 2; return v * v; };
+const s2chi = t => 0.3 + 0.7 * smooth(ramp(t, S2B, 19));
+const s2ps = c => Math.PI - c * TAU / 7;                // preferred phase precesses
+function s2At(t) {
+  if (t < S2B) { const u = t - S2[0]; return { slow: false, fth: 6, phase: (TAU * 6 * u) % TAU, chi: 1, ps: Math.PI, c: 0, c0: S2[0] }; }
+  const u = t - S2B, c = Math.floor(u / S2C);
+  return { slow: true, fth: 0.75, phase: ((u - c * S2C) / S2C) * TAU, chi: s2chi(t), ps: s2ps(c), c, c0: S2B + c * S2C };
+}
+
+/* Scene 3 helpers */
+const octRed = f => { while (f >= 110) f /= 2; while (f < 55) f *= 2; return f; };
+const barAt = t => { for (let i = BARS.length - 1; i >= 0; i--) if (t >= BARS[i].t0) return i; return 0; };
+
+/* Scene 4: Kuramoto mean-field (ephaptic) oscillators */
+const NO = 21, KF = 120;
+const GAM = TAU * 0.22, KC = 2 * GAM, KMAX = 3 * KC;
+const kurK = u => KMAX * smooth(ramp(u, 3, 11));
+const OMEGA = [], OSC_F = [];
+const SCALE6 = [1, 9/8, 5/4, 3/2, 5/3, 15/8];
+for (let i = 0; i < NO; i++) {
+  const q = (i + 0.5) / NO;
+  OMEGA.push(TAU * clamp(1.8 + 0.22 * Math.tan(Math.PI * (q - 0.5)), 1.15, 2.45));
+  OSC_F.push(128 * SCALE6[i % 6] * 2 ** Math.floor(i / 6));
+}
+let KC_U = 3; for (let u = 3; u < 11; u += 0.001) if (kurK(u) >= KC) { KC_U = u; break; }
+const KUR = { phases: [], R: [], psi: [], spikes: Array.from({ length: NO }, () => []) };
+const kurIdx = t => clamp((t - S4[0]) * KF, 0, KUR.R.length - 1);
+function kurR(t) { const x = kurIdx(t), i = Math.floor(x), f = x - i; const a = KUR.R[i], b = KUR.R[Math.min(i + 1, KUR.R.length - 1)]; return a + (b - a) * f; }
+
+/* Scene 5: EEG bands, octave-reduced into a chord */
+const BANDS = [
+  { s: "δ", f: 2,  p: 128, c: C.d,  pan: 0 },
+  { s: "θ", f: 6,  p: 384, c: C.th, pan: -0.5 },
+  { s: "α", f: 10, p: 320, c: C.al, pan: 0.5 },
+  { s: "β", f: 15, p: 480, c: C.be, pan: -0.25 },
+  { s: "γ", f: 40, p: 640, c: C.ga, pan: 0.25 },
+];
+function bandEnv(i, u) {
+  let e = (1 + Math.cos(TAU * BANDS[i].f * u)) / 2;
+  if (i > 0) e *= 0.35 + 0.65 * (1 + Math.cos(TAU * BANDS[i - 1].f * u)) / 2;
+  return e;
+}
+const bandIn = (i, u) => smooth(ramp(u, 2 * i, 2 * i + 0.4)) * (1 - smooth(ramp(u, 12.47, 12.5)));
+
+/* ───────────────────────── score (events) ───────────────────────── */
+const EV = [];
+const ev = (t, type, o = {}) => EV.push(Object.assign({ t, type, a: 0.5, pan: 0, f: 0, dec: 0.3 }, o));
+function buildScore() {
+  // S1
+  ev(3, "kick", { a: 0.45 }); ev(6, "kick", { a: 0.45 });
+  { let t = 8, k = 0; while (t < 9.97) { ev(t, "tick", { a: 0.03 + 0.09 * ramp(t, 8, 10), pan: k++ % 2 ? 0.6 : -0.6 }); t += Math.max(0.035, 0.25 * (1 - (t - 8) / 2)); } }
+  ev(10, "kick", { a: 0.7 });
+  // S2 slowed layer
+  for (let c = 0; c < 8; c++) {
+    const c0 = S2B + c * S2C, ch = CHORDS[Math.floor(c / 2) % 4];
+    if (c >= 1) ev(c0, "kick", { a: 0.5 });
+    for (let k = 0; k < 7; k++) {
+      const tn = c0 + k * S2C / 7; if (tn >= S2[1] - 0.02) break;
+      const A = A_pac(TAU * k / 7, s2chi(tn), s2ps(c));
+      ev(tn, "pluck", { f: 256 * ch[k % 4] * 2 ** Math.floor(k / 4), a: 0.04 + 0.26 * A, pan: -0.6 + 1.2 * k / 6, dec: 0.28 });
+      if (c >= 3) ev(tn + S2C / 14, "tick", { a: 0.035, pan: k % 2 ? 0.4 : -0.4 });
+    }
+  }
+  // S3 tuplet bars
+  for (const b of BARS) {
+    ev(b.t0, "kick", { a: 0.55 });
+    for (let k = 0; k < b.n; k++) {
+      const tn = b.t0 + k * b.dur / b.n, A = A_pac(TAU * k / b.n, 0.9, Math.PI);
+      ev(tn, "pluck", { f: 32 * (b.n + k), a: 0.05 + 0.25 * A, pan: -0.7 + 1.4 * k / (b.n - 1), dec: 0.18 });
+      ev(tn + b.dur / b.n / 2, "tick", { a: 0.025, pan: k % 2 ? 0.5 : -0.5 });
+    }
+  }
+  // S4 Kuramoto integration: each spike is a note; the kick waits for synchrony
+  ev(S4[0], "kick", { a: 0.7 });
+  const rnd = mulberry(7), dt = 1 / 1200, steps = 16 * 1200, th = Array.from({ length: NO }, () => rnd() * TAU);
+  let prevPsi = 0, lastKick = -1;
+  for (let s = 0; s <= steps; s++) {
+    const u = s * dt; let sc = 0, ss = 0;
+    for (let i = 0; i < NO; i++) { sc += Math.cos(th[i]); ss += Math.sin(th[i]); }
+    const Rr = Math.hypot(sc, ss) / NO, psi = Math.atan2(ss, sc), K = kurK(u);
+    if (s % 10 === 0) { KUR.phases.push(Float32Array.from(th)); KUR.R.push(Rr); KUR.psi.push(psi); }
+    if (prevPsi < 0 && psi >= 0 && Rr > 0.5 && u - lastKick > 0.3 && u < 15.8) { ev(S4[0] + u, "kick", { a: 0.25 + 0.45 * Rr }); lastKick = u; }
+    prevPsi = psi;
+    for (let i = 0; i < NO; i++) {
+      th[i] += dt * (OMEGA[i] + K * Rr * Math.sin(psi - th[i]));
+      if (th[i] >= TAU) {
+        th[i] -= TAU; const ts = S4[0] + u + dt;
+        KUR.spikes[i].push(ts);
+        if (u < 15.8) ev(ts, "pluck", { f: OSC_F[i], a: 0.05, pan: -0.8 + 1.6 * i / (NO - 1), dec: 0.35 });
+      }
+    }
+  }
+  // S5 drums are the bands themselves
+  const s5 = S5[0];
+  for (let u = 2; u < 12.5; u += 1) ev(s5 + u, "kick", { a: 0.6 });
+  for (let u = 6.75; u < 12.5; u += 1) ev(s5 + u, "kick", { a: 0.35 });
+  for (let u = 4.5; u < 12.5; u += 1) ev(s5 + u, "snare", { a: 0.35 });
+  { let k = 0; for (let u = 2; u < 12.5; u += 1 / 6) ev(s5 + u, "tick", { a: 0.03, pan: k++ % 2 ? 0.3 : -0.3 }); }
+  { let k = 0; for (let u = 6; u < 12.5; u += 1 / 15) ev(s5 + u, "tick", { a: 0.018, pan: k++ % 2 ? 0.8 : -0.8 }); }
+  const hit = s5 + 12.5;
+  ev(hit, "kick", { a: 1 }); ev(hit, "snare", { a: 0.5 });
+  for (const b of BANDS) ev(hit, "pluck", { f: b.p, a: 0.14, pan: b.pan, dec: 1.4 });
+  ev(hit, "pluck", { f: 64, a: 0.25, dec: 1.6 });
+  EV.sort((a, b) => a.t - b.t);
+}
+buildScore();
+const KICKS = EV.filter(e => e.type === "kick");
+
+/* ───────────────────────── synthesis ───────────────────────── */
+const L = new Float32Array(N), R = new Float32Array(N);
+let synthDone = false, peakBefore = 0;
+function renderContinuous(i0, i1, st) {
+  for (let i = i0; i < i1; i++) {
+    const t = i / SR; let l = 0, r = 0;
+    if (t < 10.2) {
+      const g = s1g(t);
+      if (g > 0) {
+        const am = s1am(t), a = TAU * 256 * t;
+        l += g * am * Math.sin(a); r += g * am * Math.sin(a + s1dphi(t));
+        const sub = 0.1 * s1b(t) * (g / S1G) * Math.sin(TAU * 128 * t); l += sub; r += sub;
+      }
+    }
+    if (t >= S2[0] && t < S2[1]) {
+      const u = t - S2[0], A = A_pac(TAU * 6 * u, 1, Math.PI);
+      const g = 0.18 * smooth(ramp(t, 10, 10.05)) * (1 - 0.72 * smooth(ramp(t, 13.5, 14.5))) * (1 - smooth(ramp(t, 23.7, 24)));
+      const s = g * A * (0.55 + 0.45 * Math.cos(TAU * 42 * u)) * (Math.sin(TAU * 640 * t) + 0.3 * Math.sin(TAU * 960 * t));
+      l += 0.8 * s; r += s;
+      if (t >= S2B) {
+        const q = s2At(t), f = 64 * CHORDS[Math.floor(q.c / 2) % 4][0];
+        st.pB2 += TAU * f / SR;
+        const e = (1 + Math.cos(q.phase - q.ps)) / 2;
+        const gb = 0.2 * e * smooth(ramp(t, S2B, S2B + 1)) * (1 - smooth(ramp(t, 23.7, 24)));
+        const s2 = gb * (Math.sin(st.pB2) + 0.3 * Math.sin(2 * st.pB2)); l += s2; r += s2;
+      }
+    }
+    if (t >= S3[0] && t < S3[1]) {
+      while (st.bar < BARS.length - 1 && t >= BARS[st.bar].t1) st.bar++;
+      const b = BARS[st.bar]; st.pB3 += TAU * octRed(32 * b.n) / SR;
+      const g = 0.22 * Math.exp(-1.6 * (t - b.t0)) * smooth(ramp(t - b.t0, 0, 0.01));
+      const s = g * (Math.sin(st.pB3) + 0.35 * Math.sin(2 * st.pB3)); l += s; r += s;
+    }
+    if (t >= S4[0] && t < S4[1]) {
+      const Rt = kurR(t), g = 0.09 * Rt * Rt * (1 - smooth(ramp(t, S4[1] - 0.3, S4[1])));
+      const s = g * (Math.sin(TAU * 64 * t) + 0.7 * Math.sin(TAU * 96 * t) + 0.5 * Math.sin(TAU * 160 * t) + 0.35 * Math.sin(TAU * 240 * t));
+      const w = 0.2 * Math.sin(TAU * 0.3 * t); l += s * (1 + w); r += s * (1 - w);
+    }
+    if (t >= S5[0] && t < S5[0] + 12.5) {
+      const u = t - S5[0];
+      for (let k = 0; k < 5; k++) {
+        const gi = bandIn(k, u); if (gi <= 0) continue;
+        const p = TAU * BANDS[k].p * u;
+        const s = 0.12 * gi * bandEnv(k, u) * (Math.sin(p) + 0.25 * Math.sin(2 * p) + 0.08 * Math.sin(3 * p));
+        const pa = (BANDS[k].pan + 1) * Math.PI / 4; l += s * Math.cos(pa); r += s * Math.sin(pa);
+      }
+    }
+    L[i] += l; R[i] += r;
+  }
+}
+const nrnd = mulberry(99);
+function renderEvent(e) {
+  const i0 = Math.round(e.t * SR), pa = (e.pan + 1) * Math.PI / 4, gl = Math.cos(pa), gr = Math.sin(pa);
+  let len, fn;
+  if (e.type === "kick") {
+    len = 0.4 * SR; let ph = 0;
+    fn = tau => { ph += TAU * (44 + 80 * Math.exp(-tau * 28)) / SR; return Math.sin(ph) * Math.exp(-tau * 8) + (tau < 0.002 ? (nrnd() * 2 - 1) * 0.5 : 0); };
+  } else if (e.type === "tick") {
+    len = 0.03 * SR; let prev = 0;
+    fn = tau => { const n = nrnd() * 2 - 1, hp = n - prev; prev = n; return hp * Math.exp(-tau * 170); };
+  } else if (e.type === "snare") {
+    len = 0.2 * SR;
+    fn = tau => (nrnd() * 2 - 1) * 0.7 * Math.exp(-tau * 20) + 0.4 * Math.sin(TAU * 185 * tau) * Math.exp(-tau * 30);
+  } else {
+    len = Math.min(e.dec * 6, 2.5) * SR;
+    const f = e.f;
+    fn = tau => (Math.sin(TAU * f * tau) + 0.35 * Math.sin(TAU * 2 * f * tau) * Math.exp(-tau * 6) + 0.15 * Math.sin(TAU * 3 * f * tau) * Math.exp(-tau * 12))
+      * Math.exp(-tau / e.dec) * Math.min(1, tau / 0.004);
+  }
+  for (let j = 0; j < len && i0 + j < N; j++) { const v = e.a * fn(j / SR); L[i0 + j] += v * gl * 1.41; R[i0 + j] += v * gr * 1.41; }
+}
+async function synthesize(onProgress) {
+  const st = { pB2: 0, pB3: 0, bar: 0 }, chunk = SR;
+  const total = N + EV.length * 2000;
+  for (let i = 0; i < N; i += chunk) {
+    renderContinuous(i, Math.min(N, i + chunk), st);
+    onProgress(i / total, i);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  for (let k = 0; k < EV.length; k++) {
+    renderEvent(EV[k]);
+    if (k % 150 === 0) { onProgress((N + k * 2000) / total, N); await new Promise(r => setTimeout(r, 0)); }
+  }
+  let peak = 0; const drive = 1.15, norm = Math.tanh(drive);
+  for (let i = 0; i < N; i++) {
+    L[i] = Math.tanh(L[i] * drive) / norm; R[i] = Math.tanh(R[i] * drive) / norm;
+    peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+  }
+  peakBefore = peak;
+  const k = 0.92 / peak; for (let i = 0; i < N; i++) { L[i] *= k; R[i] *= k; }
+  synthDone = true; onProgress(1, N);
+}
+
+/* ───────────────────────── annotations ───────────────────────── */
+const ANN = [];
+const A = (t, text, c = C.bone) => ANN.push({ t, text, c });
+A(0.4, "f_c = 256 Hz = δ 2 Hz × 2⁷");
+A(1.6, "one sine. no samples.", C.dim);
+A(3.0, "AM at 40 Hz: the γ steady-state response", C.ga);
+A(3.7, "s(t) = [1 + m·cos 2π40t] · cos 2π256t");
+A(4.5, "sidebands at 216 Hz and 296 Hz", C.ga);
+A(6.0, "left 256 Hz | right 262 Hz", C.th);
+A(6.7, "Δf = 6 Hz: a binaural θ beat", C.th);
+A(7.6, "the beat is built in the brainstem", C.dim);
+A(8.4, "Δφ(t) = 2π·6t rotates the Lissajous");
+A(10.15, "θ–γ phase–amplitude coupling", C.th);
+A(10.9, "γ power rides the θ phase", C.ga);
+A(11.8, "real time: θ 6 Hz × γ 42 Hz");
+A(13.1, "too fast to hear as rhythm, so…", C.dim);
+A(14.0, "slow everything down 8×", C.th);
+A(14.9, "42 / 6 = 7 γ cycles per θ cycle", C.ga);
+A(15.7, "7 notes per bar: Lisman’s 7 ± 2");
+A(17.0, "A(φ) = ((1 + χ cos(φ − φ*)) / 2)²", C.th);
+A(18.3, "χ rising = coupling strength", C.dim);
+A(19.3, "φ* shifts 2π/7 earlier each cycle", C.al);
+A(20.1, "cf. hippocampal phase precession", C.dim);
+A(21.2, "MI = (log N − H(P)) / log N, N = 18");
+A(22.3, "chords in 5-limit just intonation", C.be);
+A(23.0, "I · vi · IV · V⁷", C.be);
+A(S3[0] + 0.1, "comodulogram: phase freq × amp freq");
+A(24.9, "n:1 coupling = an n-tuplet", C.ga);
+A(26.3, "notes = harmonics n … 2n−1 of C1", C.be);
+A(28.5, "the rhythm ratio is the tuning ratio", C.al);
+A(30.4, "11th, 13th partials: outside 12-TET", C.dim);
+A(32.2, "bar = 8 / f_φ s: accelerating", C.dim);
+for (const b of BARS) A(b.t0 + 0.04, `${b.fp} Hz × ${b.fa} Hz → ${b.n}:1`, C.th);
+{
+  const s4 = S4[0];
+  A(s4 + 0.1, "ephaptic coupling", C.be);
+  A(s4 + 0.8, "no synapses: coupling via the field");
+  A(s4 + 1.8, "21 oscillators · ω = 1.8 ± 0.22 Hz", C.dim);
+  A(s4 + 2.6, "K = 0: incoherent. spike = note");
+  A(s4 + 4.0, "dθᵢ/dt = ωᵢ + K·R·sin(ψ − θᵢ)", C.be);
+  A(s4 + 5.1, "R·e^{iψ} = (1/N) Σ e^{iθᵢ}", C.ga);
+  A(s4 + KC_U, "K = K_c = 2γ: synchrony begins", C.th);
+  A(s4 + 8.0, "a beat emerges that nobody played", C.al);
+  A(s4 + 9.5, "kick fires when ψ crosses 0", C.dim);
+  A(s4 + 11.2, "drone gain = R²", C.dim);
+  A(s4 + 12.5, "K = 3 K_c · phase-locked", C.be);
+  A(s4 + 14.0, "raster: 21 neurons, one field");
+  const s5 = S5[0];
+  A(s5 + 0.1, "δ 2 Hz = 120 BPM", C.d);
+  A(s5 + 2.0, "θ 6 Hz = 3 × δ", C.th);
+  A(s5 + 4.0, "α 10 Hz = 5 × δ", C.al);
+  A(s5 + 6.0, "β 15 Hz = 15/2 × δ", C.be);
+  A(s5 + 8.0, "γ 40 Hz = 20 × δ", C.ga);
+  A(s5 + 8.9, "octave-reduce: 1 · 3/2 · 5/4 · 15/8");
+  A(s5 + 9.8, "the bands spell Cmaj7 in just intonation");
+  A(s5 + 10.8, "each band nested in the slower one", C.dim);
+  A(s5 + 11.6, "oscillatory hierarchy (Lakatos 2005)", C.dim);
+}
+ANN.sort((a, b) => a.t - b.t);
+ANN.forEach((a, i) => { a.slot = i % 5; });
+ANN.forEach((a, i) => { const nx = ANN.slice(i + 1).find(b => b.slot === a.slot); a.end = Math.min(a.t + 2.6, nx ? nx.t : Infinity); });
+
+/* ───────────────────────── canvas + drawing ───────────────────────── */
+const stage = document.getElementById("stage");
+const fxC = document.getElementById("fx"), hudC = document.getElementById("hud");
+const fx = fxC.getContext("2d"), hud = hudC.getContext("2d");
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let W = 360, H = 640, DPR = 1, LY;
+function layout() {
+  const r = stage.getBoundingClientRect(); W = r.width; H = r.height; DPR = Math.min(2, devicePixelRatio || 1);
+  for (const c of [fxC, hudC]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
+  fx.setTransform(DPR, 0, 0, DPR, 0, 0); hud.setTransform(DPR, 0, 0, DPR, 0, 0);
+  fx.fillStyle = C.ink; fx.fillRect(0, 0, W, H);
+  const top = 0.13 * H, side = 0.045 * W, ms = W * 0.92;
+  const secY = top + ms + 0.028 * H;
+  LY = {
+    main: { cx: W / 2, cy: top + ms / 2, r: ms * 0.42, x0: side, x1: W - side, y0: top, y1: top + ms },
+    sec: { x: side, y: secY, w: W - 2 * side, h: 0.885 * H - secY },
+    strip: { x: side, y: 0.905 * H, w: W - 2 * side, h: 0.065 * H },
+  };
+}
+new ResizeObserver(layout).observe(stage);
+
+const mono = s => `${s}px "IBM Plex Mono", ui-monospace, monospace`;
+const serif = s => `italic ${s}px "Instrument Serif", Georgia, serif`;
+function text(g, s, x, y, { c = C.bone, f = mono(0.03 * W), al = "left", bl = "alphabetic", a = 1 } = {}) {
+  g.globalAlpha = a; g.fillStyle = c; g.font = f; g.textAlign = al; g.textBaseline = bl; g.fillText(s, x, y); g.globalAlpha = 1;
+}
+function line(g, x0, y0, x1, y1) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+function lastBefore(arr, t, key) { let lo = 0, hi = arr.length - 1, ans = -1; while (lo <= hi) { const m = (lo + hi) >> 1; const v = key ? arr[m][key] : arr[m]; if (v <= t) { ans = m; lo = m + 1; } else hi = m - 1; } return ans; }
+function cmap(v) {
+  const S = [[6,7,12],[46,34,130],[255,93,143],[255,176,0],[255,246,222]];
+  v = clamp(v, 0, 1) * (S.length - 1); const i = Math.min(S.length - 2, Math.floor(v)), f = v - i;
+  const a = S[i], b = S[i + 1]; return `rgb(${a[0] + (b[0] - a[0]) * f | 0},${a[1] + (b[1] - a[1]) * f | 0},${a[2] + (b[2] - a[2]) * f | 0})`;
+}
+const phaseLabels = (g, cx, cy, r) => {
+  const lab = ["0", "π/2", "π", "3π/2"];
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 - Math.PI / 2; text(g, lab[k], cx + Math.cos(a) * (r + 0.045 * W), cy + Math.sin(a) * (r + 0.045 * W), { c: C.dim, f: mono(0.026 * W), al: "center", bl: "middle" }); }
+};
+
+/* Scene 1 */
+function drawS1(t) {
+  const { cx, cy, r } = LY.main, gain = s1g(t) / S1G;
+  fx.lineWidth = 2;
+  const cols = [C.th, C.al, C.ga];
+  for (let k = 0; k < 3; k++) {
+    const tk = Math.max(0, t - k * 0.004), am = s1am(tk), dk = s1dphi(tk);
+    fx.strokeStyle = cols[k]; fx.globalAlpha = 0.85 - k * 0.22; fx.beginPath();
+    for (let j = 0; j <= 120; j++) { const a = j / 120 * TAU; const x = cx + Math.sin(a) * r * 0.92 * am * gain, y = cy - Math.sin(a + dk) * r * 0.92 * am * gain; j ? fx.lineTo(x, y) : fx.moveTo(x, y); }
+    fx.stroke();
+  }
+  fx.globalAlpha = 1;
+  hud.strokeStyle = C.faint; hud.lineWidth = 1;
+  line(hud, cx - r, cy, cx + r, cy); line(hud, cx, cy - r, cx, cy + r);
+  text(hud, "L →", cx + r, cy - 6, { c: C.dim, f: mono(0.026 * W), al: "right" });
+  text(hud, "R ↑", cx + 6, cy - r + 0.03 * W, { c: C.dim, f: mono(0.026 * W) });
+  // analytic spectrum
+  const S = LY.sec, sh = S.h * 0.58, base = S.y + sh, fx0 = 100, fx1 = 400, X = f => S.x + (f - fx0) / (fx1 - fx0) * S.w;
+  const d = s1d(t), b = s1b(t);
+  hud.strokeStyle = C.faint; line(hud, S.x, base, S.x + S.w, base);
+  for (let f = 100; f <= 400; f += 50) text(hud, `${f}`, X(f), base + 0.035 * W, { c: C.dim, f: mono(0.024 * W), al: "center" });
+  text(hud, "SPECTRUM · Hz", S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
+  const stems = [{ f: 256, a: (1 - d / 2) * gain, c: C.bone }, { f: 216, a: d / 4 * gain, c: C.ga }, { f: 296, a: d / 4 * gain, c: C.ga }, { f: 262, a: b * gain, c: C.th }, { f: 128, a: 0.35 * b * gain, c: C.d }];
+  for (const s of stems) {
+    if (s.a < 0.01) continue; const x = X(s.f) + (s.f === 262 ? 2 : 0), h = s.a * (sh - 0.06 * W);
+    hud.strokeStyle = s.c; hud.lineWidth = 2; line(hud, x, base, x, base - h);
+    hud.fillStyle = s.c; hud.beginPath(); hud.arc(x, base - h, 3, 0, TAU); hud.fill();
+    if (s.a > 0.08 && s.f !== 256) text(hud, `${s.f}`, x + (s.f === 262 ? 6 : 0), base - h - 8, { c: s.c, f: mono(0.024 * W), al: s.f === 262 ? "left" : "center" });
+  }
+  // L+R envelope over the last second
+  const ey = base + 0.07 * W, eh = S.y + S.h - ey, emid = ey + eh / 2;
+  text(hud, "L+R ENVELOPE · last 1 s", S.x, ey + 0.005 * W, { c: C.dim, f: mono(0.024 * W) });
+  hud.fillStyle = "rgba(255,176,0,0.28)"; hud.strokeStyle = C.th; hud.lineWidth = 1.2;
+  hud.beginPath();
+  const n = 220;
+  for (let j = 0; j <= n; j++) { const tau = t - 1 + j / n; const e = tau < 0 ? 0 : s1am(tau) * Math.abs(Math.cos(s1dphi(tau) / 2)) * s1g(tau) / S1G; const x = S.x + j / n * S.w; const y = emid - e * eh * 0.36; j ? hud.lineTo(x, y) : hud.moveTo(x, y); }
+  for (let j = n; j >= 0; j--) { const tau = t - 1 + j / n; const e = tau < 0 ? 0 : s1am(tau) * Math.abs(Math.cos(s1dphi(tau) / 2)) * s1g(tau) / S1G; hud.lineTo(S.x + j / n * S.w, emid + e * eh * 0.36); }
+  hud.closePath(); hud.fill(); hud.stroke();
+}
+
+/* Scene 2 */
+function drawS2(t) {
+  const { cx, cy, r } = LY.main, q = s2At(t);
+  // envelope with 7 γ lobes
+  fx.lineWidth = 2; fx.strokeStyle = C.th; fx.fillStyle = "rgba(255,176,0,0.05)"; fx.beginPath();
+  for (let j = 0; j <= 280; j++) {
+    const phi = j / 280 * TAU, A = A_pac(phi, q.chi, q.ps), rr = r * (0.3 + 0.58 * A * (0.78 + 0.22 * Math.cos(7 * phi)));
+    const a = phi - Math.PI / 2, x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr; j ? fx.lineTo(x, y) : fx.moveTo(x, y);
+  }
+  fx.closePath(); fx.fill(); fx.stroke();
+  // θ phase hand
+  const ha = q.phase - Math.PI / 2;
+  fx.strokeStyle = q.slow ? C.bone : C.ga; fx.lineWidth = q.slow ? 2.5 : 1.5;
+  line(fx, cx, cy, cx + Math.cos(ha) * r * 0.96, cy + Math.sin(ha) * r * 0.96);
+  if (q.slow) {
+    for (let k = 0; k < 7; k++) {
+      const phi = TAU * k / 7, A = A_pac(phi, q.chi, q.ps), tn = q.c0 + k * S2C / 7, age = t - tn;
+      const rr = r * (0.3 + 0.58 * A), a = phi - Math.PI / 2, x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+      const lit = age >= 0 ? Math.exp(-age * 5) : 0;
+      fx.fillStyle = C.ga; fx.globalAlpha = 0.25 + 0.75 * lit; fx.beginPath(); fx.arc(x, y, 2 + 9 * A * (0.5 + lit), 0, TAU); fx.fill(); fx.globalAlpha = 1;
+    }
+  }
+  hud.strokeStyle = C.faint; hud.lineWidth = 1; hud.beginPath(); hud.arc(cx, cy, r, 0, TAU); hud.stroke();
+  phaseLabels(hud, cx, cy, r);
+  if (q.slow) text(hud, CHORD_NAMES[Math.floor(q.c / 2) % 4], cx, cy + 0.02 * W, { c: C.be, f: serif(0.1 * W), al: "center", bl: "middle", a: 0.9 });
+  else text(hud, "×1 REAL TIME", cx, cy, { c: C.ga, f: mono(0.03 * W), al: "center", bl: "middle" });
+  text(hud, `χ ${q.chi.toFixed(2)}  φ* ${(((q.ps % TAU) + TAU) % TAU).toFixed(2)} rad`, LY.main.x0, LY.main.y1 - 0.01 * W, { c: C.dim, f: mono(0.026 * W) });
+  // 18-bin phase-amplitude histogram and Tort MI
+  const S = LY.sec, hh = S.h * 0.5, P = [];
+  let sum = 0;
+  for (let j = 0; j < 18; j++) { let m = 0; for (let s = 0; s < 8; s++) m += A_pac((j + (s + 0.5) / 8) / 18 * TAU, q.chi, q.ps); P.push(m); sum += m; }
+  let Hn = 0; for (let j = 0; j < 18; j++) { P[j] /= sum; Hn -= P[j] * Math.log(P[j] + 1e-12); }
+  const MI = (Math.log(18) - Hn) / Math.log(18), pmax = Math.max(...P), bw = S.w / 18;
+  text(hud, `γ AMPLITUDE BY θ PHASE · 18 bins · MI ${MI.toFixed(3)}`, S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
+  for (let j = 0; j < 18; j++) {
+    const h = P[j] / pmax * (hh - 0.05 * W), x = S.x + j * bw, cur = Math.floor(q.phase / TAU * 18) === j;
+    hud.fillStyle = cur ? C.bone : C.th; hud.globalAlpha = cur ? 1 : 0.7; hud.fillRect(x + 1, S.y + hh - h, bw - 2, h); hud.globalAlpha = 1;
+  }
+  // LFP-like trace: θ plus nested γ over two θ cycles
+  const ty = S.y + hh + 0.03 * W, th2 = S.y + S.h - ty, tm = ty + th2 / 2, win = 2 / q.fth;
+  text(hud, q.slow ? "SIGNAL · 2 θ cycles · slowed 8×" : "SIGNAL · 2 θ cycles · real time", S.x, ty + 0.005 * W, { c: C.dim, f: mono(0.024 * W) });
+  hud.strokeStyle = C.ga; hud.lineWidth = 1.3; hud.beginPath();
+  for (let j = 0; j <= 400; j++) {
+    const tau = t - win + j / 400 * win; let ph, ps, chi;
+    if (tau < S2B) { ph = TAU * 6 * (tau - S2[0]); ps = Math.PI; chi = 1; } else { const u = tau - S2B, c = Math.floor(u / S2C); ph = (u / S2C) * TAU; ps = s2ps(c); chi = s2chi(tau); }
+    const v = 0.45 * Math.cos(ph) + 0.5 * A_pac(ph, chi, ps) * Math.cos(7 * ph);
+    const x = S.x + j / 400 * S.w, y = tm - v * th2 * 0.42; j ? hud.lineTo(x, y) : hud.moveTo(x, y);
+  }
+  hud.stroke();
+}
+
+/* Scene 3 */
+function drawS3(t) {
+  const M = LY.main, bi = barAt(t), b = BARS[bi];
+  const px0 = M.x0 + 0.08 * W, px1 = M.x1, py0 = M.y0 + 0.02 * W, py1 = M.y1 - 0.07 * W;
+  const FX = f => px0 + (f - 2) / 14 * (px1 - px0), FY = f => py1 - (f - 20) / 100 * (py1 - py0);
+  const nx = 28, ny = 25, cw = (px1 - px0) / nx, ch = (py1 - py0) / ny;
+  const k = Math.floor((t - b.t0) / (b.dur / b.n)), tn = b.t0 + k * b.dur / b.n, pulse = Math.exp(-(t - tn) * 7);
+  for (let ix = 0; ix < nx; ix++) for (let iy = 0; iy < ny; iy++) {
+    const fp = 2 + (ix + 0.5) / nx * 14, fa = 20 + (iy + 0.5) / ny * 100; let v = 0;
+    for (let j = 0; j <= bi; j++) {
+      const B = BARS[j], w = j === bi ? 0.75 + 0.25 * pulse : 0.7 * Math.exp(-(t - B.t1) / 2.2);
+      v += w * Math.exp(-(((fp - B.fp) / 0.9) ** 2) - (((fa - B.fa) / 7) ** 2));
+    }
+    hud.fillStyle = cmap(v * 0.95); hud.fillRect(px0 + ix * cw, py1 - (iy + 1) * ch, cw + 0.5, ch + 0.5);
+  }
+  // iso-ratio lines fa = n·fp
+  hud.save(); hud.beginPath(); hud.rect(px0, py0, px1 - px0, py1 - py0); hud.clip();
+  hud.strokeStyle = "rgba(236,230,214,0.22)"; hud.setLineDash([3, 4]);
+  for (const n of [5, 7, 9, 11]) { line(hud, FX(2), FY(2 * n), FX(16), FY(16 * n)); const fpL = Math.min(16, 115 / n); text(hud, `${n}:1`, FX(fpL) - 4, FY(fpL * n) + 12, { c: C.dim, f: mono(0.024 * W), al: "right" }); }
+  hud.setLineDash([]); hud.restore();
+  hud.strokeStyle = C.faint; hud.strokeRect(px0, py0, px1 - px0, py1 - py0);
+  for (const f of [2, 6, 10, 14]) text(hud, `${f}`, FX(f), py1 + 0.035 * W, { c: C.dim, f: mono(0.024 * W), al: "center" });
+  for (const f of [20, 60, 100]) text(hud, `${f}`, px0 - 6, FY(f), { c: C.dim, f: mono(0.024 * W), al: "right", bl: "middle" });
+  text(hud, "f_φ phase freq (Hz) →", px1, py1 + 0.065 * W, { c: C.dim, f: mono(0.024 * W), al: "right" });
+  text(hud, "f_A ↑", px0 - 6, py0 - 0.012 * W, { c: C.dim, f: mono(0.024 * W), al: "right" });
+  // crosshair glow on the trail layer
+  const x = FX(b.fp), y = FY(b.fa);
+  fx.strokeStyle = C.bone; fx.lineWidth = 1; fx.globalAlpha = 0.6; line(fx, x, py0, x, py1); line(fx, px0, y, px1, y); fx.globalAlpha = 1;
+  fx.fillStyle = C.bone; fx.beginPath(); fx.arc(x, y, 3 + 6 * pulse, 0, TAU); fx.fill();
+  // tuplet row
+  const S = LY.sec;
+  text(hud, `${b.n}-TUPLET · bar ${b.dur.toFixed(2)} s · harmonics ${b.n}–${2 * b.n - 1} of 32 Hz`, S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
+  const rowY = S.y + S.h * 0.5, step = S.w / b.n;
+  for (let j = 0; j < b.n; j++) {
+    const A = A_pac(TAU * j / b.n, 0.9, Math.PI), xx = S.x + step * (j + 0.5), on = j === k;
+    fx.fillStyle = on ? C.bone : C.th; fx.globalAlpha = on ? 1 : 0.35 + 0.4 * A;
+    fx.beginPath(); fx.arc(xx, rowY, Math.min(step * 0.42, 3 + 12 * A * (on ? 1 + pulse * 0.4 : 1)), 0, TAU); fx.fill(); fx.globalAlpha = 1;
+    text(hud, `${b.n + j}`, xx, S.y + S.h - 0.01 * W, { c: on ? C.bone : C.dim, f: mono(0.026 * W), al: "center" });
+  }
+}
+
+/* Scene 4 */
+function drawS4(t) {
+  const { cx, cy, r } = LY.main, x = kurIdx(t), fi = Math.round(x), ph = KUR.phases[fi], Rr = KUR.R[fi], psi = KUR.psi[fi], u = t - S4[0];
+  for (let k = 0; k < 5; k++) {
+    const fr = ((u * 0.45 + k / 5) % 1); fx.strokeStyle = C.be; fx.globalAlpha = Rr * 0.3 * (1 - fr); fx.lineWidth = 1.5;
+    fx.beginPath(); fx.arc(cx, cy, fr * r * 1.25, 0, TAU); fx.stroke();
+  }
+  fx.globalAlpha = 1;
+  for (let i = 0; i < NO; i++) {
+    const sp = KUR.spikes[i], li = lastBefore(sp, t), age = li >= 0 ? t - sp[li] : 9, glow = Math.exp(-age * 7);
+    const a = ph[i] - Math.PI / 2, rr = r * 0.84, col = [C.d, C.be, C.ga, C.al, C.th][Math.floor(i / 21 * 5)];
+    fx.fillStyle = col; fx.globalAlpha = 0.55 + 0.45 * glow;
+    fx.beginPath(); fx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 3 + 7 * glow, 0, TAU); fx.fill();
+  }
+  fx.globalAlpha = 1; fx.strokeStyle = C.bone; fx.lineWidth = 3;
+  const pa = psi - Math.PI / 2; line(fx, cx, cy, cx + Math.cos(pa) * Rr * r * 0.84, cy + Math.sin(pa) * Rr * r * 0.84);
+  hud.strokeStyle = C.faint; hud.lineWidth = 1; hud.beginPath(); hud.arc(cx, cy, r * 0.84, 0, TAU); hud.stroke();
+  text(hud, `R ${Rr.toFixed(2)}`, LY.main.x0, LY.main.y1 - 0.045 * W, { c: C.bone, f: mono(0.03 * W) });
+  text(hud, `K/K_c ${(kurK(u) / KC).toFixed(2)}`, LY.main.x0, LY.main.y1 - 0.01 * W, { c: C.dim, f: mono(0.026 * W) });
+  // raster
+  const S = LY.sec, rh = S.h * 0.55, rowH = (rh - 0.04 * W) / NO, win = 4;
+  text(hud, "SPIKE RASTER · last 4 s", S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
+  for (let i = 0; i < NO; i++) {
+    const sp = KUR.spikes[i], y = S.y + 0.035 * W + i * rowH; hud.fillStyle = [C.d, C.be, C.ga, C.al, C.th][Math.floor(i / 21 * 5)];
+    for (let j = Math.max(0, lastBefore(sp, t - win)); j < sp.length && sp[j] <= t; j++) { if (sp[j] < t - win) continue; hud.fillRect(S.x + (sp[j] - t + win) / win * S.w - 1, y, 2, Math.max(1.5, rowH - 1)); }
+  }
+  // R(t) and K(t)
+  const gy = S.y + rh + 0.02 * W, gh = S.y + S.h - gy, X = uu => S.x + uu / 16 * S.w, Y = v => gy + gh - v * (gh - 0.02 * W);
+  hud.strokeStyle = C.faint; hud.strokeRect(S.x, gy, S.w, gh);
+  hud.setLineDash([3, 3]); hud.strokeStyle = C.th; line(hud, X(KC_U), gy, X(KC_U), gy + gh); hud.setLineDash([]);
+  text(hud, "K_c", X(KC_U) + 4, gy + 0.03 * W, { c: C.th, f: mono(0.024 * W) });
+  hud.strokeStyle = C.dim; hud.lineWidth = 1; hud.beginPath();
+  for (let j = 0; j <= 160; j++) { const uu = j / 10; j ? hud.lineTo(X(uu), Y(kurK(uu) / KMAX)) : hud.moveTo(X(uu), Y(kurK(uu) / KMAX)); } hud.stroke();
+  hud.strokeStyle = C.be; hud.lineWidth = 1.8; hud.beginPath();
+  const upto = Math.min(KUR.R.length - 1, Math.floor(x));
+  for (let j = 0; j <= upto; j += 2) { j ? hud.lineTo(X(j / KF), Y(KUR.R[j])) : hud.moveTo(X(j / KF), Y(KUR.R[j])); } hud.stroke();
+  text(hud, "R(t)", S.x + 4, gy + gh - 6, { c: C.be, f: mono(0.024 * W) });
+  text(hud, "K(t)", S.x + S.w - 4, gy + 0.03 * W, { c: C.dim, f: mono(0.024 * W), al: "right" });
+}
+
+/* Scene 5 */
+const JI = [
+  { b: 0, ratio: 1, name: "C", cents: "0¢" }, { b: 2, ratio: 5 / 4, name: "E", cents: "−13.7¢" },
+  { b: 1, ratio: 3 / 2, name: "G", cents: "+2.0¢" }, { b: 3, ratio: 15 / 8, name: "B", cents: "−11.7¢" },
+  { b: 4, ratio: 5 / 4, name: "E", cents: "" },
+];
+function drawS5(t) {
+  const { cx, cy, r } = LY.main, u = t - S5[0], ang = ratio => Math.log2(ratio) * TAU - Math.PI / 2;
+  hud.strokeStyle = C.faint; hud.lineWidth = 1; hud.beginPath(); hud.arc(cx, cy, r * 0.8, 0, TAU); hud.stroke();
+  const names = ["C", "", "D", "", "E", "F", "", "G", "", "A", "", "B"];
+  for (let k = 0; k < 12; k++) {
+    const a = k / 12 * TAU - Math.PI / 2; line(hud, cx + Math.cos(a) * r * 0.76, cy + Math.sin(a) * r * 0.76, cx + Math.cos(a) * r * 0.84, cy + Math.sin(a) * r * 0.84);
+    if (names[k]) text(hud, names[k], cx + Math.cos(a) * r * 0.68, cy + Math.sin(a) * r * 0.68, { c: C.dim, f: mono(0.026 * W), al: "center", bl: "middle" });
+  }
+  const pts = [];
+  for (const j of JI) {
+    const gi = bandIn(j.b, u); if (u < 2 * j.b) continue;
+    const e = u < 12.5 ? bandEnv(j.b, u) : Math.exp(-(u - 12.5) * 2), a = ang(j.ratio), rr = r * (j.b === 4 ? 0.98 : 0.8);
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr; if (j.b !== 4) pts.push([x, y]);
+    fx.fillStyle = BANDS[j.b].c; fx.globalAlpha = 0.4 + 0.6 * Math.max(gi, u >= 12.5 ? 1 : 0);
+    fx.beginPath(); fx.arc(x, y, 3 + 11 * e, 0, TAU); fx.fill(); fx.globalAlpha = 1;
+    const lx = cx + Math.cos(a) * (rr + 0.08 * W), ly = cy + Math.sin(a) * (rr + 0.08 * W);
+    text(hud, `${BANDS[j.b].s} ${j.b === 4 ? "" : j.cents}`, lx, ly, { c: BANDS[j.b].c, f: mono(0.026 * W), al: "center", bl: "middle" });
+  }
+  if (pts.length > 1) { fx.strokeStyle = C.bone; fx.globalAlpha = 0.5; fx.lineWidth = 1.2; fx.beginPath(); pts.forEach((p, i) => i ? fx.lineTo(p[0], p[1]) : fx.moveTo(p[0], p[1])); if (pts.length === 4) fx.closePath(); fx.stroke(); fx.globalAlpha = 1; }
+  if (u >= 8.9) {
+    text(hud, "Cmaj7", cx, cy - 0.01 * W, { c: C.bone, f: serif(0.13 * W), al: "center", bl: "middle", a: ramp(u, 8.9, 9.4) });
+    text(hud, "1 : 3 : 5 : 15", cx, cy + 0.08 * W, { c: C.dim, f: mono(0.03 * W), al: "center", bl: "middle", a: ramp(u, 9.2, 9.7) });
+  }
+  // band lanes
+  const S = LY.sec, lh = S.h / 5;
+  for (let i = 0; i < 5; i++) {
+    const y0 = S.y + i * lh, mid = y0 + lh / 2, B = BANDS[i];
+    text(hud, `${B.s} ${B.f} Hz`, S.x, mid, { c: B.c, f: mono(0.026 * W), bl: "middle", a: u >= 2 * i ? 1 : 0.35 });
+    const x0 = S.x + 0.17 * W, w = S.w - 0.17 * W;
+    hud.strokeStyle = B.c; hud.lineWidth = 1.3; hud.globalAlpha = u >= 2 * i ? 1 : 0.25; hud.beginPath();
+    for (let j = 0; j <= 360; j++) {
+      const tau = u - 1 + j / 360, on = tau >= 2 * i && tau < 12.5;
+      const v = on ? bandEnv(i, tau) * Math.cos(TAU * B.f * tau) * (i ? 1 : 1) : 0;
+      const x = x0 + j / 360 * w, y = mid - v * lh * 0.4; j ? hud.lineTo(x, y) : hud.moveTo(x, y);
+    }
+    hud.stroke(); hud.globalAlpha = 1;
+  }
+}
+
+function drawEnd(t) {
+  const a = ramp(t, S5[1], S5[1] + 0.8), cy = H * 0.42;
+  text(hud, "Phase Nest", W / 2, cy, { c: C.bone, f: serif(0.16 * W), al: "center", bl: "middle", a });
+  const lines = [`${(N).toLocaleString("en-US")} stereo frames computed in JS`, "0 samples · 0 libraries · 1 buffer", "carrier · coupling · field · hierarchy"];
+  lines.forEach((s, i) => text(hud, s, W / 2, cy + 0.13 * W + i * 0.05 * W, { c: i === 2 ? C.th : C.dim, f: mono(0.03 * W), al: "center", a: ramp(t, S5[1] + 0.4 + i * 0.3, S5[1] + 0.9 + i * 0.3) }));
+}
+
+/* annotations, HUD, glitch */
+const SLOTS = [{ y: 0.093, al: "l" }, { y: 0.122, al: "r" }, { y: 0.6, al: "l" }, { y: 0.632, al: "r" }, { y: 0.87, al: "l" }];
+function wrap(g, s, maxW) { const words = s.split(" "), out = []; let cur = ""; for (const w of words) { const nx = cur ? cur + " " + w : w; if (g.measureText(nx).width > maxW && cur) { out.push(cur); cur = w; } else cur = nx; } out.push(cur); return out; }
+function drawAnnotations(t) {
+  const fs = 0.034 * W; hud.font = mono(fs); hud.textBaseline = "middle";
+  const i1 = lastBefore(ANN, t, "t");
+  for (let i = Math.max(0, i1 - 8); i <= i1; i++) {
+    const a = ANN[i]; if (t >= a.end) continue;
+    const shown = a.text.slice(0, Math.max(1, Math.floor((t - a.t) * 75)));
+    const lines = wrap(hud, shown, W * 0.88), sl = SLOTS[a.slot], jit = !RM && t - a.t < 0.08 ? (Math.random() - 0.5) * 10 : 0;
+    const fade = 1 - ramp(t, a.end - 0.25, a.end);
+    lines.forEach((ln, k) => {
+      const w = hud.measureText(ln).width, y = sl.y * H + k * fs * 1.4, x = sl.al === "l" ? 0.045 * W + jit : W - 0.045 * W - w + jit;
+      hud.globalAlpha = 0.8 * fade; hud.fillStyle = C.ink; hud.fillRect(x - 5, y - fs * 0.72, w + 10, fs * 1.44);
+      hud.globalAlpha = fade; hud.fillStyle = a.c; hud.textAlign = "left"; hud.fillText(ln, x, y); hud.globalAlpha = 1;
+    });
+  }
+}
+function drawHud(t, si) {
+  const f = mono(0.028 * W);
+  text(hud, "PHASE NEST", 0.045 * W, 0.037 * H, { c: C.bone, f });
+  text(hud, `0${si + 1}/05 · ${SCENES[si].title.toUpperCase()}`, 0.045 * W, 0.062 * H, { c: C.dim, f });
+  text(hud, `t ${t.toFixed(3)} s`, W - 0.045 * W, 0.037 * H, { c: C.bone, f, al: "right" });
+  text(hud, `n ${Math.floor(clamp(t, 0, END) * SR).toLocaleString("en-US")}`, W - 0.045 * W, 0.062 * H, { c: C.dim, f, al: "right" });
+  // scene progress
+  const y = 0.012 * H, x0 = 0.045 * W, w = W - 0.09 * W;
+  SCENES.forEach((s, i) => {
+    const a = x0 + s.r[0] / S5[1] * w, b = x0 + s.r[1] / S5[1] * w - 3;
+    hud.fillStyle = C.faint; hud.fillRect(a, y, b - a, 2);
+    const p = clamp((t - s.r[0]) / (s.r[1] - s.r[0]), 0, 1); hud.fillStyle = [C.bone, C.th, C.al, C.be, C.ga][i]; hud.fillRect(a, y, (b - a) * p, 2);
+  });
+}
+function drawTitle(t, si) {
+  const dt = t - SCENES[si].r[0]; if (dt < 0 || dt > 1.1) return;
+  const a = 1 - ramp(dt, 0.55, 1.1), s = 0.14 * W * (1 + 0.05 * dt), off = RM ? 0 : 7 * Math.exp(-dt * 6);
+  const { cx } = LY.main, y = LY.main.y0 + 0.13 * W;
+  if (off > 0.5) { text(hud, SCENES[si].title, cx - off, y, { c: C.al, f: serif(s), al: "center", bl: "middle", a: a * 0.7 }); text(hud, SCENES[si].title, cx + off, y, { c: C.be, f: serif(s), al: "center", bl: "middle", a: a * 0.7 }); }
+  text(hud, SCENES[si].title, cx, y, { c: C.bone, f: serif(s), al: "center", bl: "middle", a });
+}
+function glitch(t, si) {
+  if (RM) return;
+  const dt = t - SCENES[si].r[0]; if (dt < 0 || dt > 0.14) return;
+  for (let k = 0; k < 7; k++) {
+    const sy = Math.random() * H, sh = 4 + Math.random() * H * 0.05, dx = (Math.random() - 0.5) * W * 0.16;
+    fx.drawImage(fxC, 0, sy * DPR, fxC.width, sh * DPR, dx, sy, W, sh);
+  }
+}
+let freq;
+function drawStrip() {
+  if (!analyser || state !== "playing") return;
+  if (!freq) freq = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(freq);
+  const S = LY.strip, nb = 72, ny = actx.sampleRate / 2, bw = S.w / nb, cols = [C.d, C.th, C.al, C.be, C.ga];
+  for (let k = 0; k < nb; k++) {
+    const f0 = 40 * Math.pow(5000 / 40, k / nb), f1 = 40 * Math.pow(5000 / 40, (k + 1) / nb);
+    const i0 = Math.floor(f0 / ny * freq.length), i1 = Math.max(i0 + 1, Math.floor(f1 / ny * freq.length));
+    let m = 0; for (let i = i0; i < i1; i++) m = Math.max(m, freq[i]);
+    const h = (m / 255) ** 1.6 * S.h; hud.fillStyle = cols[Math.floor(k / nb * 5)];
+    hud.globalAlpha = 0.85; hud.fillRect(S.x + k * bw, S.y + S.h - h, Math.max(1, bw - 1.5), h); hud.globalAlpha = 1;
+  }
+}
+
+/* ───────────────────────── transport ───────────────────────── */
+let actx = null, analyser = null, buf = null, src = null, state = "idle", startAt = 0, pausedT = 0, lastScene = -1;
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = actx.createAnalyser(); analyser.fftSize = 4096; analyser.smoothingTimeConstant = 0.55; analyser.connect(actx.destination);
+  buf = actx.createBuffer(2, N, SR); buf.copyToChannel(L, 0); buf.copyToChannel(R, 1);
+}
+function playFrom(off) {
+  if (!synthDone) return;
+  ensureAudio(); actx.resume();
+  if (src) { src.onended = null; try { src.stop(); } catch (e) {} }
+  src = actx.createBufferSource(); src.buffer = buf; src.connect(analyser); src.start(0, off);
+  startAt = actx.currentTime - off; state = "playing"; gate.hidden = true; syncBar();
+}
+function pause() { pausedT = curT(); if (src) { src.onended = null; try { src.stop(); } catch (e) {} } state = "paused"; syncBar(); }
+function curT() {
+  if (state === "playing") { const t = actx.currentTime - startAt; if (t >= END) { state = "ended"; pausedT = END; syncBar(); return END; } return t; }
+  if (state === "paused" || state === "ended") return pausedT;
+  return (performance.now() / 1000) % 10;
+}
+const gate = document.getElementById("gate"), go = document.getElementById("go"), bar = document.getElementById("bar"), playBtn = document.getElementById("play");
+const chips = SCENES.map((s, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = s.chip; b.id = "scene-" + i; b.addEventListener("click", () => playFrom(s.r[0])); bar.appendChild(b); return b; });
+function syncBar() {
+  playBtn.textContent = state === "playing" ? "Pause" : state === "ended" ? "Replay" : "Play";
+  const si = sceneAt(curT()); chips.forEach((c, i) => c.setAttribute("aria-current", String(i === si && state !== "idle")));
+}
+playBtn.addEventListener("click", () => { if (state === "playing") pause(); else if (state === "paused") playFrom(pausedT); else playFrom(0); });
+go.addEventListener("click", () => playFrom(0));
+addEventListener("keydown", e => { if (e.code === "Space" && e.target === document.body) { e.preventDefault(); playBtn.click(); } });
+
+/* ───────────────────────── main loop ───────────────────────── */
+function frame() {
+  const t = curT(), si = sceneAt(t);
+  if (si !== lastScene) { lastScene = si; syncBar(); }
+  fx.globalCompositeOperation = "source-over"; fx.fillStyle = "rgba(6,7,12,0.26)"; fx.fillRect(0, 0, W, H);
+  glitch(t, si);
+  fx.globalCompositeOperation = "lighter";
+  hud.clearRect(0, 0, W, H);
+  if (t >= S5[1]) drawEnd(t);
+  else if (state === "idle") drawS1(t);
+  else [drawS1, drawS2, drawS3, drawS4, drawS5][si](t);
+  if (state !== "idle" && t < S5[1]) { drawTitle(t, si); drawAnnotations(t); drawHud(t, si); drawStrip(); }
+  if (state !== "idle" && !RM) {
+    const ki = lastBefore(KICKS, t, "t");
+    if (ki >= 0) { const e = Math.exp(-(t - KICKS[ki].t) * 12) * KICKS[ki].a; if (e > 0.01) { hud.fillStyle = `rgba(236,230,214,${0.07 * e})`; hud.fillRect(0, 0, W, H); } }
+  }
+  requestAnimationFrame(frame);
+}
+layout();
+requestAnimationFrame(frame);
+synthesize((p, i) => { if (!synthDone) go.textContent = `Synthesizing ${Math.floor(p * 100)}%`; }).then(() => {
+  go.disabled = false; go.textContent = `Play · ${Math.round(END)} s · sound on`;
+});
+window.__phaseNest = { L, R, SR, SCENES, get peak() { return peakBefore; } };
+</script>
