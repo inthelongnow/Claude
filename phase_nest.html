@@ -83,7 +83,7 @@
     <canvas id="hud"></canvas>
     <div class="gate" id="gate">
       <h1>Phase Nest</h1>
-      <p>Carrier waves, θ–γ coupling and ephaptic sync, rendered sample by sample in plain JavaScript.</p>
+      <p>A slow tour of brain rhythms as music: carrier waves, θ–γ coupling, ephaptic sync and the EEG bands. Every sample is computed in plain JavaScript.</p>
       <button class="go" id="go" disabled>Synthesizing 0%</button>
     </div>
   </div>
@@ -114,15 +114,16 @@ const C = {
 
 /* ───────────────────────── timeline ───────────────────────── */
 const SR = 44100;
-const S1 = [0, 10];
-const S2 = [10, 24], S2B = 14, S2C = 4 / 3;           // slowed θ cycle: 6 Hz ÷ 8
-const COMO_SPEC = [[6,7],[5,9],[8,5],[4,11],[7,9],[8,11],[10,7],[12,5],[12,7],[14,5]];
+const SLOW = 16;                                         // listening speed for nested rhythms
+const S1 = [0, 30];
+const S2 = [30, 70], S2B = 40, S2C = SLOW / 6;           // slowed θ cycle: 6 Hz ÷ 16
+const COMO_SPEC = [[6,7],[5,9],[8,5],[4,11],[7,9],[6,13]];
 const BARS = [];
-{ let t0 = 24; for (const [fp, n] of COMO_SPEC) { const dur = 8 / fp; BARS.push({ t0, t1: t0 + dur, fp, n, fa: fp * n, dur }); t0 += dur; } }
-const S3 = [24, BARS[BARS.length - 1].t1];
-const S4 = [S3[1], S3[1] + 16];
-const S5 = [S4[1], S4[1] + 14];
-const END = S5[1] + 3.5;
+{ let t0 = 70; for (const [fp, n] of COMO_SPEC) for (let rep = 0; rep < 2; rep++) { const dur = SLOW / fp; BARS.push({ t0, t1: t0 + dur, fp, n, fa: fp * n, dur }); t0 += dur; } }
+const S3 = [70, BARS[BARS.length - 1].t1];
+const S4 = [S3[1], S3[1] + 40];
+const S5 = [S4[1], S4[1] + 40];
+const END = S5[1] + 6;
 const N = Math.ceil(END * SR);
 const SCENES = [
   { title: "Carrier", chip: "Carrier", r: S1 },
@@ -134,27 +135,27 @@ const SCENES = [
 const sceneAt = t => { for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].r[0]) return i; return 0; };
 
 /* Scene 1: carrier, AM at 40 Hz, binaural 6 Hz */
-const s1d = t => smooth(ramp(t, 3, 4.2)) * (1 - smooth(ramp(t, 6, 6.8)));
-const s1b = t => smooth(ramp(t, 6, 6.8));
-const S1G = 0.22;
-const s1g = t => S1G * smooth(ramp(t, 0, 0.25)) * (1 - smooth(ramp(t, 9.75, 10.15)));
+const s1d = t => smooth(ramp(t, 8, 11)) * (1 - smooth(ramp(t, 16, 18)));
+const s1b = t => smooth(ramp(t, 17, 19));
+const S1G = 0.26;
+const s1g = t => S1G * smooth(ramp(t, 0, 2)) * (1 - smooth(ramp(t, 28.8, 30)));
 const s1am = t => 1 - s1d(t) * 0.5 * (1 - Math.cos(TAU * 40 * t));
 function s1dphi(t) {                   // ∫ 2π·6·b(t) dt, closed form
-  if (t < 6) return 0;
-  if (t > 6.8) return TAU * 6 * (0.4 + (t - 6.8));
-  const x = (t - 6) / 0.8; return TAU * 6 * 0.8 * (x * x * x - x * x * x * x / 2);
+  if (t < 17) return 0;
+  if (t > 19) return TAU * 6 * (1 + (t - 19));
+  const x = (t - 17) / 2; return TAU * 6 * 2 * (x * x * x - x * x * x * x / 2);
 }
 
 /* Scene 2: θ–γ phase–amplitude coupling */
 const CHORDS = [[1, 5/4, 3/2, 15/8], [5/6, 1, 5/4, 3/2], [2/3, 5/6, 1, 5/4], [3/4, 15/16, 9/8, 4/3]];
 const CHORD_NAMES = ["I", "vi", "IV", "V⁷"];
 const A_pac = (phi, chi, ps) => { const v = (1 + chi * Math.cos(phi - ps)) / 2; return v * v; };
-const s2chi = t => 0.3 + 0.7 * smooth(ramp(t, S2B, 19));
-const s2ps = c => Math.PI - c * TAU / 7;                // preferred phase precesses
+const s2chi = t => 0.3 + 0.7 * smooth(ramp(t, 50, 58));
+const s2ps = c => Math.PI - Math.max(0, c - 6) * TAU / 7;   // precession starts after the χ ramp
 function s2At(t) {
   if (t < S2B) { const u = t - S2[0]; return { slow: false, fth: 6, phase: (TAU * 6 * u) % TAU, chi: 1, ps: Math.PI, c: 0, c0: S2[0] }; }
   const u = t - S2B, c = Math.floor(u / S2C);
-  return { slow: true, fth: 0.75, phase: ((u - c * S2C) / S2C) * TAU, chi: s2chi(t), ps: s2ps(c), c, c0: S2B + c * S2C };
+  return { slow: true, fth: 6 / SLOW, phase: ((u - c * S2C) / S2C) * TAU, chi: s2chi(t), ps: s2ps(c), c, c0: S2B + c * S2C };
 }
 
 /* Scene 3 helpers */
@@ -162,17 +163,17 @@ const octRed = f => { while (f >= 110) f /= 2; while (f < 55) f *= 2; return f; 
 const barAt = t => { for (let i = BARS.length - 1; i >= 0; i--) if (t >= BARS[i].t0) return i; return 0; };
 
 /* Scene 4: Kuramoto mean-field (ephaptic) oscillators */
-const NO = 21, KF = 120;
-const GAM = TAU * 0.22, KC = 2 * GAM, KMAX = 3 * KC;
-const kurK = u => KMAX * smooth(ramp(u, 3, 11));
+const NO = 21, KF = 60, S4D = S4[1] - S4[0];
+const GAM = TAU * 0.11, KC = 2 * GAM, KMAX = 3 * KC;
+const kurK = u => KMAX * smooth(ramp(u, 8, 28));
 const OMEGA = [], OSC_F = [];
 const SCALE6 = [1, 9/8, 5/4, 3/2, 5/3, 15/8];
 for (let i = 0; i < NO; i++) {
   const q = (i + 0.5) / NO;
-  OMEGA.push(TAU * clamp(1.8 + 0.22 * Math.tan(Math.PI * (q - 0.5)), 1.15, 2.45));
+  OMEGA.push(TAU * clamp(0.9 + 0.11 * Math.tan(Math.PI * (q - 0.5)), 0.58, 1.22));
   OSC_F.push(128 * SCALE6[i % 6] * 2 ** Math.floor(i / 6));
 }
-let KC_U = 3; for (let u = 3; u < 11; u += 0.001) if (kurK(u) >= KC) { KC_U = u; break; }
+let KC_U = 8; for (let u = 8; u < 28; u += 0.001) if (kurK(u) >= KC) { KC_U = u; break; }
 const KUR = { phases: [], R: [], psi: [], spikes: Array.from({ length: NO }, () => []) };
 const kurIdx = t => clamp((t - S4[0]) * KF, 0, KUR.R.length - 1);
 function kurR(t) { const x = kurIdx(t), i = Math.floor(x), f = x - i; const a = KUR.R[i], b = KUR.R[Math.min(i + 1, KUR.R.length - 1)]; return a + (b - a) * f; }
@@ -185,76 +186,64 @@ const BANDS = [
   { s: "β", f: 15, p: 480, c: C.be, pan: -0.25 },
   { s: "γ", f: 40, p: 640, c: C.ga, pan: 0.25 },
 ];
+const BAND_STEP = 5, S5_OUT = 39;
 function bandEnv(i, u) {
   let e = (1 + Math.cos(TAU * BANDS[i].f * u)) / 2;
   if (i > 0) e *= 0.35 + 0.65 * (1 + Math.cos(TAU * BANDS[i - 1].f * u)) / 2;
   return e;
 }
-const bandIn = (i, u) => smooth(ramp(u, 2 * i, 2 * i + 0.4)) * (1 - smooth(ramp(u, 12.47, 12.5)));
+const bandIn = (i, u) => smooth(ramp(u, BAND_STEP * i, BAND_STEP * i + 1.5)) * (1 - smooth(ramp(u, 35, S5_OUT)));
 
 /* ───────────────────────── score (events) ───────────────────────── */
 const EV = [];
 const ev = (t, type, o = {}) => EV.push(Object.assign({ t, type, a: 0.5, pan: 0, f: 0, dec: 0.3 }, o));
 function buildScore() {
-  // S1
-  ev(3, "kick", { a: 0.45 }); ev(6, "kick", { a: 0.45 });
-  { let t = 8, k = 0; while (t < 9.97) { ev(t, "tick", { a: 0.03 + 0.09 * ramp(t, 8, 10), pan: k++ % 2 ? 0.6 : -0.6 }); t += Math.max(0.035, 0.25 * (1 - (t - 8) / 2)); } }
-  ev(10, "kick", { a: 0.7 });
-  // S2 slowed layer
-  for (let c = 0; c < 8; c++) {
-    const c0 = S2B + c * S2C, ch = CHORDS[Math.floor(c / 2) % 4];
-    if (c >= 1) ev(c0, "kick", { a: 0.5 });
+  // S2: slowed layer, one soft pulse per θ cycle
+  for (let c = 0; ; c++) {
+    const c0 = S2B + c * S2C; if (c0 >= S2[1] - 0.5) break;
+    const ch = CHORDS[Math.floor(c / 2) % 4];
+    if (c >= 1) ev(c0, "kick", { a: 0.28 });
     for (let k = 0; k < 7; k++) {
-      const tn = c0 + k * S2C / 7; if (tn >= S2[1] - 0.02) break;
+      const tn = c0 + k * S2C / 7; if (tn >= S2[1] - 0.6) break;
       const A = A_pac(TAU * k / 7, s2chi(tn), s2ps(c));
-      ev(tn, "pluck", { f: 256 * ch[k % 4] * 2 ** Math.floor(k / 4), a: 0.04 + 0.26 * A, pan: -0.6 + 1.2 * k / 6, dec: 0.28 });
-      if (c >= 3) ev(tn + S2C / 14, "tick", { a: 0.035, pan: k % 2 ? 0.4 : -0.4 });
+      ev(tn, "pluck", { f: 256 * ch[k % 4] * 2 ** Math.floor(k / 4), a: 0.03 + 0.24 * A, pan: -0.6 + 1.2 * k / 6, dec: 0.7 });
     }
   }
-  // S3 tuplet bars
+  // S3: tuplet bars
   for (const b of BARS) {
-    ev(b.t0, "kick", { a: 0.55 });
+    ev(b.t0, "kick", { a: 0.3 });
     for (let k = 0; k < b.n; k++) {
       const tn = b.t0 + k * b.dur / b.n, A = A_pac(TAU * k / b.n, 0.9, Math.PI);
-      ev(tn, "pluck", { f: 32 * (b.n + k), a: 0.05 + 0.25 * A, pan: -0.7 + 1.4 * k / (b.n - 1), dec: 0.18 });
-      ev(tn + b.dur / b.n / 2, "tick", { a: 0.025, pan: k % 2 ? 0.5 : -0.5 });
+      ev(tn, "pluck", { f: 32 * (b.n + k), a: 0.04 + 0.22 * A, pan: -0.7 + 1.4 * k / (b.n - 1), dec: 0.5 });
     }
   }
-  // S4 Kuramoto integration: each spike is a note; the kick waits for synchrony
-  ev(S4[0], "kick", { a: 0.7 });
-  const rnd = mulberry(7), dt = 1 / 1200, steps = 16 * 1200, th = Array.from({ length: NO }, () => rnd() * TAU);
+  // S4: Kuramoto integration. Each spike is a note; the pulse waits for synchrony
+  const rnd = mulberry(7), dt = 1 / 1200, steps = S4D * 1200, th = Array.from({ length: NO }, () => rnd() * TAU);
   let prevPsi = 0, lastKick = -1;
   for (let s = 0; s <= steps; s++) {
     const u = s * dt; let sc = 0, ss = 0;
     for (let i = 0; i < NO; i++) { sc += Math.cos(th[i]); ss += Math.sin(th[i]); }
     const Rr = Math.hypot(sc, ss) / NO, psi = Math.atan2(ss, sc), K = kurK(u);
-    if (s % 10 === 0) { KUR.phases.push(Float32Array.from(th)); KUR.R.push(Rr); KUR.psi.push(psi); }
-    if (prevPsi < 0 && psi >= 0 && Rr > 0.5 && u - lastKick > 0.3 && u < 15.8) { ev(S4[0] + u, "kick", { a: 0.25 + 0.45 * Rr }); lastKick = u; }
+    if (s % (1200 / KF) === 0) { KUR.phases.push(Float32Array.from(th)); KUR.R.push(Rr); KUR.psi.push(psi); }
+    if (prevPsi < 0 && psi >= 0 && Rr > 0.5 && u - lastKick > 0.6 && u < S4D - 1) { ev(S4[0] + u, "kick", { a: 0.15 + 0.3 * Rr }); lastKick = u; }
     prevPsi = psi;
     for (let i = 0; i < NO; i++) {
       th[i] += dt * (OMEGA[i] + K * Rr * Math.sin(psi - th[i]));
       if (th[i] >= TAU) {
         th[i] -= TAU; const ts = S4[0] + u + dt;
         KUR.spikes[i].push(ts);
-        if (u < 15.8) ev(ts, "pluck", { f: OSC_F[i], a: 0.05, pan: -0.8 + 1.6 * i / (NO - 1), dec: 0.35 });
+        if (u < S4D - 1) ev(ts, "pluck", { f: OSC_F[i], a: 0.045, pan: -0.8 + 1.6 * i / (NO - 1), dec: 0.6 });
       }
     }
   }
-  // S5 drums are the bands themselves
+  // S5: a soft delta pulse, then a closing bloom
   const s5 = S5[0];
-  for (let u = 2; u < 12.5; u += 1) ev(s5 + u, "kick", { a: 0.6 });
-  for (let u = 6.75; u < 12.5; u += 1) ev(s5 + u, "kick", { a: 0.35 });
-  for (let u = 4.5; u < 12.5; u += 1) ev(s5 + u, "snare", { a: 0.35 });
-  { let k = 0; for (let u = 2; u < 12.5; u += 1 / 6) ev(s5 + u, "tick", { a: 0.03, pan: k++ % 2 ? 0.3 : -0.3 }); }
-  { let k = 0; for (let u = 6; u < 12.5; u += 1 / 15) ev(s5 + u, "tick", { a: 0.018, pan: k++ % 2 ? 0.8 : -0.8 }); }
-  const hit = s5 + 12.5;
-  ev(hit, "kick", { a: 1 }); ev(hit, "snare", { a: 0.5 });
-  for (const b of BANDS) ev(hit, "pluck", { f: b.p, a: 0.14, pan: b.pan, dec: 1.4 });
-  ev(hit, "pluck", { f: 64, a: 0.25, dec: 1.6 });
+  for (let u = BAND_STEP; u < 35; u += 1) ev(s5 + u, "kick", { a: 0.25 });
+  for (const b of BANDS) ev(s5 + 35, "pluck", { f: b.p, a: 0.08, pan: b.pan, dec: 2.2 });
+  ev(s5 + 35, "pluck", { f: 64, a: 0.18, dec: 2.4 });
   EV.sort((a, b) => a.t - b.t);
 }
 buildScore();
-const KICKS = EV.filter(e => e.type === "kick");
 
 /* ───────────────────────── synthesis ───────────────────────── */
 const L = new Float32Array(N), R = new Float32Array(N);
@@ -272,34 +261,34 @@ function renderContinuous(i0, i1, st) {
     }
     if (t >= S2[0] && t < S2[1]) {
       const u = t - S2[0], A = A_pac(TAU * 6 * u, 1, Math.PI);
-      const g = 0.18 * smooth(ramp(t, 10, 10.05)) * (1 - 0.72 * smooth(ramp(t, 13.5, 14.5))) * (1 - smooth(ramp(t, 23.7, 24)));
+      const g = 0.16 * smooth(ramp(t, S2[0], S2[0] + 1.5)) * (1 - 0.8 * smooth(ramp(t, S2B - 1, S2B + 1))) * (1 - smooth(ramp(t, S2[1] - 1, S2[1])));
       const s = g * A * (0.55 + 0.45 * Math.cos(TAU * 42 * u)) * (Math.sin(TAU * 640 * t) + 0.3 * Math.sin(TAU * 960 * t));
       l += 0.8 * s; r += s;
       if (t >= S2B) {
         const q = s2At(t), f = 64 * CHORDS[Math.floor(q.c / 2) % 4][0];
         st.pB2 += TAU * f / SR;
         const e = (1 + Math.cos(q.phase - q.ps)) / 2;
-        const gb = 0.2 * e * smooth(ramp(t, S2B, S2B + 1)) * (1 - smooth(ramp(t, 23.7, 24)));
+        const gb = 0.18 * e * smooth(ramp(t, S2B, S2B + 2)) * (1 - smooth(ramp(t, S2[1] - 1, S2[1])));
         const s2 = gb * (Math.sin(st.pB2) + 0.3 * Math.sin(2 * st.pB2)); l += s2; r += s2;
       }
     }
     if (t >= S3[0] && t < S3[1]) {
       while (st.bar < BARS.length - 1 && t >= BARS[st.bar].t1) st.bar++;
       const b = BARS[st.bar]; st.pB3 += TAU * octRed(32 * b.n) / SR;
-      const g = 0.22 * Math.exp(-1.6 * (t - b.t0)) * smooth(ramp(t - b.t0, 0, 0.01));
+      const g = 0.2 * Math.exp(-0.9 * (t - b.t0)) * smooth(ramp(t - b.t0, 0, 0.02)) * (1 - smooth(ramp(t, S3[1] - 0.5, S3[1])));
       const s = g * (Math.sin(st.pB3) + 0.35 * Math.sin(2 * st.pB3)); l += s; r += s;
     }
     if (t >= S4[0] && t < S4[1]) {
-      const Rt = kurR(t), g = 0.09 * Rt * Rt * (1 - smooth(ramp(t, S4[1] - 0.3, S4[1])));
+      const Rt = kurR(t), g = 0.09 * Rt * Rt * (1 - smooth(ramp(t, S4[1] - 1.5, S4[1])));
       const s = g * (Math.sin(TAU * 64 * t) + 0.7 * Math.sin(TAU * 96 * t) + 0.5 * Math.sin(TAU * 160 * t) + 0.35 * Math.sin(TAU * 240 * t));
       const w = 0.2 * Math.sin(TAU * 0.3 * t); l += s * (1 + w); r += s * (1 - w);
     }
-    if (t >= S5[0] && t < S5[0] + 12.5) {
+    if (t >= S5[0] && t < S5[0] + S5_OUT) {
       const u = t - S5[0];
       for (let k = 0; k < 5; k++) {
         const gi = bandIn(k, u); if (gi <= 0) continue;
         const p = TAU * BANDS[k].p * u;
-        const s = 0.12 * gi * bandEnv(k, u) * (Math.sin(p) + 0.25 * Math.sin(2 * p) + 0.08 * Math.sin(3 * p));
+        const s = 0.14 * gi * bandEnv(k, u) * (Math.sin(p) + 0.25 * Math.sin(2 * p) + 0.08 * Math.sin(3 * p));
         const pa = (BANDS[k].pan + 1) * Math.PI / 4; l += s * Math.cos(pa); r += s * Math.sin(pa);
       }
     }
@@ -349,67 +338,47 @@ async function synthesize(onProgress) {
   synthDone = true; onProgress(1, N);
 }
 
-/* ───────────────────────── annotations ───────────────────────── */
-const ANN = [];
-const A = (t, text, c = C.bone) => ANN.push({ t, text, c });
-A(0.4, "f_c = 256 Hz = δ 2 Hz × 2⁷");
-A(1.6, "one sine. no samples.", C.dim);
-A(3.0, "AM at 40 Hz: the γ steady-state response", C.ga);
-A(3.7, "s(t) = [1 + m·cos 2π40t] · cos 2π256t");
-A(4.5, "sidebands at 216 Hz and 296 Hz", C.ga);
-A(6.0, "left 256 Hz | right 262 Hz", C.th);
-A(6.7, "Δf = 6 Hz: a binaural θ beat", C.th);
-A(7.6, "the beat is built in the brainstem", C.dim);
-A(8.4, "Δφ(t) = 2π·6t rotates the Lissajous");
-A(10.15, "θ–γ phase–amplitude coupling", C.th);
-A(10.9, "γ power rides the θ phase", C.ga);
-A(11.8, "real time: θ 6 Hz × γ 42 Hz");
-A(13.1, "too fast to hear as rhythm, so…", C.dim);
-A(14.0, "slow everything down 8×", C.th);
-A(14.9, "42 / 6 = 7 γ cycles per θ cycle", C.ga);
-A(15.7, "7 notes per bar: Lisman’s 7 ± 2");
-A(17.0, "A(φ) = ((1 + χ cos(φ − φ*)) / 2)²", C.th);
-A(18.3, "χ rising = coupling strength", C.dim);
-A(19.3, "φ* shifts 2π/7 earlier each cycle", C.al);
-A(20.1, "cf. hippocampal phase precession", C.dim);
-A(21.2, "MI = (log N − H(P)) / log N, N = 18");
-A(22.3, "chords in 5-limit just intonation", C.be);
-A(23.0, "I · vi · IV · V⁷", C.be);
-A(S3[0] + 0.1, "comodulogram: phase freq × amp freq");
-A(24.9, "n:1 coupling = an n-tuplet", C.ga);
-A(26.3, "notes = harmonics n … 2n−1 of C1", C.be);
-A(28.5, "the rhythm ratio is the tuning ratio", C.al);
-A(30.4, "11th, 13th partials: outside 12-TET", C.dim);
-A(32.2, "bar = 8 / f_φ s: accelerating", C.dim);
-for (const b of BARS) A(b.t0 + 0.04, `${b.fp} Hz × ${b.fa} Hz → ${b.n}:1`, C.th);
+/* ───────────────────────── captions ───────────────────────── */
+// One idea at a time: a plain sentence, and the math underneath it.
+const CAP = [];
+const cap = (t, text, tech = "", c = C.bone) => CAP.push({ t, text, tech, c });
+cap(0.8, "Every sound here starts as a single sine wave, called a carrier.", "f_c = 256 Hz  ·  δ 2 Hz × 2⁷");
+cap(8, "Pulse its loudness 40 times a second. The auditory cortex follows along: the 40 Hz steady-state response.", "s(t) = [1 + m·cos 2π·40t] · cos 2π·256t", C.ga);
+cap(12.5, "Modulating amplitude creates two new frequencies, one on each side of the carrier.", "sidebands: 256 ± 40 → 216 Hz, 296 Hz", C.ga);
+cap(17, "Now split it: 256 Hz in the left ear, 262 Hz in the right. Headphones help here.", "L 256 Hz  |  R 262 Hz", C.th);
+cap(21.5, "Neither ear gets a beat. The brainstem compares the two and produces a 6 Hz theta beat.", "Δf = 262 − 256 = 6 Hz  (θ)", C.th);
+cap(26, "The shape plots left against right. The drifting phase turns it six times a second.", "Δφ(t) = 2π · 6t");
+cap(30.8, "Brain rhythms nest inside each other. Fast gamma waves ride on slower theta waves.", "phase–amplitude coupling", C.th);
+cap(35, "At real speed: gamma at 42 Hz swells and fades with each 6 Hz theta cycle.", "θ 6 Hz  ×  γ 42 Hz", C.ga);
+cap(40.2, "Slowed down 16 times, the nesting becomes a rhythm you can follow.", "42 ÷ 6 = 7 gamma cycles per theta cycle", C.ga);
+cap(46, "Seven notes per bar. One theory says each gamma cycle holds one item in working memory.", "Lisman & Idiart, 1995  ·  7 ± 2");
+cap(52, "As coupling strength χ grows, loud notes get louder and quiet ones fade.", "A(φ) = ((1 + χ·cos(φ − φ*)) / 2)²", C.th);
+cap(58.5, "Then the peak moves a little earlier each cycle, like phase precession in the hippocampus.", "φ* shifts 2π/7 per cycle", C.al);
+cap(64, "The histogram sorts gamma amplitude by theta phase. The more uneven it is, the stronger the coupling.", "Tort MI = (log N − H(P)) / log N,  N = 18");
+cap(70.8, "A comodulogram maps every pairing of a slow rhythm's phase with a fast rhythm's amplitude.", "x: phase frequency  ·  y: amplitude frequency");
+cap(77.5, "Each bright spot is one coupling. The ratio between the two rhythms becomes a tuplet.", "7:1 → seven notes per bar", C.th);
+cap(85, "The notes are harmonics of a low C, starting at the ratio number. The rhythm ratio is also the tuning.", "n:1 plays harmonics n … 2n−1 of 32 Hz", C.be);
+cap(93, "The 11th and 13th harmonics fall between piano keys. They belong to the harmonic series.", "11th ≈ F♯ −49¢  ·  13th ≈ A♭ +41¢", C.al);
+cap(99, "The dashed lines mark whole-number ratios, where each fast cycle fits evenly inside the slow one.", "f_A = n · f_φ");
 {
   const s4 = S4[0];
-  A(s4 + 0.1, "ephaptic coupling", C.be);
-  A(s4 + 0.8, "no synapses: coupling via the field");
-  A(s4 + 1.8, "21 oscillators · ω = 1.8 ± 0.22 Hz", C.dim);
-  A(s4 + 2.6, "K = 0: incoherent. spike = note");
-  A(s4 + 4.0, "dθᵢ/dt = ωᵢ + K·R·sin(ψ − θᵢ)", C.be);
-  A(s4 + 5.1, "R·e^{iψ} = (1/N) Σ e^{iθᵢ}", C.ga);
-  A(s4 + KC_U, "K = K_c = 2γ: synchrony begins", C.th);
-  A(s4 + 8.0, "a beat emerges that nobody played", C.al);
-  A(s4 + 9.5, "kick fires when ψ crosses 0", C.dim);
-  A(s4 + 11.2, "drone gain = R²", C.dim);
-  A(s4 + 12.5, "K = 3 K_c · phase-locked", C.be);
-  A(s4 + 14.0, "raster: 21 neurons, one field");
+  cap(s4 + 0.8, "Neurons can also sync without synapses, through the electric field they share.", "ephaptic coupling", C.be);
+  cap(s4 + 7, "Here are 21 oscillators, each with its own natural speed. When one fires, it plays a note.", "ωᵢ ≈ 0.9 ± 0.11 Hz  ·  Kuramoto model");
+  cap(s4 + 14, "Each one feels only the average of all the others. That average stands in for the field.", "dθᵢ/dt = ωᵢ + K·R·sin(ψ − θᵢ)", C.be);
+  cap(s4 + KC_U + 0.5, "Past a critical coupling strength, they begin to fall into step.", "K_c = 2γ  (width of the frequency spread)", C.th);
+  cap(s4 + 27, "R measures alignment, from 0 when scattered to 1 in unison.", "R·e^{iψ} = (1/N) Σ e^{iθᵢ}", C.ga);
+  cap(s4 + 33, "Nobody programmed this beat. It comes from the shared field alone.", "the drum fires when ψ crosses 0", C.al);
   const s5 = S5[0];
-  A(s5 + 0.1, "δ 2 Hz = 120 BPM", C.d);
-  A(s5 + 2.0, "θ 6 Hz = 3 × δ", C.th);
-  A(s5 + 4.0, "α 10 Hz = 5 × δ", C.al);
-  A(s5 + 6.0, "β 15 Hz = 15/2 × δ", C.be);
-  A(s5 + 8.0, "γ 40 Hz = 20 × δ", C.ga);
-  A(s5 + 8.9, "octave-reduce: 1 · 3/2 · 5/4 · 15/8");
-  A(s5 + 9.8, "the bands spell Cmaj7 in just intonation");
-  A(s5 + 10.8, "each band nested in the slower one", C.dim);
-  A(s5 + 11.6, "oscillatory hierarchy (Lakatos 2005)", C.dim);
+  cap(s5 + 0.8, "The standard EEG bands, by typical center frequency. Delta, 2 Hz, the rhythm of deep sleep.", "δ 2 Hz  →  128 Hz, six octaves up", C.d);
+  cap(s5 + 5, "Theta, 6 Hz, is three times delta. Raised into hearing range, that sounds a G.", "θ = 3 × δ  →  3/2", C.th);
+  cap(s5 + 10, "Alpha, 10 Hz, is five times delta. That sounds an E.", "α = 5 × δ  →  5/4", C.al);
+  cap(s5 + 15, "Beta, 15 Hz, is fifteen halves of delta. That sounds a B.", "β = 15/2 × δ  →  15/8", C.be);
+  cap(s5 + 20, "Gamma, 40 Hz, is four times alpha: another E.", "γ = 4 × α", C.ga);
+  cap(s5 + 25, "Together they spell C major seven in just intonation, tuned by whole-number ratios.", "1 : 3 : 5 : 15");
+  cap(s5 + 30.5, "Each band's pulse is nested inside the next slower one, like the hierarchy seen in auditory cortex.", "Lakatos et al., 2005", C.dim);
+  cap(s5 + 35.5, "A caveat: band boundaries vary by lab. These centers were chosen to make the chord.", "the math is real; the choice is mine", C.dim);
 }
-ANN.sort((a, b) => a.t - b.t);
-ANN.forEach((a, i) => { a.slot = i % 5; });
-ANN.forEach((a, i) => { const nx = ANN.slice(i + 1).find(b => b.slot === a.slot); a.end = Math.min(a.t + 2.6, nx ? nx.t : Infinity); });
+CAP.sort((a, b) => a.t - b.t);
 
 /* ───────────────────────── canvas + drawing ───────────────────────── */
 const stage = document.getElementById("stage");
@@ -422,10 +391,11 @@ function layout() {
   for (const c of [fxC, hudC]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
   fx.setTransform(DPR, 0, 0, DPR, 0, 0); hud.setTransform(DPR, 0, 0, DPR, 0, 0);
   fx.fillStyle = C.ink; fx.fillRect(0, 0, W, H);
-  const top = 0.13 * H, side = 0.045 * W, ms = W * 0.92;
-  const secY = top + ms + 0.028 * H;
+  const top = 0.2 * H, side = 0.045 * W, ms = W * 0.8;
+  const secY = top + ms + 0.026 * H;
   LY = {
     main: { cx: W / 2, cy: top + ms / 2, r: ms * 0.42, x0: side, x1: W - side, y0: top, y1: top + ms },
+    cap: { y0: 0.078 * H, y1: 0.19 * H },
     sec: { x: side, y: secY, w: W - 2 * side, h: 0.885 * H - secY },
     strip: { x: side, y: 0.905 * H, w: W - 2 * side, h: 0.065 * H },
   };
@@ -434,6 +404,7 @@ new ResizeObserver(layout).observe(stage);
 
 const mono = s => `${s}px "IBM Plex Mono", ui-monospace, monospace`;
 const serif = s => `italic ${s}px "Instrument Serif", Georgia, serif`;
+const serifUp = s => `${s}px "Instrument Serif", Georgia, serif`;
 function text(g, s, x, y, { c = C.bone, f = mono(0.03 * W), al = "left", bl = "alphabetic", a = 1 } = {}) {
   g.globalAlpha = a; g.fillStyle = c; g.font = f; g.textAlign = al; g.textBaseline = bl; g.fillText(s, x, y); g.globalAlpha = 1;
 }
@@ -529,7 +500,7 @@ function drawS2(t) {
   }
   // LFP-like trace: θ plus nested γ over two θ cycles
   const ty = S.y + hh + 0.03 * W, th2 = S.y + S.h - ty, tm = ty + th2 / 2, win = 2 / q.fth;
-  text(hud, q.slow ? "SIGNAL · 2 θ cycles · slowed 8×" : "SIGNAL · 2 θ cycles · real time", S.x, ty + 0.005 * W, { c: C.dim, f: mono(0.024 * W) });
+  text(hud, q.slow ? "SIGNAL · 2 θ cycles · slowed 16×" : "SIGNAL · 2 θ cycles · real time", S.x, ty + 0.005 * W, { c: C.dim, f: mono(0.024 * W) });
   hud.strokeStyle = C.ga; hud.lineWidth = 1.3; hud.beginPath();
   for (let j = 0; j <= 400; j++) {
     const tau = t - win + j / 400 * win; let ph, ps, chi;
@@ -546,11 +517,11 @@ function drawS3(t) {
   const px0 = M.x0 + 0.08 * W, px1 = M.x1, py0 = M.y0 + 0.02 * W, py1 = M.y1 - 0.07 * W;
   const FX = f => px0 + (f - 2) / 14 * (px1 - px0), FY = f => py1 - (f - 20) / 100 * (py1 - py0);
   const nx = 28, ny = 25, cw = (px1 - px0) / nx, ch = (py1 - py0) / ny;
-  const k = Math.floor((t - b.t0) / (b.dur / b.n)), tn = b.t0 + k * b.dur / b.n, pulse = Math.exp(-(t - tn) * 7);
+  const k = Math.floor((t - b.t0) / (b.dur / b.n)), tn = b.t0 + k * b.dur / b.n, pulse = Math.exp(-(t - tn) * 4);
   for (let ix = 0; ix < nx; ix++) for (let iy = 0; iy < ny; iy++) {
     const fp = 2 + (ix + 0.5) / nx * 14, fa = 20 + (iy + 0.5) / ny * 100; let v = 0;
     for (let j = 0; j <= bi; j++) {
-      const B = BARS[j], w = j === bi ? 0.75 + 0.25 * pulse : 0.7 * Math.exp(-(t - B.t1) / 2.2);
+      const B = BARS[j], w = j === bi ? 0.8 + 0.2 * pulse : 0.65 * Math.exp(-(t - B.t1) / 5);
       v += w * Math.exp(-(((fp - B.fp) / 0.9) ** 2) - (((fa - B.fa) / 7) ** 2));
     }
     hud.fillStyle = cmap(v * 0.95); hud.fillRect(px0 + ix * cw, py1 - (iy + 1) * ch, cw + 0.5, ch + 0.5);
@@ -558,7 +529,7 @@ function drawS3(t) {
   // iso-ratio lines fa = n·fp
   hud.save(); hud.beginPath(); hud.rect(px0, py0, px1 - px0, py1 - py0); hud.clip();
   hud.strokeStyle = "rgba(236,230,214,0.22)"; hud.setLineDash([3, 4]);
-  for (const n of [5, 7, 9, 11]) { line(hud, FX(2), FY(2 * n), FX(16), FY(16 * n)); const fpL = Math.min(16, 115 / n); text(hud, `${n}:1`, FX(fpL) - 4, FY(fpL * n) + 12, { c: C.dim, f: mono(0.024 * W), al: "right" }); }
+  for (const n of [5, 7, 9, 11, 13]) { line(hud, FX(2), FY(2 * n), FX(16), FY(16 * n)); const fpL = Math.min(16, 115 / n); text(hud, `${n}:1`, FX(fpL) - 4, FY(fpL * n) + 12, { c: C.dim, f: mono(0.024 * W), al: "right" }); }
   hud.setLineDash([]); hud.restore();
   hud.strokeStyle = C.faint; hud.strokeRect(px0, py0, px1 - px0, py1 - py0);
   for (const f of [2, 6, 10, 14]) text(hud, `${f}`, FX(f), py1 + 0.035 * W, { c: C.dim, f: mono(0.024 * W), al: "center" });
@@ -585,12 +556,12 @@ function drawS3(t) {
 function drawS4(t) {
   const { cx, cy, r } = LY.main, x = kurIdx(t), fi = Math.round(x), ph = KUR.phases[fi], Rr = KUR.R[fi], psi = KUR.psi[fi], u = t - S4[0];
   for (let k = 0; k < 5; k++) {
-    const fr = ((u * 0.45 + k / 5) % 1); fx.strokeStyle = C.be; fx.globalAlpha = Rr * 0.3 * (1 - fr); fx.lineWidth = 1.5;
+    const fr = ((u * 0.2 + k / 5) % 1); fx.strokeStyle = C.be; fx.globalAlpha = Rr * 0.3 * (1 - fr); fx.lineWidth = 1.5;
     fx.beginPath(); fx.arc(cx, cy, fr * r * 1.25, 0, TAU); fx.stroke();
   }
   fx.globalAlpha = 1;
   for (let i = 0; i < NO; i++) {
-    const sp = KUR.spikes[i], li = lastBefore(sp, t), age = li >= 0 ? t - sp[li] : 9, glow = Math.exp(-age * 7);
+    const sp = KUR.spikes[i], li = lastBefore(sp, t), age = li >= 0 ? t - sp[li] : 9, glow = Math.exp(-age * 4);
     const a = ph[i] - Math.PI / 2, rr = r * 0.84, col = [C.d, C.be, C.ga, C.al, C.th][Math.floor(i / 21 * 5)];
     fx.fillStyle = col; fx.globalAlpha = 0.55 + 0.45 * glow;
     fx.beginPath(); fx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 3 + 7 * glow, 0, TAU); fx.fill();
@@ -601,19 +572,19 @@ function drawS4(t) {
   text(hud, `R ${Rr.toFixed(2)}`, LY.main.x0, LY.main.y1 - 0.045 * W, { c: C.bone, f: mono(0.03 * W) });
   text(hud, `K/K_c ${(kurK(u) / KC).toFixed(2)}`, LY.main.x0, LY.main.y1 - 0.01 * W, { c: C.dim, f: mono(0.026 * W) });
   // raster
-  const S = LY.sec, rh = S.h * 0.55, rowH = (rh - 0.04 * W) / NO, win = 4;
-  text(hud, "SPIKE RASTER · last 4 s", S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
+  const S = LY.sec, rh = S.h * 0.55, rowH = (rh - 0.04 * W) / NO, win = 8;
+  text(hud, "SPIKE RASTER · last 8 s", S.x, S.y + 0.02 * W, { c: C.dim, f: mono(0.024 * W) });
   for (let i = 0; i < NO; i++) {
     const sp = KUR.spikes[i], y = S.y + 0.035 * W + i * rowH; hud.fillStyle = [C.d, C.be, C.ga, C.al, C.th][Math.floor(i / 21 * 5)];
     for (let j = Math.max(0, lastBefore(sp, t - win)); j < sp.length && sp[j] <= t; j++) { if (sp[j] < t - win) continue; hud.fillRect(S.x + (sp[j] - t + win) / win * S.w - 1, y, 2, Math.max(1.5, rowH - 1)); }
   }
   // R(t) and K(t)
-  const gy = S.y + rh + 0.02 * W, gh = S.y + S.h - gy, X = uu => S.x + uu / 16 * S.w, Y = v => gy + gh - v * (gh - 0.02 * W);
+  const gy = S.y + rh + 0.02 * W, gh = S.y + S.h - gy, X = uu => S.x + uu / S4D * S.w, Y = v => gy + gh - v * (gh - 0.02 * W);
   hud.strokeStyle = C.faint; hud.strokeRect(S.x, gy, S.w, gh);
   hud.setLineDash([3, 3]); hud.strokeStyle = C.th; line(hud, X(KC_U), gy, X(KC_U), gy + gh); hud.setLineDash([]);
   text(hud, "K_c", X(KC_U) + 4, gy + 0.03 * W, { c: C.th, f: mono(0.024 * W) });
   hud.strokeStyle = C.dim; hud.lineWidth = 1; hud.beginPath();
-  for (let j = 0; j <= 160; j++) { const uu = j / 10; j ? hud.lineTo(X(uu), Y(kurK(uu) / KMAX)) : hud.moveTo(X(uu), Y(kurK(uu) / KMAX)); } hud.stroke();
+  for (let j = 0; j <= 200; j++) { const uu = j / 200 * S4D; j ? hud.lineTo(X(uu), Y(kurK(uu) / KMAX)) : hud.moveTo(X(uu), Y(kurK(uu) / KMAX)); } hud.stroke();
   hud.strokeStyle = C.be; hud.lineWidth = 1.8; hud.beginPath();
   const upto = Math.min(KUR.R.length - 1, Math.floor(x));
   for (let j = 0; j <= upto; j += 2) { j ? hud.lineTo(X(j / KF), Y(KUR.R[j])) : hud.moveTo(X(j / KF), Y(KUR.R[j])); } hud.stroke();
@@ -637,29 +608,29 @@ function drawS5(t) {
   }
   const pts = [];
   for (const j of JI) {
-    const gi = bandIn(j.b, u); if (u < 2 * j.b) continue;
-    const e = u < 12.5 ? bandEnv(j.b, u) : Math.exp(-(u - 12.5) * 2), a = ang(j.ratio), rr = r * (j.b === 4 ? 0.98 : 0.8);
+    const gi = bandIn(j.b, u); if (u < BAND_STEP * j.b) continue;
+    const e = u < S5_OUT ? bandEnv(j.b, u) * (0.3 + 0.7 * gi) : 0, a = ang(j.ratio), rr = r * (j.b === 4 ? 0.98 : 0.8);
     const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr; if (j.b !== 4) pts.push([x, y]);
-    fx.fillStyle = BANDS[j.b].c; fx.globalAlpha = 0.4 + 0.6 * Math.max(gi, u >= 12.5 ? 1 : 0);
+    fx.fillStyle = BANDS[j.b].c; fx.globalAlpha = 0.35 + 0.65 * gi;
     fx.beginPath(); fx.arc(x, y, 3 + 11 * e, 0, TAU); fx.fill(); fx.globalAlpha = 1;
     const lx = cx + Math.cos(a) * (rr + 0.08 * W), ly = cy + Math.sin(a) * (rr + 0.08 * W);
     text(hud, `${BANDS[j.b].s} ${j.b === 4 ? "" : j.cents}`, lx, ly, { c: BANDS[j.b].c, f: mono(0.026 * W), al: "center", bl: "middle" });
   }
   if (pts.length > 1) { fx.strokeStyle = C.bone; fx.globalAlpha = 0.5; fx.lineWidth = 1.2; fx.beginPath(); pts.forEach((p, i) => i ? fx.lineTo(p[0], p[1]) : fx.moveTo(p[0], p[1])); if (pts.length === 4) fx.closePath(); fx.stroke(); fx.globalAlpha = 1; }
-  if (u >= 8.9) {
-    text(hud, "Cmaj7", cx, cy - 0.01 * W, { c: C.bone, f: serif(0.13 * W), al: "center", bl: "middle", a: ramp(u, 8.9, 9.4) });
-    text(hud, "1 : 3 : 5 : 15", cx, cy + 0.08 * W, { c: C.dim, f: mono(0.03 * W), al: "center", bl: "middle", a: ramp(u, 9.2, 9.7) });
+  if (u >= 25) {
+    text(hud, "Cmaj7", cx, cy - 0.01 * W, { c: C.bone, f: serif(0.13 * W), al: "center", bl: "middle", a: ramp(u, 25, 26.5) });
+    text(hud, "1 : 3 : 5 : 15", cx, cy + 0.08 * W, { c: C.dim, f: mono(0.03 * W), al: "center", bl: "middle", a: ramp(u, 25.8, 27.3) });
   }
   // band lanes
   const S = LY.sec, lh = S.h / 5;
   for (let i = 0; i < 5; i++) {
     const y0 = S.y + i * lh, mid = y0 + lh / 2, B = BANDS[i];
-    text(hud, `${B.s} ${B.f} Hz`, S.x, mid, { c: B.c, f: mono(0.026 * W), bl: "middle", a: u >= 2 * i ? 1 : 0.35 });
+    text(hud, `${B.s} ${B.f} Hz`, S.x, mid, { c: B.c, f: mono(0.026 * W), bl: "middle", a: u >= BAND_STEP * i ? 1 : 0.35 });
     const x0 = S.x + 0.17 * W, w = S.w - 0.17 * W;
-    hud.strokeStyle = B.c; hud.lineWidth = 1.3; hud.globalAlpha = u >= 2 * i ? 1 : 0.25; hud.beginPath();
+    hud.strokeStyle = B.c; hud.lineWidth = 1.3; hud.globalAlpha = u >= BAND_STEP * i ? 1 : 0.25; hud.beginPath();
     for (let j = 0; j <= 360; j++) {
-      const tau = u - 1 + j / 360, on = tau >= 2 * i && tau < 12.5;
-      const v = on ? bandEnv(i, tau) * Math.cos(TAU * B.f * tau) * (i ? 1 : 1) : 0;
+      const tau = u - 1 + j / 360, on = tau >= BAND_STEP * i && tau < S5_OUT;
+      const v = on ? bandEnv(i, tau) * bandIn(i, tau) * Math.cos(TAU * B.f * tau) : 0;
       const x = x0 + j / 360 * w, y = mid - v * lh * 0.4; j ? hud.lineTo(x, y) : hud.moveTo(x, y);
     }
     hud.stroke(); hud.globalAlpha = 1;
@@ -667,29 +638,30 @@ function drawS5(t) {
 }
 
 function drawEnd(t) {
-  const a = ramp(t, S5[1], S5[1] + 0.8), cy = H * 0.42;
+  const a = ramp(t, S5[1], S5[1] + 1.5), cy = H * 0.42;
   text(hud, "Phase Nest", W / 2, cy, { c: C.bone, f: serif(0.16 * W), al: "center", bl: "middle", a });
-  const lines = [`${(N).toLocaleString("en-US")} stereo frames computed in JS`, "0 samples · 0 libraries · 1 buffer", "carrier · coupling · field · hierarchy"];
-  lines.forEach((s, i) => text(hud, s, W / 2, cy + 0.13 * W + i * 0.05 * W, { c: i === 2 ? C.th : C.dim, f: mono(0.03 * W), al: "center", a: ramp(t, S5[1] + 0.4 + i * 0.3, S5[1] + 0.9 + i * 0.3) }));
+  const lines = [`${(N).toLocaleString("en-US")} stereo frames computed in JS`, "0 samples · 0 libraries", "carrier · coupling · field · hierarchy"];
+  lines.forEach((s, i) => text(hud, s, W / 2, cy + 0.13 * W + i * 0.05 * W, { c: i === 2 ? C.th : C.dim, f: mono(0.03 * W), al: "center", a: ramp(t, S5[1] + 1 + i * 0.6, S5[1] + 2 + i * 0.6) }));
 }
 
-/* annotations, HUD, glitch */
-const SLOTS = [{ y: 0.093, al: "l" }, { y: 0.122, al: "r" }, { y: 0.6, al: "l" }, { y: 0.632, al: "r" }, { y: 0.87, al: "l" }];
+/* captions and HUD */
 function wrap(g, s, maxW) { const words = s.split(" "), out = []; let cur = ""; for (const w of words) { const nx = cur ? cur + " " + w : w; if (g.measureText(nx).width > maxW && cur) { out.push(cur); cur = w; } else cur = nx; } out.push(cur); return out; }
-function drawAnnotations(t) {
-  const fs = 0.034 * W; hud.font = mono(fs); hud.textBaseline = "middle";
-  const i1 = lastBefore(ANN, t, "t");
-  for (let i = Math.max(0, i1 - 8); i <= i1; i++) {
-    const a = ANN[i]; if (t >= a.end) continue;
-    const shown = a.text.slice(0, Math.max(1, Math.floor((t - a.t) * 75)));
-    const lines = wrap(hud, shown, W * 0.88), sl = SLOTS[a.slot], jit = !RM && t - a.t < 0.08 ? (Math.random() - 0.5) * 10 : 0;
-    const fade = 1 - ramp(t, a.end - 0.25, a.end);
-    lines.forEach((ln, k) => {
-      const w = hud.measureText(ln).width, y = sl.y * H + k * fs * 1.4, x = sl.al === "l" ? 0.045 * W + jit : W - 0.045 * W - w + jit;
-      hud.globalAlpha = 0.8 * fade; hud.fillStyle = C.ink; hud.fillRect(x - 5, y - fs * 0.72, w + 10, fs * 1.44);
-      hud.globalAlpha = fade; hud.fillStyle = a.c; hud.textAlign = "left"; hud.fillText(ln, x, y); hud.globalAlpha = 1;
-    });
+function drawCaption(t) {
+  const i = lastBefore(CAP, t, "t"); if (i < 0) return;
+  const c = CAP[i], nx = CAP[i + 1], si = sceneAt(c.t);
+  const until = Math.min(nx ? nx.t : Infinity, SCENES[si].r[1]);
+  const a = ramp(t, c.t, c.t + 0.9) * (1 - ramp(t, until - 0.6, until));
+  if (a <= 0) return;
+  const fs = 0.05 * W, x = 0.045 * W, y0 = LY.cap.y0;
+  hud.font = serifUp(fs); hud.textBaseline = "top"; hud.textAlign = "left";
+  const lines = wrap(hud, c.text, W * 0.91);
+  hud.globalAlpha = a; hud.fillStyle = C.bone;
+  lines.forEach((ln, k) => hud.fillText(ln, x, y0 + k * fs * 1.18));
+  if (c.tech) {
+    hud.font = mono(0.027 * W); hud.fillStyle = c.c === C.bone ? C.dim : c.c;
+    hud.fillText(c.tech, x, y0 + lines.length * fs * 1.18 + 0.018 * W);
   }
+  hud.globalAlpha = 1;
 }
 function drawHud(t, si) {
   const f = mono(0.028 * W);
@@ -706,19 +678,12 @@ function drawHud(t, si) {
   });
 }
 function drawTitle(t, si) {
-  const dt = t - SCENES[si].r[0]; if (dt < 0 || dt > 1.1) return;
-  const a = 1 - ramp(dt, 0.55, 1.1), s = 0.14 * W * (1 + 0.05 * dt), off = RM ? 0 : 7 * Math.exp(-dt * 6);
-  const { cx } = LY.main, y = LY.main.y0 + 0.13 * W;
-  if (off > 0.5) { text(hud, SCENES[si].title, cx - off, y, { c: C.al, f: serif(s), al: "center", bl: "middle", a: a * 0.7 }); text(hud, SCENES[si].title, cx + off, y, { c: C.be, f: serif(s), al: "center", bl: "middle", a: a * 0.7 }); }
-  text(hud, SCENES[si].title, cx, y, { c: C.bone, f: serif(s), al: "center", bl: "middle", a });
-}
-function glitch(t, si) {
-  if (RM) return;
-  const dt = t - SCENES[si].r[0]; if (dt < 0 || dt > 0.14) return;
-  for (let k = 0; k < 7; k++) {
-    const sy = Math.random() * H, sh = 4 + Math.random() * H * 0.05, dx = (Math.random() - 0.5) * W * 0.16;
-    fx.drawImage(fxC, 0, sy * DPR, fxC.width, sh * DPR, dx, sy, W, sh);
-  }
+  const dt = t - SCENES[si].r[0]; if (dt < 0 || dt > 3.2) return;
+  const a = ramp(dt, 0, 0.8) * (1 - ramp(dt, 2.2, 3.2));
+  const { cx, cy } = LY.main;
+  hud.globalAlpha = a * 0.7; hud.fillStyle = C.ink; hud.beginPath(); hud.arc(cx, cy, LY.main.r * 0.62, 0, TAU); hud.fill(); hud.globalAlpha = 1;
+  text(hud, `0${si + 1}`, cx, cy - 0.1 * W, { c: C.dim, f: mono(0.03 * W), al: "center", bl: "middle", a });
+  text(hud, SCENES[si].title, cx, cy + 0.01 * W, { c: C.bone, f: serif(0.12 * W), al: "center", bl: "middle", a });
 }
 let freq;
 function drawStrip() {
@@ -754,7 +719,7 @@ function pause() { pausedT = curT(); if (src) { src.onended = null; try { src.st
 function curT() {
   if (state === "playing") { const t = actx.currentTime - startAt; if (t >= END) { state = "ended"; pausedT = END; syncBar(); return END; } return t; }
   if (state === "paused" || state === "ended") return pausedT;
-  return (performance.now() / 1000) % 10;
+  return 2 + (performance.now() / 1000) % 26;
 }
 const gate = document.getElementById("gate"), go = document.getElementById("go"), bar = document.getElementById("bar"), playBtn = document.getElementById("play");
 const chips = SCENES.map((s, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = s.chip; b.id = "scene-" + i; b.addEventListener("click", () => playFrom(s.r[0])); bar.appendChild(b); return b; });
@@ -770,24 +735,19 @@ addEventListener("keydown", e => { if (e.code === "Space" && e.target === docume
 function frame() {
   const t = curT(), si = sceneAt(t);
   if (si !== lastScene) { lastScene = si; syncBar(); }
-  fx.globalCompositeOperation = "source-over"; fx.fillStyle = "rgba(6,7,12,0.26)"; fx.fillRect(0, 0, W, H);
-  glitch(t, si);
+  fx.globalCompositeOperation = "source-over"; fx.fillStyle = "rgba(6,7,12,0.16)"; fx.fillRect(0, 0, W, H);
   fx.globalCompositeOperation = "lighter";
   hud.clearRect(0, 0, W, H);
   if (t >= S5[1]) drawEnd(t);
   else if (state === "idle") drawS1(t);
   else [drawS1, drawS2, drawS3, drawS4, drawS5][si](t);
-  if (state !== "idle" && t < S5[1]) { drawTitle(t, si); drawAnnotations(t); drawHud(t, si); drawStrip(); }
-  if (state !== "idle" && !RM) {
-    const ki = lastBefore(KICKS, t, "t");
-    if (ki >= 0) { const e = Math.exp(-(t - KICKS[ki].t) * 12) * KICKS[ki].a; if (e > 0.01) { hud.fillStyle = `rgba(236,230,214,${0.07 * e})`; hud.fillRect(0, 0, W, H); } }
-  }
+  if (state !== "idle" && t < S5[1]) { drawTitle(t, si); drawCaption(t); drawHud(t, si); drawStrip(); }
   requestAnimationFrame(frame);
 }
 layout();
 requestAnimationFrame(frame);
 synthesize((p, i) => { if (!synthDone) go.textContent = `Synthesizing ${Math.floor(p * 100)}%`; }).then(() => {
-  go.disabled = false; go.textContent = `Play · ${Math.round(END)} s · sound on`;
+  go.disabled = false; go.textContent = `Play · ${Math.floor(END / 60)} min ${Math.round(END % 60)} s · sound on`;
 });
 window.__phaseNest = { L, R, SR, SCENES, get peak() { return peakBefore; } };
 </script>
