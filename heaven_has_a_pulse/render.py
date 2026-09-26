@@ -423,7 +423,7 @@ def main():
     n = int(T.DURATION * FPS)
     cmd = [ff, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-i", audio,
-           "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-tune", "grain",
+           "-c:v", "libx264", "-preset", "slow", "-crf", "23",
            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k", "-shortest",
            "-movflags", "+faststart", out]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
