@@ -1,0 +1,2699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hallowlight</title>
+<meta name="description" content="Carve a jack-o'-lantern by moonlight, light the candle, and turn the porch light off.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one full-bleed night scene. The name and a one-line hint sit top-left; the carving kit docks along the bottom edge. */
+:root {
+  color-scheme: dark;
+  --night: #05060b;
+  --ink: #efe6d2;
+  --mist: #9aa3b6;
+  --ember: #ff9a4a;
+  --wax: #ffdcaa;
+  --glass: rgba(8, 10, 16, 0.74);
+  --line: rgba(239, 230, 210, 0.16);
+  --display: "IM Fell English SC", "IM Fell English", Georgia, "Times New Roman", serif;
+  --serif: "IM Fell English", Georgia, "Times New Roman", serif;
+  --ui: "Spline Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+  --step-ui: 0.7rem;
+  --step-hint: 1.05rem;
+  --step-name: clamp(2rem, 4.6vw, 3.2rem);
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--serif);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+  background: var(--night);
+}
+#scene.carve { cursor: crosshair; }
+#scene.drag { cursor: grabbing; }
+
+.brand {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 18px);
+  left: 20px;
+  right: 20px;
+  display: grid;
+  gap: 6px;
+  max-width: 30rem;
+  pointer-events: none;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.75);
+}
+.brand h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: var(--step-name);
+  line-height: 0.95;
+  letter-spacing: 0.035em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.brand .hint {
+  margin: 0;
+  font-style: italic;
+  font-size: var(--step-hint);
+  line-height: 1.35;
+  color: var(--mist);
+  text-wrap: balance;
+  transition: opacity 400ms ease;
+}
+
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  transform: translateX(-50%);
+  width: min(62rem, calc(100% - 32px));
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+}
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.label {
+  font-family: var(--ui);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mist);
+  padding-right: 2px;
+}
+.dock button {
+  font-family: var(--ui);
+  font-size: var(--step-ui);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+.dock button:hover { border-color: rgba(255, 154, 74, 0.6); color: var(--wax); }
+.dock button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.dock button[aria-pressed="true"] {
+  background: rgba(255, 154, 74, 0.16);
+  border-color: var(--ember);
+  color: var(--wax);
+}
+.dock button.key { border-color: rgba(255, 154, 74, 0.5); color: var(--wax); }
+.dock button:disabled { opacity: 0.4; cursor: default; }
+.rule { width: 1px; height: 22px; background: var(--line); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 18px);
+  transform: translateX(-50%);
+  font-family: var(--ui);
+  font-size: var(--step-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wax);
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 7px 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+.toast.show { opacity: 1; }
+
+.fallback {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 24px;
+  text-align: center;
+  font-size: var(--step-hint);
+  color: var(--mist);
+}
+
+body.film .brand, body.film .dock, body.film .toast { display: none; }
+
+@media (max-width: 640px) {
+  .brand { gap: 4px; }
+  .brand .hint { font-size: 0.95rem; max-width: 22rem; }
+  .dock { padding: 8px 6px; gap: 6px; }
+  .row, .group { gap: 5px; }
+  .dock button { font-size: 0.64rem; padding: 7px 7px; letter-spacing: 0.02em; }
+  .rule { display: none; }
+  .label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand .hint, .toast, .dock button { transition: none; }
+}
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="A pumpkin on a foggy night. Drag across it to carve; drag the background to look around."></canvas>
+
+<header class="brand">
+  <h1>Hallowlight</h1>
+  <p class="hint" id="hint" aria-live="polite">Drag across the pumpkin to cut. Close a loop to push the piece in.</p>
+</header>
+
+<nav class="dock" id="dock" aria-label="Carving kit">
+  <div class="row">
+    <div class="group" role="group" aria-label="Templates">
+      <span class="label">Templates</span>
+      <button type="button" id="face-classic" data-face="classic">Classic</button>
+      <button type="button" id="face-wicked" data-face="wicked">Wicked</button>
+      <button type="button" id="face-startled" data-face="startled">Startled</button>
+      <button type="button" id="face-bat" data-face="bat">Bat</button>
+      <button type="button" id="face-random" data-face="random">Surprise me</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="group" role="group" aria-label="Blade width">
+      <span class="label">Blade</span>
+      <button type="button" id="blade-0" data-blade="0" aria-pressed="false">Fine</button>
+      <button type="button" id="blade-1" data-blade="1" aria-pressed="true">Medium</button>
+      <button type="button" id="blade-2" data-blade="2" aria-pressed="false">Wide</button>
+    </div>
+    <span class="rule" aria-hidden="true"></span>
+    <div class="group">
+      <button type="button" id="undo" title="Undo (Z)">Undo</button>
+      <button type="button" id="fresh" title="New pumpkin (N)">New pumpkin</button>
+    </div>
+    <span class="rule" aria-hidden="true"></span>
+    <div class="group">
+      <button type="button" id="candle" class="key" title="Candle (C)">Light candle</button>
+      <button type="button" id="porch" class="key" title="Porch light (L)">Lights out</button>
+    </div>
+    <span class="rule" aria-hidden="true"></span>
+    <div class="group">
+      <button type="button" id="sound" aria-pressed="false" title="Sound (M)">Sound off</button>
+      <button type="button" id="save">Save image</button>
+    </div>
+  </div>
+</nav>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+
+const QS = new URLSearchParams(location.search);
+const FILM = QS.has('film');
+const FILM_W = +(QS.get('w') || 1080), FILM_H = +(QS.get('h') || 1080);
+const FILM_Q = +(QS.get('q') || 3);
+if (FILM) document.body.classList.add('film');
+
+// ---------------------------------------------------------------- math
+const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const rotY = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * v[0] - s * v[2], v[1], s * v[0] + c * v[2]]; };
+const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---------------------------------------------------------------- pumpkin geometry (mirrors the shader)
+const GROUND = -0.80, SHELL = 0.06, FACE_EXT = 0.9, RANGE = 0.14;
+const PC = [0, -0.06, 0];
+
+function bodySDF(x, y, z) {
+  const r = Math.hypot(x, z);
+  const a = r < 1e-6 ? 0 : Math.atan2(z, x);
+  const c = Math.abs(Math.cos(a * 5));
+  const yn = clamp(y * 1.282, -1, 1);
+  const g = 0.032 + 0.085 * yn * yn;
+  const s = 1 - g * (1 - Math.sqrt(c));
+  const ex = r / s;
+  const k0 = Math.hypot(ex, y / 0.78), k1 = Math.hypot(ex, y / 0.6084);
+  let d = k0 * (k0 - 1) / Math.max(k1, 1e-4) * s;
+  const dim = Math.exp(-r * r * 8);
+  d += dim * (0.17 * sstep(0.1, 0.7, y) + 0.07 * (1 - sstep(-0.7, -0.1, y)));
+  return d;
+}
+function surfaceAt(x, y) {
+  if (bodySDF(x, y, 0) > -0.004) return null;
+  let lo = 0, hi = 1.25;
+  for (let i = 0; i < 24; i++) {
+    const m = 0.5 * (lo + hi);
+    if (bodySDF(x, y, m) > 0) hi = m; else lo = m;
+  }
+  return [x, y, 0.5 * (lo + hi)];
+}
+function bodyNormal(q) {
+  const e = 1e-3;
+  return norm([
+    bodySDF(q[0] + e, q[1], q[2]) - bodySDF(q[0] - e, q[1], q[2]),
+    bodySDF(q[0], q[1] + e, q[2]) - bodySDF(q[0], q[1] - e, q[2]),
+    bodySDF(q[0], q[1], q[2] + e) - bodySDF(q[0], q[1], q[2] - e),
+  ]);
+}
+// world ray -> local hit point on the outer skin, or null
+function pickBody(roW, rdW, yaw) {
+  const o = rotY(sub(roW, PC), yaw), d = rotY(rdW, yaw);
+  const b = dot(o, d), c = dot(o, o) - 1.12 * 1.12, h = b * b - c;
+  if (h < 0) return null;
+  const sq = Math.sqrt(h);
+  let t = Math.max(0, -b - sq);
+  const tEnd = -b + sq;
+  for (let i = 0; i < 140 && t < tEnd; i++) {
+    const p = add(o, mul(d, t));
+    const dd = bodySDF(p[0], p[1], p[2]);
+    if (dd < 2e-4) return p;
+    t += dd * 0.7;
+  }
+  return null;
+}
+const toWorld = (q, yaw) => add(rotY(q, -yaw), PC);
+
+// ---------------------------------------------------------------- camera
+function cameraFrame(v, aspect) {
+  const cp = Math.cos(v.pitch);
+  const target = [0, v.ty, 0];
+  const pos = [v.dist * Math.sin(v.yaw) * cp, v.ty + v.dist * Math.sin(v.pitch), v.dist * Math.cos(v.yaw) * cp];
+  const fwd = norm(sub(target, pos));
+  const right = norm(cross(fwd, [0, 1, 0]));
+  const up = cross(right, fwd);
+  const tanF = Math.max(Math.tan(20 * Math.PI / 180), 0.3 / aspect);
+  return { pos, fwd, right, up, tanF };
+}
+function screenRay(cam, uvx, uvy) {
+  return norm(add(cam.fwd, add(mul(cam.right, uvx * cam.tanF), mul(cam.up, uvy * cam.tanF))));
+}
+
+// ---------------------------------------------------------------- carving mask
+// Ops are drawn into a 512x512 canvas covering face coords [-0.9, 0.9]^2, then turned into a signed
+// distance field (negative inside cuts). Channel R = all cuts, G = the piece currently being pushed in.
+const INF = 1e20;
+class Mask {
+  constructor(N = 512) {
+    this.N = N;
+    this.cv = document.createElement('canvas');
+    this.cv.width = this.cv.height = N;
+    this.ctx = this.cv.getContext('2d', { willReadFrequently: true });
+    this.pcv = document.createElement('canvas');
+    this.pcv.width = this.pcv.height = N;
+    this.pctx = this.pcv.getContext('2d', { willReadFrequently: true });
+    this.ops = [];
+    this.active = null;
+    this.piece = null;           // { pts, t0 }
+    this.data = new Uint8Array(N * N * 2).fill(255);
+    this.gOut = new Float64Array(N * N);
+    this.gIn = new Float64Array(N * N);
+    this.f = new Float64Array(N);
+    this.z = new Float64Array(N + 1);
+    this.v = new Uint16Array(N);
+    this.dirty = true;
+    this.pieceDirty = false;
+    this.open = 0;               // carved area fraction (0..1)
+    this.version = 0;
+  }
+  px(p) { return [(p[0] / (2 * FACE_EXT) + 0.5) * this.N, (0.5 - p[1] / (2 * FACE_EXT)) * this.N]; }
+  wpx(w) { return w * this.N / (2 * FACE_EXT); }
+  path(ctx, pts, close) {
+    ctx.beginPath();
+    pts.forEach((p, i) => { const q = this.px(p); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+    if (close) ctx.closePath();
+  }
+  drawOp(ctx, op) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = this.wpx(op.w);
+    if (op.type === 'fill') {
+      this.path(ctx, op.pts, true);
+      ctx.fill('nonzero');
+      ctx.stroke();
+    } else {
+      if (op.pts.length === 1) {
+        const q = this.px(op.pts[0]);
+        ctx.beginPath(); ctx.arc(q[0], q[1], ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
+      } else {
+        this.path(ctx, op.pts, false);
+        ctx.stroke();
+      }
+    }
+  }
+  render() {
+    const { ctx, N } = this;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, N, N);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#fff';
+    for (const op of this.ops) this.drawOp(ctx, op);
+    if (this.active && this.active.pts.length) this.drawOp(ctx, { type: 'cut', pts: this.active.pts, w: this.active.w });
+  }
+  edt1d(grid, offset, stride, n) {
+    const { f, v, z } = this;
+    for (let q = 0; q < n; q++) f[q] = grid[offset + q * stride];
+    v[0] = 0; z[0] = -INF; z[1] = INF;
+    let k = 0;
+    for (let q = 1; q < n; q++) {
+      let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+      while (s <= z[k]) {
+        k--;
+        s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+      }
+      k++;
+      v[k] = q; z[k] = s; z[k + 1] = INF;
+    }
+    for (let q = 0, j = 0; q < n; q++) {
+      while (z[j + 1] < q) j++;
+      const r = v[j];
+      grid[offset + q * stride] = f[r] + (q - r) * (q - r);
+    }
+  }
+  edt(grid) {
+    const N = this.N;
+    for (let x = 0; x < N; x++) this.edt1d(grid, x, N, N);
+    for (let y = 0; y < N; y++) this.edt1d(grid, y * N, 1, N);
+  }
+  // rgba from a canvas -> signed distance bytes into channel ch (0 or 1)
+  bake(rgba, ch, measure) {
+    const { N, gOut, gIn, data } = this;
+    let area = 0;
+    for (let i = 0, n = N * N; i < n; i++) {
+      const a = rgba[i * 4] / 255;
+      if (a <= 0) { gOut[i] = INF; gIn[i] = 0; }
+      else if (a >= 1) { gOut[i] = 0; gIn[i] = INF; area++; }
+      else { const d = 0.5 - a; gOut[i] = d > 0 ? d * d : 0; gIn[i] = d < 0 ? d * d : 0; area += a; }
+    }
+    this.edt(gOut);
+    this.edt(gIn);
+    const k = (2 * FACE_EXT / N) / (2 * RANGE);
+    for (let y = 0; y < N; y++) {
+      const row = (N - 1 - y) * N;          // canvas row 0 is the top; texture row 0 is the bottom
+      for (let x = 0; x < N; x++) {
+        const i = y * N + x;
+        const d = Math.sqrt(gOut[i]) - Math.sqrt(gIn[i]);
+        data[(row + x) * 2 + ch] = clamp(Math.round((0.5 + d * k) * 255), 0, 255);
+      }
+    }
+    if (measure) this.open = area / (N * N);
+  }
+  update() {
+    let changed = false;
+    if (this.dirty) {
+      this.render();
+      this.bake(this.ctx.getImageData(0, 0, this.N, this.N).data, 0, true);
+      this.dirty = false;
+      changed = true;
+    }
+    if (this.pieceDirty) {
+      const { pctx, N } = this;
+      pctx.fillStyle = '#000';
+      pctx.fillRect(0, 0, N, N);
+      if (this.piece) {
+        pctx.fillStyle = '#fff';
+        this.path(pctx, this.piece.pts, true);
+        pctx.fill('nonzero');
+        this.bake(pctx.getImageData(0, 0, N, N).data, 1, false);
+      } else {
+        for (let i = 1; i < this.data.length; i += 2) this.data[i] = 255;
+      }
+      this.pieceDirty = false;
+      changed = true;
+    }
+    if (changed) this.version++;
+    return changed;
+  }
+  clear() { this.ops = []; this.active = null; this.setPiece(null); this.dirty = true; }
+  setPiece(pts, t0 = 0) { this.piece = pts ? { pts, t0 } : null; this.pieceDirty = true; }
+}
+
+function pathLength(pts, closed) {
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) L += dist2(pts[i - 1], pts[i]);
+  if (closed && pts.length > 2) L += dist2(pts[pts.length - 1], pts[0]);
+  return L;
+}
+function polyArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  return Math.abs(a) / 2;
+}
+function segHit(a, b, c, d) {
+  const r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]];
+  const den = r[0] * s[1] - r[1] * s[0];
+  if (Math.abs(den) < 1e-12) return null;
+  const t = ((c[0] - a[0]) * s[1] - (c[1] - a[1]) * s[0]) / den;
+  const u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [a[0] + r[0] * t, a[1] + r[1] * t] : null;
+}
+
+// ---------------------------------------------------------------- templates (face coords, pumpkin units)
+const shape = (pts, closed = true) => ({ pts, closed });
+const mirror = s => shape(s.pts.map(([x, y]) => [-x, y]).reverse(), s.closed);
+function ellipse(cx, cy, rx, ry, n = 30, rot = 0) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+    out.push([cx + x * Math.cos(rot) - y * Math.sin(rot), cy + x * Math.sin(rot) + y * Math.cos(rot)]);
+  }
+  return out;
+}
+function arc(cx, cy, rx, ry, a0, a1, n = 16) {
+  const out = [];
+  for (let i = 0; i <= n; i++) { const a = lerp(a0, a1, i / n); out.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); }
+  return out;
+}
+// curved band whose edges follow y = y0 - k*(1-(x/w)^2); rectangular teeth hang into the opening
+function grin({ w, y0, top, bot, topTeeth = [], botTeeth = [], depth = 0.08, n = 26, tilt = 0 }) {
+  const fT = x => y0 - top * (1 - (x / w) ** 2) + tilt * x;
+  const fB = x => y0 - bot * (1 - (x / w) ** 2) + tilt * x;
+  const edge = (f, x0, x1, teeth, dy) => {
+    const dir = Math.sign(x1 - x0), pts = [];
+    const inTooth = x => teeth.some(([a, b]) => x > a && x < b);
+    const items = [];
+    for (let i = 0; i <= n; i++) { const x = lerp(x0, x1, i / n); if (!inTooth(x)) items.push({ x, pts: [[x, f(x)]] }); }
+    for (const [a, b] of teeth) {
+      const quad = [[a, f(a)], [a, f(a) + dy], [b, f(b) + dy], [b, f(b)]];
+      items.push({ x: dir > 0 ? a : b, pts: dir > 0 ? quad : quad.reverse() });
+    }
+    items.sort((p, q) => (p.x - q.x) * dir);
+    for (const it of items) pts.push(...it.pts);
+    return pts;
+  };
+  const pts = edge(fT, -w, w, topTeeth, -depth);
+  pts.push(...edge(fB, w, -w, botTeeth, depth).slice(1, -1));
+  return pts;
+}
+function jagged({ w, y0, top, bot, nT, nB, depth }) {
+  const fT = x => y0 - top * (1 - (x / w) ** 2), fB = x => y0 - bot * (1 - (x / w) ** 2);
+  const pts = [];
+  for (let i = 0; i <= nT * 2; i++) {
+    const x = -w + (2 * w * i) / (nT * 2);
+    pts.push([x, fT(x) - (i % 2 ? depth * Math.sqrt(Math.max(0, 1 - (x / w) ** 2)) : 0)]);
+  }
+  for (let i = 1; i < nB * 2; i++) {
+    const x = w - (2 * w * i) / (nB * 2);
+    pts.push([x, fB(x) + (i % 2 ? depth * Math.sqrt(Math.max(0, 1 - (x / w) ** 2)) : 0)]);
+  }
+  return pts;
+}
+function quadPts(p0, c, p1, n = 8) {
+  const out = [];
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, u = 1 - t;
+    out.push([u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]]);
+  }
+  return out;
+}
+function batShape(cx, cy, s) {
+  const right = [[0, 0.15], [0.03, 0.165], [0.055, 0.26], [0.08, 0.15], [0.12, 0.14]];
+  right.push(...quadPts([0.12, 0.14], [0.36, 0.25], [0.68, 0.37], 10));
+  const fingers = [[0.68, 0.37], [0.6, 0.15], [0.47, 0.09], [0.33, 0.02], [0.2, -0.05]];
+  for (let i = 1; i < fingers.length; i++) {
+    const a = fingers[i - 1], b = fingers[i];
+    const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
+    right.push(...quadPts(a, [m[0] - (dy / l) * 0.055, m[1] + (dx / l) * 0.055], b, 6));
+  }
+  right.push([0.11, -0.08], [0.06, -0.17], [0, -0.2]);
+  const left = right.slice(1, -1).map(([x, y]) => [-x, y]).reverse();
+  return [...right, ...left].map(([x, y]) => [cx + x * s, cy + y * s]);
+}
+function crescent(cx, cy, r1, ox, oy, r2) {
+  // outer circle minus an offset inner circle
+  const d = Math.hypot(ox, oy), a = (d * d + r1 * r1 - r2 * r2) / (2 * d);
+  const base = Math.atan2(oy, ox), half = Math.acos(clamp(a / r1, -1, 1));
+  const outer = arc(cx, cy, r1, r1, base + half, base + 2 * Math.PI - half, 26);
+  const p = outer[outer.length - 1], q = outer[0];
+  const b0 = Math.atan2(p[1] - (cy + oy), p[0] - (cx + ox)), b1 = Math.atan2(q[1] - (cy + oy), q[0] - (cx + ox));
+  let e = b1; while (e > b0) e -= 2 * Math.PI;
+  const inner = arc(cx + ox, cy + oy, r2, r2, b0, e, 20).slice(1, -1);
+  return [...outer, ...inner];
+}
+
+const TEMPLATES = {
+  classic: () => {
+    const L = shape([[-0.36, 0.43], [-0.15, 0.09], [-0.57, 0.09]]);
+    return [L, mirror(L), shape([[0, 0.06], [0.09, -0.1], [-0.09, -0.1]]),
+      shape(grin({ w: 0.62, y0: -0.15, top: 0.12, bot: 0.36, topTeeth: [[-0.25, -0.13], [0.13, 0.25]], botTeeth: [[-0.065, 0.065]], depth: 0.085 }))];
+  },
+  wicked: () => {
+    const L = shape([[-0.6, 0.37], [-0.15, 0.17], [-0.22, 0.05], [-0.5, 0.13]]);
+    return [L, mirror(L), shape([[-0.07, -0.02], [0.07, -0.02], [0, -0.12]]),
+      shape(jagged({ w: 0.68, y0: -0.12, top: 0.12, bot: 0.42, nT: 5, nB: 4, depth: 0.1 }))];
+  },
+  startled: () => [
+    shape(ellipse(-0.3, 0.2, 0.12, 0.15)), shape(ellipse(0.3, 0.2, 0.12, 0.15)),
+    shape(arc(-0.3, 0.33, 0.17, 0.1, Math.PI * 0.85, Math.PI * 0.2, 10), false),
+    shape(arc(0.3, 0.33, 0.17, 0.1, Math.PI * 0.8, Math.PI * 0.15, 10), false),
+    shape(ellipse(0, -0.33, 0.12, 0.17)),
+  ],
+  bat: () => [
+    shape(batShape(0, 0.0, 1.0)),
+    shape(crescent(0.4, 0.36, 0.11, -0.05, 0.035, 0.095)),
+    shape(ellipse(-0.47, 0.38, 0.03, 0.03, 14)),
+    shape(ellipse(-0.6, 0.2, 0.022, 0.022, 12)),
+    shape(ellipse(0.62, 0.08, 0.025, 0.025, 12)),
+  ],
+  random: (seed) => randomFace(rng(seed)),
+};
+
+function randomFace(r) {
+  const pick = a => a[Math.floor(r() * a.length)];
+  const out = [];
+  const ex = 0.25 + r() * 0.1, ey = 0.17 + r() * 0.08, es = 0.1 + r() * 0.06;
+  const eye = pick(['tri', 'round', 'slant', 'diamond', 'happy', 'x']);
+  const wink = r() < 0.18;
+  const makeEye = (cx, side) => {
+    switch (eye) {
+      case 'tri': return [shape([[cx, ey + es * 1.3], [cx + es, ey - es * 0.6], [cx - es, ey - es * 0.6]])];
+      case 'round': return [shape(ellipse(cx, ey, es * 0.95, es * 1.15))];
+      case 'slant': return [shape([[cx - side * es * 1.4, ey + es], [cx + side * es * 1.1, ey - es * 0.15], [cx + side * es * 0.6, ey - es * 0.9], [cx - side * es * 1.1, ey - es * 0.3]])];
+      case 'diamond': return [shape([[cx, ey + es * 1.25], [cx + es * 0.9, ey], [cx, ey - es * 1.1], [cx - es * 0.9, ey]])];
+      case 'happy': {
+        const o = arc(cx, ey - es * 0.4, es * 1.2, es * 1.2, 0, Math.PI, 14);
+        const i = arc(cx, ey - es * 0.4, es * 0.62, es * 0.62, Math.PI, 0, 10);
+        return [shape([...o, ...i])];
+      }
+      default: return [shape([[cx - es, ey + es], [cx + es, ey - es]], false), shape([[cx + es, ey + es], [cx - es, ey - es]], false)];
+    }
+  };
+  out.push(...makeEye(-ex, -1));
+  if (wink) out.push(shape(arc(ex, ey + es * 0.2, es * 1.1, es * 0.6, Math.PI * 0.95, Math.PI * 0.05, 10), false));
+  else out.push(...makeEye(ex, 1).map(s => (eye === 'tri' || eye === 'round' || eye === 'diamond' || eye === 'x' ? s : mirror(makeEye(-ex, -1)[0]))));
+  if (r() < 0.35) {
+    const by = ey + es * 1.6 + 0.04;
+    const tilt = (r() - 0.5) * 0.12;
+    out.push(shape([[-ex - es, by - tilt], [-ex + es * 0.9, by + tilt]], false), shape([[ex - es * 0.9, by + tilt], [ex + es, by - tilt]], false));
+  }
+  const nose = pick(['tri', 'itri', 'none', 'round']);
+  if (nose === 'tri') out.push(shape([[0, 0.05], [0.075, -0.08], [-0.075, -0.08]]));
+  if (nose === 'itri') out.push(shape([[-0.07, 0.02], [0.07, 0.02], [0, -0.09]]));
+  if (nose === 'round') out.push(shape(ellipse(0, -0.03, 0.045, 0.045, 14)));
+  const mouth = pick(['grin', 'grin', 'jagged', 'o', 'stitch', 'wavy']);
+  const mw = 0.5 + r() * 0.17, my = -0.16 - r() * 0.04;
+  if (mouth === 'grin') {
+    const nt = 1 + Math.floor(r() * 3), teeth = [];
+    for (let i = 0; i < nt; i++) { const c = lerp(-mw * 0.55, mw * 0.55, nt === 1 ? 0.5 : i / (nt - 1)) + (r() - 0.5) * 0.04; teeth.push([c - 0.05, c + 0.05]); }
+    const bt = r() < 0.6 ? [[-0.05 + (r() - 0.5) * 0.1, 0.05 + (r() - 0.5) * 0.1].sort((a, b) => a - b)] : [];
+    out.push(shape(grin({ w: mw, y0: my, top: 0.1 + r() * 0.05, bot: 0.3 + r() * 0.1, topTeeth: teeth, botTeeth: bt, depth: 0.07 + r() * 0.03, tilt: (r() - 0.5) * 0.12 })));
+  } else if (mouth === 'jagged') {
+    out.push(shape(jagged({ w: mw + 0.05, y0: my + 0.02, top: 0.1, bot: 0.38, nT: 4 + Math.floor(r() * 3), nB: 3 + Math.floor(r() * 3), depth: 0.09 })));
+  } else if (mouth === 'o') {
+    out.push(shape(ellipse(0, my - 0.15, 0.11 + r() * 0.05, 0.14 + r() * 0.05)));
+  } else if (mouth === 'stitch') {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) { const x = lerp(-mw, mw, i / 12); pts.push([x, my - 0.12 + 0.06 * (x / mw) ** 2]); }
+    out.push(shape(pts, false));
+    for (let i = 0; i < 6; i++) { const x = lerp(-mw * 0.8, mw * 0.8, i / 5), y = my - 0.12 + 0.06 * (x / mw) ** 2; out.push(shape([[x - 0.01, y + 0.06], [x + 0.01, y - 0.06]], false)); }
+  } else {
+    const top = [], bot = [];
+    for (let i = 0; i <= 18; i++) {
+      const x = lerp(-mw, mw, i / 18), k = 1 - (x / mw) ** 2;
+      top.push([x, my - 0.12 - 0.035 * Math.sin(i * 1.05) * k]);
+      bot.push([x, my - 0.12 - (0.05 + 0.13 * k) - 0.035 * Math.sin(i * 1.05) * k]);
+    }
+    out.push(shape([...top, ...bot.reverse().slice(1, -1)]));
+  }
+  if (r() < 0.2) out.push(shape([[0.5, 0.42], [0.56, 0.34], [0.52, 0.3], [0.6, 0.22], [0.57, 0.18]], false));
+  return out;
+}
+
+// ---------------------------------------------------------------- phantom carver: a knife that carves a template on its own
+class Phantom {
+  constructor(shapes, t0, { speed = 1.0, w = 0.03, enter = true } = {}) {
+    this.w = w;
+    this.speed = speed;
+    this.segs = [];
+    let t = t0 + (enter ? 0.7 : 0.15);
+    let prev = enter ? null : null;
+    this.t0 = t0;
+    this.enterFrom = [0.95, 0.95];
+    this.enter = enter;
+    for (const sh of shapes) {
+      const pts = sh.pts;
+      const L = pathLength(pts, sh.closed);
+      const cum = [0];
+      for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dist2(pts[i - 1], pts[i]));
+      if (sh.closed) cum.push(L);
+      const travel = prev ? 0.22 + dist2(prev, pts[0]) * 0.55 : 0.0;
+      const seg = { sh, L, cum, from: prev || pts[0], tTravel: t, tCut: t + travel + 0.14, tEnd: 0, tLift: 0 };
+      seg.tEnd = seg.tCut + L / speed;
+      seg.tLift = seg.tEnd + 0.14;
+      this.segs.push(seg);
+      t = seg.tLift;
+      prev = sh.closed ? pts[0] : pts[pts.length - 1];
+    }
+    this.tExit = t;
+    this.tDone = t + 0.7;
+    this.committed = 0;
+  }
+  pointAt(seg, s) {
+    const { pts, closed } = seg.sh, cum = seg.cum;
+    s = clamp(s, 0, seg.L);
+    const n = closed ? pts.length + 1 : pts.length;
+    for (let i = 1; i < n; i++) {
+      if (s <= cum[i] || i === n - 1) {
+        const a = pts[i - 1], b = pts[i % pts.length];
+        const k = clamp((s - cum[i - 1]) / Math.max(cum[i] - cum[i - 1], 1e-6), 0, 1);
+        return { p: [lerp(a[0], b[0], k), lerp(a[1], b[1], k)], i, tan: [b[0] - a[0], b[1] - a[1]] };
+      }
+    }
+    return { p: pts[0], i: 1, tan: [1, 0] };
+  }
+  // carving state at time t: committed shape count, active partial stroke
+  strokesAt(t) {
+    let done = 0, active = null;
+    for (const seg of this.segs) {
+      if (t >= seg.tEnd) { done++; continue; }
+      if (t > seg.tCut) {
+        const s = (t - seg.tCut) * this.speed;
+        const at = this.pointAt(seg, s);
+        const pts = seg.sh.pts.slice(0, at.i);
+        pts.push(at.p);
+        active = { pts, w: this.w };
+      }
+      break;
+    }
+    return { done, active };
+  }
+  // knife placement: face point, how far it is pushed in (+) or hovering (-), and cut direction
+  knifeAt(t) {
+    const hover = -0.05;
+    if (t < this.t0) return null;
+    if (this.enter && t < this.segs[0].tCut - 0.14) {
+      const k = ease(clamp((t - this.t0) / 0.7, 0, 1));
+      const s0 = this.segs[0].sh.pts[0];
+      return { p: [lerp(0.95, s0[0], k), lerp(0.98, s0[1], k)], depth: lerp(-1.1, hover, k), tan: [s0[0] - 0.95, s0[1] - 0.98], cutting: false };
+    }
+    for (let i = 0; i < this.segs.length; i++) {
+      const seg = this.segs[i];
+      if (t < seg.tCut) {
+        const start = seg.sh.pts[0];
+        if (t < seg.tCut - 0.14) {
+          const k = ease(clamp((t - seg.tTravel) / Math.max(seg.tCut - 0.14 - seg.tTravel, 1e-3), 0, 1));
+          return { p: [lerp(seg.from[0], start[0], k), lerp(seg.from[1], start[1], k)], depth: hover - Math.sin(Math.PI * k) * 0.1, tan: [start[0] - seg.from[0], start[1] - seg.from[1]], cutting: false };
+        }
+        const k = ease(clamp((t - (seg.tCut - 0.14)) / 0.14, 0, 1));
+        const nx = this.pointAt(seg, 0.02);
+        return { p: start, depth: lerp(hover, 0.09, k), tan: nx.tan, cutting: false };
+      }
+      if (t < seg.tEnd) {
+        const s = (t - seg.tCut) * this.speed;
+        const at = this.pointAt(seg, s), back = this.pointAt(seg, s - 0.06);
+        return { p: at.p, depth: 0.09, tan: [at.p[0] - back.p[0] + at.tan[0] * 0.02, at.p[1] - back.p[1] + at.tan[1] * 0.02], cutting: true };
+      }
+      if (t < seg.tLift) {
+        const k = ease(clamp((t - seg.tEnd) / 0.14, 0, 1));
+        const end = seg.sh.closed ? seg.sh.pts[0] : seg.sh.pts[seg.sh.pts.length - 1];
+        const at = this.pointAt(seg, seg.L - 0.001);
+        return { p: end, depth: lerp(0.09, hover, k), tan: at.tan, cutting: false };
+      }
+    }
+    if (t < this.tDone) {
+      const last = this.segs[this.segs.length - 1];
+      const end = last.sh.closed ? last.sh.pts[0] : last.sh.pts[last.sh.pts.length - 1];
+      const k = ease(clamp((t - this.tExit) / 0.7, 0, 1));
+      return { p: [lerp(end[0], 0.95, k), lerp(end[1], 0.98, k)], depth: lerp(hover, -1.1, k), tan: [0.95 - end[0], 0.98 - end[1]], cutting: false };
+    }
+    return null;
+  }
+}
+
+// knife pose in world space from a face point
+function knifePose(face, depth, tan2, yaw, t, sawAmp) {
+  let fx = clamp(face[0], -0.86, 0.86), fy = clamp(face[1], -0.7, 0.7);
+  let q = surfaceAt(fx, fy);
+  if (!q) q = surfaceAt(fx * 0.8, fy * 0.8) || [0, 0, 1];
+  const nL = bodyNormal(q);
+  const nW = rotY(nL, -yaw), pW = toWorld(q, yaw);
+  const A = norm(add(mul(nW, 0.62), [0, 0.8, 0]));
+  let T = rotY([tan2[0], tan2[1], 0], -yaw);
+  T = sub(T, mul(nW, dot(T, nW)));
+  let B = sub(T, mul(A, dot(T, A)));
+  if (Math.hypot(B[0], B[1], B[2]) < 1e-5) B = cross(A, [0, 0, 1]);
+  B = norm(B);
+  const C = norm(cross(A, B));
+  const saw = sawAmp * Math.sin(t * Math.PI * 2 * 5.5);
+  // the blade runs along A, so push the tip in along A: the blade then crosses the skin right at the cut
+  const tip = add(pW, mul(A, saw - depth * 1.3));
+  return { tip, A, B, C };
+}
+
+// ---------------------------------------------------------------- shaders
+const VS = `#version 300 es
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const FS_SCENE = `#version 300 es
+precision highp float;
+precision highp sampler3D;
+
+uniform vec2 uRes;
+uniform float uTime, uFrame, uQuality, uShift;
+uniform vec3 uCamPos, uCamFwd, uCamRight, uCamUp;
+uniform float uTanFov;
+uniform sampler2D uMask;
+uniform sampler3D uNoise;
+uniform sampler2D uBack;
+uniform float uYaw, uCandle, uFlameSize, uPorch, uMoon, uOpen, uPiece;
+uniform vec3 uFlameCol;
+uniform vec2 uSway;
+uniform vec4 uKnife;
+uniform vec3 uKA, uKB, uKC;
+uniform vec4 uCursor;
+
+out vec4 outColor;
+
+#define PI 3.14159265359
+#define GROUND -0.80
+#define SHELL 0.06
+#define FACE_EXT 0.9
+#define RANGE 0.14
+#define R_MID 17.0
+#define R_FAR 46.0
+
+const vec3 PC = vec3(0.0, -0.06, 0.0);
+const vec3 FLAME_B = vec3(0.0, -0.475, 0.0);
+const vec3 MOON_DIR = normalize(vec3(0.24, 0.21, -0.99));
+const vec3 ML = normalize(vec3(0.42, 0.68, -0.6));
+const vec3 PORCH = vec3(-3.4, 3.2, 5.2);
+const vec3 PORCH_COL = vec3(1.0, 0.86, 0.7) * 50.0;
+const vec3 MOON_COL = vec3(0.42, 0.56, 1.0) * 0.55;
+const vec3 SKY_AMB = vec3(0.02, 0.03, 0.06);
+const float CANDLE_I = 1.15;
+const vec3 SP1 = vec3(-1.5, -0.489, 1.4);
+const float SP1S = 0.42;
+const vec3 SP2 = vec3(2.35, -0.371, -1.35);
+const float SP2S = 0.58;
+
+// ------------------------------------------------ noise
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float hash13(vec3 p3) { p3 = fract(p3 * 0.1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+vec2 hash22(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.103, 0.0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm2(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { s += a * vnoise(p); p = p * 2.03 + 17.1; a *= 0.5; } return s; }
+float n3(vec3 p) { return texture(uNoise, p).r; }
+
+vec3 rotY(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(c * p.x - s * p.z, p.y, s * p.x + c * p.z); }
+float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+float sdEll(vec2 p, vec2 r) { float k0 = length(p / r); float k1 = length(p / (r * r)); return k0 * (k0 - 1.0) / max(k1, 1e-4); }
+
+// ------------------------------------------------ pumpkin
+float body(vec3 q, out float lobe) {
+  float r = length(q.xz);
+  float a = r < 1e-5 ? 0.0 : atan(q.z, q.x);
+  float c = abs(cos(a * 5.0));
+  lobe = c;
+  float yn = clamp(q.y * 1.282, -1.0, 1.0);
+  float g = 0.032 + 0.085 * yn * yn;
+  float s = 1.0 - g * (1.0 - sqrt(c));
+  float d = sdEll(vec2(r / s, q.y), vec2(1.0, 0.78)) * s;
+  float dim = exp(-r * r * 8.0);
+  d += dim * (0.17 * smoothstep(0.1, 0.7, q.y) + 0.07 * (1.0 - smoothstep(-0.7, -0.1, q.y)));
+  return d;
+}
+float stemD(vec3 q) {
+  vec3 s = q - vec3(0.0, 0.55, 0.0);
+  float h = clamp(s.y * 2.9, 0.0, 1.0);
+  s.xz -= vec2(0.1, 0.035) * h * h;
+  float r = length(s.xz);
+  float ang = r < 1e-5 ? 0.0 : atan(s.z, s.x);
+  float rad = mix(0.1, 0.066, h) + 0.008 * cos(ang * 7.0 + s.y * 5.0) + 0.045 * exp(-max(s.y, 0.0) * 30.0);
+  return max(r - rad, max(-s.y, s.y - 0.345)) * 0.7;
+}
+float lidD(vec3 q) {
+  if (q.y < 0.25) return 1.0;
+  float r = length(q.xz);
+  float a = r < 1e-5 ? 0.0 : atan(q.z, q.x);
+  float tri = abs(fract(a * (7.0 / (2.0 * PI))) - 0.5) * 2.0;
+  return (abs(r - (0.33 + 0.06 * tri)) - 0.0055) * 0.8;
+}
+float candleD(vec3 q) {
+  vec3 c = q - vec3(0.0, -0.585, 0.0);
+  vec2 d = vec2(length(c.xz) - 0.095, abs(c.y) - 0.085);
+  float cyl = min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - 0.01;
+  vec3 w = c - vec3(0.0, 0.1, 0.0);
+  float wick = max(length(w.xz) - 0.005, abs(w.y) - 0.022);
+  return min(cyl, wick);
+}
+vec2 maskD(vec2 xy) { return (texture(uMask, xy * (0.5 / FACE_EXT) + 0.5).rg - 0.5) * (2.0 * RANGE); }
+vec3 toLocal(vec3 p) { return rotY(p - PC, uYaw); }
+
+float pumpkinD(vec3 p) {
+  vec3 q = toLocal(p);
+  float lobe;
+  float b = body(q, lobe);
+  float d = max(b, -b - SHELL);
+  vec2 m = q.z > 0.0 ? maskD(q.xy) : vec2(RANGE);
+  d = max(d, -m.x);
+  d = max(d, -lidD(q));
+  if (uPiece >= 0.0) {
+    float bp = b + uPiece;
+    d = min(d, max(max(bp, -bp - SHELL), m.y + 0.003));
+  }
+  d = smin(d, stemD(q), 0.03);
+  return min(d, candleD(q));
+}
+float pumpkinB(vec3 p) {
+  float bnd = length(p - PC - vec3(0.0, 0.05, 0.0)) - 1.12;
+  return bnd > 0.1 ? bnd : pumpkinD(p);
+}
+float smallD(vec3 p, vec3 c, float s, float yaw) {
+  vec3 q = p - c;
+  float bnd = length(q) - s * 1.25;
+  if (bnd > 0.1) return bnd;
+  q = rotY(q, yaw) / s;
+  float l;
+  return min(body(q, l), stemD(q)) * s;
+}
+#define KS 1.3
+vec2 knifeParts(vec3 p) {
+  vec3 r = (p - uKnife.xyz) / KS;
+  vec3 k = vec3(dot(r, uKB), dot(r, uKA), dot(r, uKC));
+  float bnd = length(k - vec3(0.02, 0.33, 0.0)) - 0.37;
+  if (bnd > 0.05) return vec2(bnd);
+  float y = k.y;
+  float wE = 0.05 * sqrt(clamp(y / 0.15, 0.0, 1.0));
+  float wS = 0.008 * clamp(y / 0.04, 0.0, 1.0);
+  float d2 = max(max(k.x - wE, -k.x - wS) * 0.7, max(-y, y - 0.36));
+  float ht = mix(0.0045, 0.0008, clamp((k.x + wS) / max(wE + wS, 1e-3), 0.0, 1.0));
+  float blade = max(d2, abs(k.z) - ht);
+  vec3 bq = k - vec3(0.02, 0.372, 0.0);
+  float bol = length(max(abs(bq) - vec3(0.028, 0.012, 0.011), 0.0)) - 0.004;
+  vec3 hq = k - vec3(0.022, 0.52, 0.0);
+  float han = length(max(abs(hq) - vec3(0.021 + 0.003 * cos(hq.y * 14.0), 0.135, 0.014), 0.0)) - 0.011;
+  vec3 rq = vec3(hq.x, abs(abs(hq.y) - 0.06), abs(hq.z) - 0.026);
+  float riv = length(rq) - 0.0075;
+  return vec2(min(min(blade, bol), riv), han) * KS;
+}
+float knifeD(vec3 p) { vec2 k = knifeParts(p); return min(k.x, k.y); }
+
+float map(vec3 p) {
+  float d = pumpkinB(p);
+  d = min(d, smallD(p, SP1, SP1S, 0.9));
+  d = min(d, smallD(p, SP2, SP2S, 2.2));
+  if (uKnife.w > 0.5) d = min(d, knifeD(p));
+  return d;
+}
+
+vec3 calcNormal(vec3 p, float t) {
+  float e = 0.0005 + 0.00015 * t;
+  const vec2 k = vec2(1.0, -1.0);
+  return normalize(k.xyy * map(p + k.xyy * e) + k.yyx * map(p + k.yyx * e) + k.yxy * map(p + k.yxy * e) + k.xxx * map(p + k.xxx * e));
+}
+bool sphereHit(vec3 ro, vec3 rd, vec3 c, float r, float tmax) {
+  vec3 oc = ro - c;
+  float b = dot(oc, rd), cc = dot(oc, oc) - r * r;
+  float h = b * b - cc;
+  if (h < 0.0) return false;
+  h = sqrt(h);
+  return -b + h > 0.0 && -b - h < tmax;
+}
+float softShadow(vec3 ro, vec3 rd, float tmax, float k) {
+  bool any = sphereHit(ro, rd, PC + vec3(0.0, 0.05, 0.0), 1.15, tmax) || sphereHit(ro, rd, SP1, SP1S * 1.25, tmax) || sphereHit(ro, rd, SP2, SP2S * 1.25, tmax);
+  if (uKnife.w > 0.5) any = any || sphereHit(ro, rd, uKnife.xyz + uKA * 0.33 * KS, 0.4 * KS, tmax);
+  if (!any) return 1.0;
+  float res = 1.0, t = 0.012;
+  for (int i = 0; i < 40; i++) {
+    if (t > tmax) break;
+    float h = map(ro + rd * t);
+    res = min(res, k * h / t);
+    if (res < 0.003) break;
+    t += clamp(h, 0.01, 0.3);
+  }
+  return clamp(res, 0.0, 1.0);
+}
+float calcAO(vec3 p, vec3 n) {
+  float occ = 0.0, sca = 1.0;
+  for (int i = 0; i < 5; i++) {
+    float h = 0.012 + 0.07 * float(i);
+    vec3 s = p + n * h;
+    float d = min(map(s), s.y - GROUND);
+    occ += (h - d) * sca;
+    sca *= 0.8;
+  }
+  return clamp(1.0 - 2.4 * occ, 0.0, 1.0);
+}
+
+// ------------------------------------------------ candle light leaving through the cuts
+vec3 flameLight() { return PC + FLAME_B + vec3(0.0, 0.06, 0.0); }
+float rayExit(vec3 c, vec3 d, vec3 e) {
+  vec3 ce = c / e, de = d / e;
+  float A = dot(de, de), B = dot(ce, de), C = dot(ce, ce) - 1.0;
+  return (-B + sqrt(max(B * B - A * C, 0.0))) / max(A, 1e-6);
+}
+float candleVis(vec3 pw) {
+  vec3 q = toLocal(pw);
+  vec3 c = FLAME_B + vec3(0.0, 0.06, 0.0);
+  vec3 d = q - c;
+  // inside the cavity: lit. Inside the wall band (e.g. the grooves where the pumpkin meets the ground): only through a cut
+  float sIn = rayExit(c, d, vec3(0.92, 0.69, 0.92));
+  if (sIn >= 1.0) return 1.0;
+  vec3 e2 = c + d * sIn;
+  vec3 e = c + d * min(rayExit(c, d, vec3(0.985, 0.77, 0.985)), 1.0);
+  float v = 0.0;
+  if (e.z > 0.0 && e2.z > 0.0) {
+    float h = max(maskD(e.xy).x, maskD(e2.xy).x);
+    v = 1.0 - smoothstep(-0.012, 0.012, h);
+  }
+  if (e.y > 0.3) {
+    float r = length(e.xz);
+    float a = atan(e.z, e.x);
+    float tri = abs(fract(a * (7.0 / (2.0 * PI))) - 0.5) * 2.0;
+    v = max(v, 0.35 * (1.0 - smoothstep(0.002, 0.012, abs(r - (0.33 + 0.06 * tri)))));
+  }
+  return v;
+}
+
+// ------------------------------------------------ materials
+vec3 skinAlbedo(vec3 q, float lobe, float pale) {
+  float r = length(q.xz);
+  float a = atan(q.z, q.x);
+  float streak = vnoise(vec2(a * 22.0, q.y * 2.5)) * 0.6 + vnoise(vec2(a * 60.0, q.y * 6.0)) * 0.4;
+  float blot = fbm2(q.xy * 5.0 + q.z * 3.0);
+  vec3 crest = mix(vec3(0.78, 0.2, 0.016), vec3(0.62, 0.6, 0.52), pale);
+  vec3 groove = mix(vec3(0.34, 0.052, 0.007), vec3(0.36, 0.36, 0.3), pale);
+  vec3 col = mix(groove, crest, smoothstep(0.0, 0.9, lobe));
+  col *= 0.82 + 0.3 * streak;
+  col = mix(col, col * vec3(0.75, 0.62, 0.45), smoothstep(0.55, 0.85, blot) * 0.6);
+  float top = smoothstep(0.5, 0.74, q.y) * exp(-r * r * 5.0);
+  col = mix(col, mix(vec3(0.14, 0.11, 0.03), vec3(0.3, 0.3, 0.22), pale), top * 0.85);
+  return col;
+}
+vec3 fleshAlbedo(vec3 q) {
+  float f = vnoise(vec2(atan(q.z, q.x) * 30.0, q.y * 9.0));
+  float g = vnoise(q.xy * 22.0 + q.z * 13.0);
+  return vec3(0.95, 0.52, 0.12) * (0.75 + 0.25 * f) * (0.85 + 0.25 * g);
+}
+
+struct Light { vec3 porch; vec3 Lp; vec3 moon; vec3 candle; vec3 Lc; float ao; };
+
+vec3 shadeSmall(vec3 p, vec3 n, vec3 v, Light L, vec3 c, float s, float yaw, float pale) {
+  vec3 q = rotY(p - c, yaw) / s;
+  float lobe;
+  float b = body(q, lobe);
+  float st = stemD(q);
+  vec3 alb = st < b ? vec3(0.12, 0.1, 0.04) : skinAlbedo(q, lobe, pale);
+  float vis = candleVis(p);
+  vec3 col = alb * (L.porch * max(dot(n, L.Lp), 0.0) + L.moon * max(dot(n, ML), 0.0) + SKY_AMB * L.ao * (0.6 + 0.4 * n.y));
+  col += alb * L.candle * vis * max(dot(n, L.Lc), 0.0);
+  col += alb * uFlameCol * uCandle * uOpen * 0.06 * L.ao / (1.0 + dot(p - flameLight(), p - flameLight()));
+  vec3 h = normalize(L.Lp + v);
+  col += L.porch * pow(max(dot(n, h), 0.0), 50.0) * 0.12 + L.moon * pow(max(dot(n, normalize(ML + v)), 0.0), 30.0) * 0.15;
+  return col;
+}
+
+vec3 shadeKnife(vec3 p, vec3 n, vec3 v, Light L) {
+  vec2 kp = knifeParts(p);
+  float vis = candleVis(p);
+  vec3 refl = reflect(-v, n);
+  if (kp.y < kp.x) {
+    vec3 alb = vec3(0.075, 0.035, 0.018) * (0.8 + 0.4 * vnoise(vec2(dot(p, uKA) * 90.0, dot(p, uKB) * 9.0)));
+    vec3 col = alb * (L.porch * max(dot(n, L.Lp), 0.0) + L.moon * max(dot(n, ML), 0.0) + SKY_AMB + L.candle * vis * max(dot(n, L.Lc), 0.0));
+    col += L.porch * pow(max(dot(refl, L.Lp), 0.0), 30.0) * 0.05;
+    return col;
+  }
+  vec3 r = (p - uKnife.xyz) / KS;
+  float ky = dot(r, uKA), kx = dot(r, uKB);
+  float brush = 0.75 + 0.25 * vnoise(vec2(ky * 160.0, kx * 12.0));
+  float bevel = smoothstep(0.012, 0.04, kx);
+  vec3 env = mix(vec3(0.03, 0.035, 0.05), vec3(0.09, 0.11, 0.17), clamp(refl.y * 0.5 + 0.5, 0.0, 1.0)) * (0.3 + 0.7 * uMoon);
+  vec3 col = env * (0.7 + 0.6 * bevel) * brush + vec3(0.05) * brush * (L.porch * max(dot(n, L.Lp), 0.0) + L.moon * max(dot(n, ML), 0.0));
+  col += L.porch * pow(max(dot(refl, L.Lp), 0.0), 120.0) * 1.2;
+  col += L.moon * pow(max(dot(refl, ML), 0.0), 80.0) * 1.5;
+  col += L.candle * vis * (pow(max(dot(refl, L.Lc), 0.0), 60.0) * 2.0 + max(dot(n, L.Lc), 0.0) * 0.1);
+  return col;
+}
+
+vec3 shadePumpkin(vec3 p, vec3 n, vec3 v, Light L) {
+  vec3 q = toLocal(p);
+  vec3 nl = rotY(n, uYaw);
+  float lobe;
+  float b = body(q, lobe);
+  vec2 m = q.z > 0.0 ? maskD(q.xy) : vec2(RANGE);
+  float shell = max(b, -b - SHELL);
+  float ld = lidD(q);
+  float carved = max(max(shell, -m.x), -ld);
+  float plug = 1e9;
+  float bp = b + uPiece;
+  if (uPiece >= 0.0) plug = max(max(bp, -bp - SHELL), m.y + 0.003);
+  float st = stemD(q);
+  float cd = candleD(q);
+  vec3 fw = flameLight();
+  float dc2 = dot(fw - p, fw - p);
+  vec3 col;
+
+  if (cd < min(st, min(carved, plug))) {
+    // candle wax, glowing near the flame
+    vec3 alb = vec3(0.8, 0.7, 0.52);
+    float wrap = max(dot(n, L.Lc) * 0.5 + 0.5, 0.0);
+    col = alb * L.candle * wrap;
+    float top = smoothstep(-0.56, -0.5, q.y);
+    col += alb * uFlameCol * uCandle * (0.25 + 1.2 * top) * 0.6;
+    col += alb * SKY_AMB * 0.2;
+    return col;
+  }
+  if (st < min(carved, plug) - 0.002) {
+    vec3 s = q - vec3(0.0, 0.55, 0.0);
+    float ang = atan(s.z, s.x);
+    float fib = vnoise(vec2(ang * 9.0, s.y * 40.0));
+    vec3 alb = mix(vec3(0.09, 0.075, 0.03), vec3(0.2, 0.17, 0.08), fib);
+    alb = mix(alb, vec3(0.42, 0.36, 0.22), smoothstep(0.3, 0.345, s.y) * step(0.5, nl.y));
+    col = alb * (L.porch * max(dot(n, L.Lp), 0.0) + L.moon * max(dot(n, ML), 0.0) + SKY_AMB * L.ao);
+    col += L.porch * pow(max(dot(n, normalize(L.Lp + v)), 0.0), 20.0) * 0.04;
+    return col;
+  }
+  bool isPlug = plug < carved;
+  float bb = isPlug ? bp : b;
+  bool wall = !isPlug && (-m.x >= shell - 0.0015 || -ld >= shell - 0.0015);
+  bool outer = !wall && bb > -SHELL * 0.5;
+  if (outer) {
+    // skin: tiny vertical striations bend the normal
+    float a = atan(q.z, q.x);
+    vec3 tng = normalize(vec3(-q.z, 0.0, q.x) + 1e-5);
+    float bump = vnoise(vec2(a * 70.0, q.y * 7.0)) - 0.5;
+    vec3 nn = normalize(n + rotY(tng, -uYaw) * bump * 0.12);
+    vec3 alb = skinAlbedo(q, lobe, 0.0);
+    float dP = max(dot(nn, L.Lp), 0.0), dM = max(dot(nn, ML), 0.0);
+    col = alb * (L.porch * dP + L.moon * dM + SKY_AMB * L.ao * (0.55 + 0.45 * nn.y));
+    float fr = 0.04 + 0.96 * pow(1.0 - max(dot(nn, v), 0.0), 5.0);
+    col += L.porch * pow(max(dot(nn, normalize(L.Lp + v)), 0.0), 55.0) * (0.18 + fr * 0.5) * dP;
+    col += L.moon * pow(max(dot(nn, normalize(ML + v)), 0.0), 25.0) * 0.35 * dM;
+    col += L.moon * fr * 0.25 * L.ao;
+    // candle light diffusing through thin flesh next to cuts, and a faint glow through the whole shell
+    float near = q.z > 0.0 ? exp(-max(m.x, 0.0) * 32.0) : 0.0;
+    float lidGlow = q.y > 0.3 ? exp(-max(ld, 0.0) * 60.0) : 0.0;
+    vec3 sss = uFlameCol * vec3(1.0, 0.5, 0.18) * uCandle;
+    col += sss * (near * 0.55 + lidGlow * 0.35 + (1.0 - lobe) * 0.012 + 0.006);
+    // carving guide under the cursor
+    if (uCursor.w > 0.0 && q.z > 0.0) {
+      float dd = length(q.xy - uCursor.xy);
+      float ring = 1.0 - smoothstep(0.0, 0.006, abs(dd - uCursor.z));
+      col += vec3(1.0, 0.75, 0.45) * ring * uCursor.w * 0.5;
+    }
+    return col;
+  }
+  // inner flesh and cut walls: lit directly by the candle
+  vec3 alb = fleshAlbedo(q);
+  float wrap = max(dot(n, L.Lc) * 0.6 + 0.4, 0.0);
+  col = alb * L.candle * wrap;
+  if (wall) col += alb * uFlameCol * uCandle * 0.22;
+  col += alb * (L.porch * max(dot(n, L.Lp), 0.0) + L.moon * max(dot(n, ML), 0.0) * 0.6 + SKY_AMB * 0.4 * L.ao);
+  return col;
+}
+
+vec3 shadeObj(vec3 ro, vec3 rd, float t) {
+  vec3 p = ro + rd * t;
+  vec3 n = calcNormal(p, t);
+  vec3 v = -rd;
+  Light L;
+  vec3 Lp = PORCH - p;
+  float dp2 = dot(Lp, Lp);
+  L.Lp = Lp * inversesqrt(dp2);
+  float shP = uPorch > 0.003 && dot(n, L.Lp) > -0.05 ? softShadow(p + n * 0.004, L.Lp, 7.0, 14.0) : 0.0;
+  float shM = dot(n, ML) > -0.05 ? softShadow(p + n * 0.004, ML, 3.5, 10.0) : 0.0;
+  L.porch = PORCH_COL * uPorch / dp2 * shP;
+  L.moon = MOON_COL * uMoon * shM;
+  vec3 fw = flameLight();
+  vec3 Lc = fw - p;
+  float dc2 = dot(Lc, Lc);
+  L.Lc = Lc * inversesqrt(dc2);
+  L.candle = uFlameCol * uCandle * CANDLE_I / (dc2 + 0.015);
+  L.ao = calcAO(p, n);
+
+  float dM = pumpkinB(p);
+  float d1 = smallD(p, SP1, SP1S, 0.9), d2 = smallD(p, SP2, SP2S, 2.2);
+  float dK = uKnife.w > 0.5 ? knifeD(p) : 1e9;
+  if (dK < dM && dK < min(d1, d2)) return shadeKnife(p, n, v, L);
+  if (d1 < dM && d1 <= d2) return shadeSmall(p, n, v, L, SP1, SP1S, 0.9, 0.0);
+  if (d2 < dM) return shadeSmall(p, n, v, L, SP2, SP2S, 2.2, 1.0);
+  return shadePumpkin(p, n, v, L);
+}
+
+// ------------------------------------------------ ground: soil, fallen leaves, a few seeds
+vec3 groundAlbedo(vec2 xz, out float leaf) {
+  float n1 = fbm2(xz * 1.6);
+  float n2 = vnoise(xz * 11.0);
+  vec3 col = mix(vec3(0.026, 0.018, 0.012), vec3(0.06, 0.043, 0.027), n1) * (0.8 + 0.4 * n2);
+  leaf = 0.0;
+  for (int layer = 0; layer < 2; layer++) {
+    float sc = layer == 0 ? 2.5 : 3.6;
+    vec2 g = xz * sc + float(layer) * 7.31;
+    vec2 id = floor(g);
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec2 cid = id + vec2(float(i), float(j));
+      vec2 h = hash22(cid);
+      if (h.x > 0.62) continue;
+      vec2 cen = cid + 0.5 + (hash22(cid + 3.7) - 0.5) * 0.8;
+      float ang = h.y * 6.2831;
+      vec2 lp = g - cen;
+      lp = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * lp / (0.28 + 0.18 * h.x);
+      float w = 0.42 * pow(max(1.0 - lp.x * lp.x, 0.0), 0.8);
+      float dl = abs(lp.y) - w;
+      if (dl < 0.0 && abs(lp.x) < 1.0) {
+        float k = hash12(cid + 11.0);
+        vec3 lc = k < 0.3 ? vec3(0.11, 0.05, 0.02) : k < 0.55 ? vec3(0.2, 0.055, 0.015) : k < 0.8 ? vec3(0.28, 0.15, 0.03) : vec3(0.16, 0.03, 0.02);
+        lc *= 0.75 + 0.35 * vnoise(lp * 6.0 + cid);
+        lc *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.03, abs(lp.y)));
+        col = mix(col * 0.55, lc, smoothstep(0.0, -0.06, dl) * 0.95);
+        leaf = 1.0;
+      }
+    }
+  }
+  float r = length(xz - vec2(0.15, 1.05));
+  if (r < 1.0) {
+    vec2 g = xz * 16.0;
+    vec2 id = floor(g);
+    vec2 h = hash22(id + 91.0);
+    if (h.x < 0.16 * (1.0 - smoothstep(0.2, 1.0, r))) {
+      vec2 lp = g - id - 0.5 - (hash22(id + 5.0) - 0.5) * 0.5;
+      float a = h.y * 6.2831;
+      lp = mat2(cos(a), -sin(a), sin(a), cos(a)) * lp;
+      float d = length(lp * vec2(1.0, 1.8)) - 0.22;
+      col = mix(col, vec3(0.55, 0.45, 0.28), smoothstep(0.02, -0.02, d));
+    }
+  }
+  return col;
+}
+vec3 shadeGround(vec3 ro, vec3 rd, float t) {
+  vec3 p = ro + rd * t;
+  vec3 n = vec3(0.0, 1.0, 0.0);
+  float leaf;
+  vec3 alb = groundAlbedo(p.xz, leaf);
+  float ao = calcAO(p, n);
+  vec3 Lp = PORCH - p;
+  float dp2 = dot(Lp, Lp);
+  Lp *= inversesqrt(dp2);
+  float shP = uPorch > 0.003 ? softShadow(p + n * 0.003, Lp, 7.0, 12.0) : 0.0;
+  float shM = softShadow(p + n * 0.003, ML, 3.5, 9.0);
+  vec3 col = alb * (PORCH_COL * uPorch * max(Lp.y, 0.0) * shP / dp2 + MOON_COL * uMoon * ML.y * shM + SKY_AMB * ao);
+  vec3 fw = flameLight();
+  vec3 Lc = fw - p;
+  float dc2 = dot(Lc, Lc);
+  float vis = candleVis(p);
+  col += alb * uFlameCol * uCandle * CANDLE_I * vis * max(Lc.y * inversesqrt(dc2), 0.0) / dc2;
+  col += alb * uFlameCol * uCandle * (0.03 + uOpen * 0.5) * ao / (1.0 + dc2 * 1.6);
+  float spec = leaf > 0.5 ? 0.02 : 0.05;
+  col += PORCH_COL * uPorch * shP / dp2 * pow(max(dot(normalize(Lp - rd), n), 0.0), 40.0) * spec;
+  return col;
+}
+
+// ------------------------------------------------ sky, distant hills and trees
+float batD(vec2 p, float flap) {
+  vec2 q = vec2(abs(p.x), p.y);
+  float body = length(q * vec2(3.0, 1.7)) - 0.2;
+  float head = length(q - vec2(0.0, 0.16)) - 0.075;
+  float ear = max(abs(q.x - 0.05) - 0.025, abs(q.y - 0.24) - 0.05);
+  float x = q.x;
+  float top = 0.05 + flap * 0.5 * x * x + 0.08 * x * (1.0 - x);
+  float bot = top - 0.28 * (1.0 - 0.7 * x) + 0.08 * pow(abs(sin(x * PI * 2.5)), 0.7);
+  float wing = max(max(q.y - top, bot - q.y), max(x - 1.0, -x)) * 0.6;
+  return min(min(body, head), min(ear, wing));
+}
+vec3 skyCol(vec3 rd) {
+  float y = max(rd.y, 0.0);
+  vec3 col = mix(vec3(0.03, 0.038, 0.06), vec3(0.005, 0.008, 0.019), pow(y, 0.55));
+  float md = max(dot(rd, MOON_DIR), 0.0);
+  col += vec3(0.32, 0.4, 0.6) * (pow(md, 900.0) * 1.2 + pow(md, 90.0) * 0.1 + pow(md, 10.0) * 0.025);
+  // stars
+  vec2 sp = vec2(atan(rd.x, -rd.z), rd.y) * vec2(140.0, 140.0);
+  vec2 sid = floor(sp);
+  float sh = hash12(sid);
+  if (sh > 0.986) {
+    vec2 so = sp - sid - 0.5 - (hash22(sid) - 0.5) * 0.6;
+    float tw = 0.6 + 0.4 * sin(uTime * (1.0 + sh * 3.0) + sh * 40.0);
+    col += vec3(0.6, 0.7, 1.0) * exp(-dot(so, so) * 40.0) * 0.5 * tw * smoothstep(0.03, 0.25, rd.y) * (1.0 - pow(md, 30.0));
+  }
+  // clouds drifting past the moon
+  vec2 cp = rd.xz / (rd.y + 0.18);
+  float cl = fbm2(cp * 1.4 + vec2(uTime * 0.012, 0.0)) * fbm2(cp * 0.6 - vec2(uTime * 0.006, 2.0));
+  cl = smoothstep(0.16, 0.42, cl) * smoothstep(-0.02, 0.15, rd.y);
+  vec3 cc = vec3(0.03, 0.036, 0.05) + vec3(0.2, 0.25, 0.36) * pow(md, 14.0) * 0.6;
+  // moon disk
+  vec3 mr = normalize(cross(MOON_DIR, vec3(0.0, 1.0, 0.0)));
+  vec3 mu = cross(mr, MOON_DIR);
+  float R = 0.046;
+  vec2 muv = vec2(dot(rd, mr), dot(rd, mu)) / R;
+  float mlen = length(muv);
+  if (mlen < 1.15 && dot(rd, MOON_DIR) > 0.0) {
+    float maria = fbm2(muv * 2.2 + 3.0);
+    vec3 disk = vec3(1.0, 0.98, 0.92) * (1.0 - 0.35 * smoothstep(0.45, 0.7, maria)) * (0.75 + 0.25 * sqrt(max(1.0 - mlen * mlen, 0.0)));
+    col = mix(col, disk * 3.2, 1.0 - smoothstep(0.96, 1.0, mlen));
+  }
+  col = mix(col, cc, cl * 0.85);
+  // bats crossing the moon
+  vec2 d = vec2(dot(rd, mr), dot(rd, mu));
+  float px = 2.0 * uTanFov / uRes.y;
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    float ph = fract(uTime * 0.055 + fi * 0.29);
+    vec2 c = vec2((ph - 0.5) * 1.6 + 0.05 * sin(uTime * 0.7 + fi), -0.03 + 0.08 * sin(ph * 8.2 + fi * 2.1) + 0.025 * fi);
+    float sz = 0.016 + 0.008 * hash12(vec2(fi, 3.0));
+    vec2 bp = (d - c) / sz;
+    if (dot(bp, bp) > 2.0) continue;
+    float tilt = 0.25 * sin(uTime * 1.3 + fi);
+    bp = mat2(cos(tilt), -sin(tilt), sin(tilt), cos(tilt)) * bp;
+    float bd = batD(bp, sin(uTime * 12.0 + fi * 1.7));
+    col = mix(col, vec3(0.004, 0.004, 0.006), 1.0 - smoothstep(-px / sz, px / sz, bd));
+  }
+  return col;
+}
+float fogAmount(vec3 ro, vec3 rd, float t) {
+  float a = 0.05, b = 0.55;
+  float k = a * exp(-b * (ro.y - GROUND));
+  float fi = abs(rd.y) > 1e-4 ? k * (1.0 - exp(-b * rd.y * t)) / (b * rd.y) : k * t;
+  return 1.0 - exp(-fi);
+}
+vec3 fogColor(vec3 rd) {
+  float md = max(dot(rd, MOON_DIR), 0.0);
+  vec3 c = vec3(0.022, 0.03, 0.05) * (0.45 + 0.55 * uMoon) + vec3(0.02, 0.017, 0.013) * uPorch;
+  c += vec3(0.16, 0.21, 0.32) * pow(md, 10.0) * 0.18 * uMoon;
+  return c;
+}
+float layerHit(vec3 ro, vec3 rd, float R, out vec2 uv, float H) {
+  vec2 o = ro.xz, d = rd.xz;
+  float a = dot(d, d), b = dot(o, d), c = dot(o, o) - R * R;
+  float t = (-b + sqrt(max(b * b - a * c, 0.0))) / max(a, 1e-6);
+  vec3 p = ro + rd * t;
+  uv = vec2(atan(p.x, -p.z) / (4.0 * PI / 3.0) + 0.5, (p.y - GROUND) / H);
+  return t;
+}
+vec3 backdrop(vec3 ro, vec3 rd, float tG) {
+  vec3 col = skyCol(rd);
+  vec3 fc = fogColor(rd);
+  vec2 uv;
+  // far hills, forest and a house on the ridge
+  float tf = layerHit(ro, rd, R_FAR, uv, 12.0);
+  if (tf < tG && uv.y < 1.0) {
+    vec4 bk = textureLod(uBack, uv, 1.0);
+    float f = fogAmount(ro, rd, tf);
+    vec3 sil = mix(vec3(0.006, 0.008, 0.012), fc, f * 0.88);
+    col = mix(col, sil, bk.r);
+    col += vec3(1.0, 0.55, 0.2) * bk.b * 2.2 * (1.0 - f * 0.7);
+  } else if (tG < 1e8) {
+    col = mix(vec3(0.003, 0.004, 0.006) + SKY_AMB * 0.04, fc, fogAmount(ro, rd, tG));
+  }
+  // nearer bare trees
+  float tm = layerHit(ro, rd, R_MID, uv, 10.0);
+  if (tm < tG && uv.y < 1.0) {
+    float a = textureLod(uBack, uv, 0.35).g;
+    float f = fogAmount(ro, rd, tm);
+    col = mix(col, mix(vec3(0.004, 0.005, 0.008), fc, f * 0.8), a);
+  }
+  return col;
+}
+
+// ------------------------------------------------ flame + light shafts in the fog
+vec3 flameEmit(vec3 ro, vec3 rd, float tS) {
+  if (uFlameSize < 0.005) return vec3(0.0);
+  vec3 fb = PC + FLAME_B;
+  vec3 nrm = normalize(vec3(rd.x, 0.0, rd.z) + 1e-5);
+  float den = dot(rd, nrm);
+  float tp = dot(fb - ro, nrm) / den;
+  if (tp <= 0.0 || tp > tS) return vec3(0.0);
+  vec3 hp = ro + rd * tp - fb;
+  vec3 side = vec3(-nrm.z, 0.0, nrm.x);
+  float H = 0.16 * uFlameSize, W = 0.04 * uFlameSize;
+  float yn = hp.y / H;
+  float x = dot(hp, side) - dot(uSway, side.xz) * yn * yn;
+  float prof = W * 1.9 * pow(clamp(yn + 0.08, 0.0, 1.0), 0.45) * pow(clamp(1.0 - yn, 0.0, 1.0), 0.8);
+  float body = 1.0 - smoothstep(prof * 0.35, prof, abs(x));
+  float core = 1.0 - smoothstep(0.0, prof * 0.6, abs(x));
+  core *= smoothstep(0.0, 0.25, yn) * (1.0 - smoothstep(0.35, 0.8, yn));
+  float blue = (1.0 - smoothstep(0.0, 0.2, yn)) * smoothstep(-0.08, 0.02, yn);
+  vec3 outer = uFlameCol * vec3(1.0, 0.75, 0.55) * 6.0;
+  vec3 hot = mix(uFlameCol, vec3(1.0, 0.95, 0.85), 0.75) * 22.0;
+  vec3 col = outer * body + hot * core * body + vec3(0.2, 0.35, 1.0) * blue * body * 2.5 * (1.0 - core);
+  float halo = exp(-length(vec2(x, hp.y - H * 0.4)) * 30.0 / max(uFlameSize, 0.2));
+  col += uFlameCol * halo * 1.2;
+  return col * uFlameSize;
+}
+float hg(float c, float g) { float g2 = g * g; return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * c, 1.5)); }
+float fogDens(vec3 p) {
+  float h = p.y - GROUND;
+  vec3 w = vec3(uTime * 0.07, uTime * 0.01, uTime * 0.035);
+  float n = n3(p * 0.11 + w) * 0.65 + n3(p * 0.29 - w * 1.9) * 0.35;
+  return (0.085 * exp(-0.8 * max(h, 0.0)) + 0.026) * (0.06 + 2.6 * smoothstep(0.36, 0.78, n));
+}
+vec3 candleScatter(vec3 ro, vec3 rd, float tS, float jit) {
+  if (uCandle < 0.004) return vec3(0.0);
+  vec3 fw = flameLight();
+  vec3 oc = ro - fw;
+  float b = dot(oc, rd), c = dot(oc, oc) - 25.0;
+  float h = b * b - c;
+  if (h < 0.0) return vec3(0.0);
+  h = sqrt(h);
+  float tA = max(-b - h, 0.0), tB = min(-b + h, tS);
+  if (tB <= tA) return vec3(0.0);
+  // equiangular sampling: samples bunch up where the point light is closest
+  float tc = -b;
+  float D = max(length(ro + rd * tc - fw), 0.02);
+  float thA = atan((tA - tc) / D), thB = atan((tB - tc) / D);
+  int N = int(clamp(22.0 * uQuality, 8.0, 96.0));
+  float acc = 0.0;
+  for (int i = 0; i < 96; i++) {
+    if (i >= N) break;
+    float th = mix(thA, thB, (float(i) + jit) / float(N));
+    float t = tc + D * tan(th);
+    vec3 p = ro + rd * t;
+    float vis = candleVis(p);
+    if (vis > 0.001) {
+      vec3 L = normalize(fw - p);
+      // the cavity holds less haze than the open air, or the cuts read as solid light
+      vec3 q = toLocal(p) / vec3(0.95, 0.74, 0.95);
+      float inside = 1.0 - smoothstep(0.85, 1.0, dot(q, q));
+      acc += vis * fogDens(p) * mix(1.0, 0.18, inside) * hg(dot(rd, L), 0.25);
+    }
+  }
+  return uFlameCol * uCandle * acc * (thB - thA) / (D * float(N)) * 19.0;
+}
+
+void main() {
+  vec2 fc = gl_FragCoord.xy;
+  vec2 uv = (2.0 * fc - uRes) / uRes.y;
+  uv.y += uShift;
+  vec3 ro = uCamPos;
+  vec3 rd = normalize(uCamFwd + uTanFov * (uv.x * uCamRight + uv.y * uCamUp));
+  float jit = fract(52.9829189 * fract(dot(fc, vec2(0.06711056, 0.00583715))) + uFrame * 0.618034);
+
+  float tG = rd.y < -1e-5 ? (GROUND - ro.y) / rd.y : 1e9;
+  float t0 = 1e9, t1 = -1.0;
+  vec3 cs[4];
+  float rs[4];
+  cs[0] = PC + vec3(0.0, 0.05, 0.0); rs[0] = 1.14;
+  cs[1] = SP1; rs[1] = SP1S * 1.26;
+  cs[2] = SP2; rs[2] = SP2S * 1.26;
+  cs[3] = uKnife.xyz + uKA * 0.33 * KS; rs[3] = uKnife.w > 0.5 ? 0.4 * KS : -1.0;
+  for (int i = 0; i < 4; i++) {
+    if (rs[i] < 0.0) continue;
+    vec3 oc = ro - cs[i];
+    float b = dot(oc, rd), c = dot(oc, oc) - rs[i] * rs[i];
+    float h = b * b - c;
+    if (h > 0.0) { h = sqrt(h); t0 = min(t0, -b - h); t1 = max(t1, -b + h); }
+  }
+  float tHit = 1e9;
+  if (t1 > 0.0) {
+    float t = max(t0, 0.0), tEnd = min(t1, tG);
+    for (int i = 0; i < 200; i++) {
+      if (t > tEnd) break;
+      float d = map(ro + rd * t);
+      if (d < 0.0003 * (1.0 + t)) { tHit = t; break; }
+      t += d * 0.82;
+    }
+  }
+  vec3 col;
+  float tS;
+  if (tHit < 1e8) { col = shadeObj(ro, rd, tHit); tS = tHit; }
+  else if (tG < 1e8 && length((ro + rd * tG).xz) < R_MID) { col = shadeGround(ro, rd, tG); tS = tG; }
+  else { col = backdrop(ro, rd, tG); tS = -1.0; }
+  if (tS > 0.0) col = mix(col, fogColor(rd), fogAmount(ro, rd, tS));
+  float tLim = tS > 0.0 ? tS : 1e9;
+  col += flameEmit(ro, rd, tLim);
+  col += candleScatter(ro, rd, tLim, jit);
+  outColor = vec4(max(col, vec3(0.0)), 1.0);
+}`;
+
+const FS_DOWN = `#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uSrcTexel, uDstTexel;
+uniform float uKaris;
+out vec4 o;
+vec3 s(vec2 uv) { return texture(uSrc, uv).rgb; }
+float w(vec3 c) { return 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))); }
+void main() {
+  vec2 uv = gl_FragCoord.xy * uDstTexel;
+  vec2 t = uSrcTexel;
+  vec3 A = s(uv + t * vec2(-2.0, 2.0)), B = s(uv + t * vec2(0.0, 2.0)), C = s(uv + t * vec2(2.0, 2.0));
+  vec3 D = s(uv + t * vec2(-1.0, 1.0)), E = s(uv + t * vec2(1.0, 1.0));
+  vec3 F = s(uv + t * vec2(-2.0, 0.0)), G = s(uv), H = s(uv + t * vec2(2.0, 0.0));
+  vec3 I = s(uv + t * vec2(-1.0, -1.0)), J = s(uv + t * vec2(1.0, -1.0));
+  vec3 K = s(uv + t * vec2(-2.0, -2.0)), L = s(uv + t * vec2(0.0, -2.0)), M = s(uv + t * vec2(2.0, -2.0));
+  vec3 g0 = (D + E + I + J) * 0.25, g1 = (A + B + F + G) * 0.25, g2 = (B + C + G + H) * 0.25, g3 = (F + G + K + L) * 0.25, g4 = (G + H + L + M) * 0.25;
+  if (uKaris > 0.5) {
+    float w0 = w(g0) * 0.5, w1 = w(g1) * 0.125, w2 = w(g2) * 0.125, w3 = w(g3) * 0.125, w4 = w(g4) * 0.125;
+    o = vec4((g0 * w0 + g1 * w1 + g2 * w2 + g3 * w3 + g4 * w4) / (w0 + w1 + w2 + w3 + w4), 1.0);
+  } else {
+    o = vec4(g0 * 0.5 + (g1 + g2 + g3 + g4) * 0.125, 1.0);
+  }
+}`;
+
+const FS_UP = `#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uSrcTexel, uDstTexel;
+uniform float uWeight;
+out vec4 o;
+void main() {
+  vec2 uv = gl_FragCoord.xy * uDstTexel;
+  vec2 t = uSrcTexel;
+  vec3 c = texture(uSrc, uv).rgb * 4.0;
+  c += (texture(uSrc, uv + vec2(t.x, 0.0)).rgb + texture(uSrc, uv - vec2(t.x, 0.0)).rgb + texture(uSrc, uv + vec2(0.0, t.y)).rgb + texture(uSrc, uv - vec2(0.0, t.y)).rgb) * 2.0;
+  c += texture(uSrc, uv + t).rgb + texture(uSrc, uv - t).rgb + texture(uSrc, uv + vec2(t.x, -t.y)).rgb + texture(uSrc, uv + vec2(-t.x, t.y)).rgb;
+  o = vec4(c / 16.0 * uWeight, 1.0);
+}`;
+
+const FS_COMP = `#version 300 es
+precision highp float;
+uniform sampler2D uScene, uBloom;
+uniform vec2 uRes;
+uniform float uExposure, uBloomK, uTime, uFade, uGrain;
+out vec4 o;
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+void main() {
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec2 dc = uv - 0.5;
+  float ca = dot(dc, dc) * 0.008;
+  vec3 c = vec3(texture(uScene, uv - dc * ca).r, texture(uScene, uv).g, texture(uScene, uv + dc * ca).b);
+  vec3 b = texture(uBloom, uv).rgb;
+  c += b * uBloomK;
+  c *= uExposure;
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  c = mix(c, c * vec3(0.92, 1.0, 1.12), 1.0 - smoothstep(0.0, 0.25, l));
+  c = aces(c);
+  c = pow(c, vec3(1.0 / 2.2));
+  float vig = smoothstep(1.25, 0.3, length(dc * vec2(uRes.x / uRes.y, 1.0)));
+  c *= mix(0.55, 1.0, vig);
+  c += (hash12(gl_FragCoord.xy + fract(uTime * 7.31) * 213.0) - 0.5) * uGrain;
+  o = vec4(clamp(c, 0.0, 1.0) * uFade, 1.0);
+}`;
+
+// ---------------------------------------------------------------- textures generated at startup
+function makeNoise3D(N = 64) {
+  const r = rng(1337);
+  const lat = P => { const g = new Float32Array(P * P * P); for (let i = 0; i < g.length; i++) g[i] = r(); return g; };
+  const L1 = lat(8), L2 = lat(16);
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const vn = (g, P, x, y, z) => {
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    const xf = fade(x - xi), yf = fade(y - yi), zf = fade(z - zi);
+    const at = (i, j, k) => g[(((k % P) + P) % P) * P * P + (((j % P) + P) % P) * P + (((i % P) + P) % P)];
+    const x0 = lerp(at(xi, yi, zi), at(xi + 1, yi, zi), xf), x1 = lerp(at(xi, yi + 1, zi), at(xi + 1, yi + 1, zi), xf);
+    const x2 = lerp(at(xi, yi, zi + 1), at(xi + 1, yi, zi + 1), xf), x3 = lerp(at(xi, yi + 1, zi + 1), at(xi + 1, yi + 1, zi + 1), xf);
+    return lerp(lerp(x0, x1, yf), lerp(x2, x3, yf), zf);
+  };
+  const out = new Uint8Array(N * N * N);
+  for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const v = 0.65 * vn(L1, 8, (x * 8) / N, (y * 8) / N, (z * 8) / N) + 0.35 * vn(L2, 16, (x * 16) / N, (y * 16) / N, (z * 16) / N);
+    out[(z * N + y) * N + x] = clamp(Math.round(v * 255), 0, 255);
+  }
+  return out;
+}
+
+// silhouettes wrapped around the scene over a 240-degree arc centred on the opening view:
+// R = far ridge, forest and a house, G = nearer bare trees, fence and grass, B = lit windows
+function makeBackdrop(W = 4096, H = 512) {
+  const r = rng(4242);
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.strokeStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round'; return x; };
+  const far = mk(), mid = mk(), win = mk();
+  const U = deg => (deg / 240 + 0.5) * W;          // azimuth in degrees -> texture x
+  const hills = x => {
+    const u = x / W;
+    return H * (0.13 + 0.06 * Math.sin(u * 19.0 + 1.0) + 0.04 * Math.sin(u * 41.0 + 2.3) + 0.02 * Math.sin(u * 97.0));
+  };
+  far.beginPath();
+  far.moveTo(0, H);
+  for (let x = 0; x <= W; x += 4) far.lineTo(x, H - hills(x));
+  far.lineTo(W, H);
+  far.fill();
+  const houseX = U(-34);
+  for (let x = 0; x < W; x += 4 + r() * 7) {
+    if (Math.abs(x - houseX) < 90) continue;
+    const base = H - hills(x) + 4, h = 14 + r() * 30, w = 5 + r() * 5;
+    if (r() < 0.7) {
+      far.beginPath(); far.moveTo(x - w, base); far.lineTo(x + (r() - 0.5) * 3, base - h); far.lineTo(x + w, base); far.fill();
+    } else {
+      far.beginPath(); far.ellipse(x, base - h * 0.55, w * 1.4, h * 0.5, 0, 0, Math.PI * 2); far.fill();
+    }
+  }
+  // a crooked house on the ridge with a tower and two lit windows
+  {
+    const base = H - hills(houseX) + 3;
+    const R = (x, y, w, h) => far.fillRect(houseX + x, base - y - h, w, h);
+    R(-46, 0, 92, 50);
+    far.beginPath(); far.moveTo(houseX - 54, base - 50); far.lineTo(houseX - 6, base - 88); far.lineTo(houseX + 40, base - 50); far.fill();
+    R(20, 0, 26, 104);
+    far.beginPath(); far.moveTo(houseX + 15, base - 104); far.lineTo(houseX + 34, base - 150); far.lineTo(houseX + 51, base - 104); far.fill();
+    R(-36, 46, 9, 46);
+    R(33, 148, 2, 12);
+    R(-62, 0, 18, 26);
+    win.fillRect(houseX - 24, base - 38, 8, 12);
+    win.fillRect(houseX + 28, base - 80, 7, 11);
+  }
+  // nearer bare trees: tapered, crooked, recursive
+  const branch = (ctx, x, y, ang, len, w, depth) => {
+    const n = Math.max(2, Math.round(len / 10));
+    let a = ang;
+    for (let i = 0; i < n; i++) {
+      a += (r() - 0.5) * 0.28 + (Math.PI / 2 - a) * 0.015;
+      const nx = x + (Math.cos(a) * len) / n, ny = y - (Math.sin(a) * len) / n;
+      ctx.lineWidth = lerp(w, w * 0.66, i / n);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nx, ny); ctx.stroke();
+      x = nx; y = ny;
+    }
+    if (depth <= 0 || w < 0.7) return;
+    const kids = depth > 6 ? 2 : r() < 0.55 ? 2 : 3;
+    for (let k = 0; k < kids; k++) {
+      const da = (k - (kids - 1) / 2) * (0.48 + r() * 0.38) + (r() - 0.5) * 0.3;
+      branch(ctx, x, y, a + da, len * (0.6 + r() * 0.2), w * 0.64, depth - 1);
+    }
+  };
+  // [azimuth, height (fraction of H), trunk width, lean]
+  const trees = [[-104, 0.62, 22, 0.1], [-84, 0.5, 15, -0.05], [-62, 0.72, 26, 0.06], [-45, 0.46, 13, -0.1], [-24, 0.58, 18, 0.04],
+    [-11, 0.4, 10, -0.08], [19, 0.78, 30, -0.12], [41, 0.5, 15, 0.08], [63, 0.66, 22, -0.04], [86, 0.52, 16, 0.1], [104, 0.7, 24, -0.06]];
+  for (const [deg, hf, w, lean] of trees) branch(mid, U(deg), H + 4, Math.PI / 2 + lean, H * hf * 0.42, w, 8);
+  // dry grass along the ground line
+  for (let x = 0; x < W; x += 1.5 + r() * 2.5) {
+    const h = 4 + r() * 13, a = Math.PI / 2 + (r() - 0.5) * 0.9;
+    mid.lineWidth = 0.8 + r() * 0.9;
+    mid.beginPath(); mid.moveTo(x, H); mid.quadraticCurveTo(x + Math.cos(a) * h * 0.4, H - h * 0.6, x + Math.cos(a) * h, H - Math.sin(a) * h); mid.stroke();
+  }
+  // a crooked fence
+  const f0 = U(24), f1 = U(48);
+  for (let x = f0; x < f1; x += 30 + r() * 12) {
+    mid.lineWidth = 5;
+    mid.beginPath(); mid.moveTo(x, H); mid.lineTo(x + (r() - 0.5) * 7, H - 38 - r() * 9); mid.stroke();
+  }
+  mid.lineWidth = 3.5;
+  mid.beginPath(); mid.moveTo(f0, H - 26); mid.lineTo(f1, H - 30); mid.stroke();
+  mid.beginPath(); mid.moveTo(f0, H - 12); mid.lineTo(lerp(f0, f1, 0.55), H - 14); mid.stroke();
+
+  const a = far.getImageData(0, 0, W, H).data, b = mid.getImageData(0, 0, W, H).data, c = win.getImageData(0, 0, W, H).data;
+  const out = new Uint8Array(W * H * 4);
+  for (let y = 0; y < H; y++) {
+    const ry = H - 1 - y;
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4, o = (ry * W + x) * 4;
+      out[o] = a[i]; out[o + 1] = b[i]; out[o + 2] = c[i]; out[o + 3] = 255;
+    }
+  }
+  return { W, H, data: out };
+}
+
+// ---------------------------------------------------------------- renderer
+class Renderer {
+  constructor(canvas) {
+    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    if (!gl) throw new Error('no-webgl2');
+    this.gl = gl;
+    this.canvas = canvas;
+    this.hdr = !!gl.getExtension('EXT_color_buffer_float') || !!gl.getExtension('EXT_color_buffer_half_float');
+    this.pScene = this.program(FS_SCENE);
+    this.pDown = this.program(FS_DOWN);
+    this.pUp = this.program(FS_UP);
+    this.pComp = this.program(FS_COMP);
+    this.vao = gl.createVertexArray();
+    // textures
+    this.texMask = this.tex2D(512, 512, gl.RG8, gl.RG, gl.UNSIGNED_BYTE, new Uint8Array(512 * 512 * 2).fill(255), gl.LINEAR, gl.CLAMP_TO_EDGE);
+    const nz = makeNoise3D(64);
+    this.texNoise = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_3D, this.texNoise);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage3D(gl.TEXTURE_3D, 0, gl.R8, 64, 64, 64, 0, gl.RED, gl.UNSIGNED_BYTE, nz);
+    for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, p, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const bd = makeBackdrop();
+    this.texBack = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.texBack);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, bd.W, bd.H, 0, gl.RGBA, gl.UNSIGNED_BYTE, bd.data);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.targets = null;
+    this.size = [0, 0];
+  }
+  program(fs) {
+    const gl = this.gl;
+    const mk = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, mk(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) || 'link');
+    const u = {};
+    const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name.replace(/\[0\]$/, '')] = gl.getUniformLocation(p, info.name); }
+    return { p, u };
+  }
+  tex2D(w, h, ifmt, fmt, type, data, filter, wrap) {
+    const gl = this.gl, t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, w, h, 0, fmt, type, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    return t;
+  }
+  target(w, h) {
+    const gl = this.gl;
+    const t = this.hdr
+      ? this.tex2D(w, h, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, null, gl.LINEAR, gl.CLAMP_TO_EDGE)
+      : this.tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.LINEAR, gl.CLAMP_TO_EDGE);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE && this.hdr) {
+      this.hdr = false;
+      gl.deleteFramebuffer(fb);
+      gl.deleteTexture(t);
+      return this.target(w, h);
+    }
+    return { t, fb, w, h };
+  }
+  resize(w, h) {
+    if (this.size[0] === w && this.size[1] === h) return;
+    const gl = this.gl;
+    if (this.targets) for (const x of this.targets) { gl.deleteTexture(x.t); gl.deleteFramebuffer(x.fb); }
+    this.size = [w, h];
+    this.targets = [this.target(w, h)];
+    let bw = w, bh = h;
+    for (let i = 0; i < 6; i++) { bw = Math.max(1, bw >> 1); bh = Math.max(1, bh >> 1); this.targets.push(this.target(bw, bh)); }
+  }
+  uploadMask(data) {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.texMask);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 512, 512, gl.RG, gl.UNSIGNED_BYTE, data);
+  }
+  render(U, outW, outH) {
+    const gl = this.gl;
+    gl.bindVertexArray(this.vao);
+    gl.disable(gl.BLEND);
+    const sc = this.targets[0];
+    // scene
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sc.fb);
+    gl.viewport(0, 0, sc.w, sc.h);
+    const P = this.pScene;
+    gl.useProgram(P.p);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.texMask); gl.uniform1i(P.u.uMask, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_3D, this.texNoise); gl.uniform1i(P.u.uNoise, 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.texBack); gl.uniform1i(P.u.uBack, 2);
+    gl.uniform2f(P.u.uRes, sc.w, sc.h);
+    for (const [k, v] of Object.entries(U)) {
+      const loc = P.u[k];
+      if (!loc) continue;
+      if (typeof v === 'number') gl.uniform1f(loc, v);
+      else if (v.length === 2) gl.uniform2fv(loc, v);
+      else if (v.length === 3) gl.uniform3fv(loc, v);
+      else gl.uniform4fv(loc, v);
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    // bloom: downsample chain, then tent upsample back up with additive blending
+    const D = this.pDown;
+    gl.useProgram(D.p);
+    gl.uniform1i(D.u.uSrc, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    for (let i = 1; i < this.targets.length; i++) {
+      const src = this.targets[i - 1], dst = this.targets[i];
+      gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
+      gl.viewport(0, 0, dst.w, dst.h);
+      gl.bindTexture(gl.TEXTURE_2D, src.t);
+      gl.uniform2f(D.u.uSrcTexel, 1 / src.w, 1 / src.h);
+      gl.uniform2f(D.u.uDstTexel, 1 / dst.w, 1 / dst.h);
+      gl.uniform1f(D.u.uKaris, i === 1 ? 1 : 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    const Up = this.pUp;
+    gl.useProgram(Up.p);
+    gl.uniform1i(Up.u.uSrc, 0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    for (let i = this.targets.length - 1; i > 1; i--) {
+      const src = this.targets[i], dst = this.targets[i - 1];
+      gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
+      gl.viewport(0, 0, dst.w, dst.h);
+      gl.bindTexture(gl.TEXTURE_2D, src.t);
+      gl.uniform2f(Up.u.uSrcTexel, 1 / src.w, 1 / src.h);
+      gl.uniform2f(Up.u.uDstTexel, 1 / dst.w, 1 / dst.h);
+      gl.uniform1f(Up.u.uWeight, 1.0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    gl.disable(gl.BLEND);
+    // composite to screen
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, outW, outH);
+    const C = this.pComp;
+    gl.useProgram(C.p);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sc.t); gl.uniform1i(C.u.uScene, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.targets[1].t); gl.uniform1i(C.u.uBloom, 1);
+    gl.uniform2f(C.u.uRes, outW, outH);
+    gl.uniform1f(C.u.uExposure, U.exposure);
+    gl.uniform1f(C.u.uBloomK, U.bloom);
+    gl.uniform1f(C.u.uTime, U.uTime);
+    gl.uniform1f(C.u.uFade, U.fade);
+    gl.uniform1f(C.u.uGrain, U.grain);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+}
+
+// ---------------------------------------------------------------- sound: everything is synthesized
+class Sfx {
+  constructor(ctx, seed = 7) {
+    this.c = ctx;
+    this.r = rng(seed);
+    const c = ctx;
+    this.comp = c.createDynamicsCompressor();
+    this.comp.threshold.value = -18; this.comp.knee.value = 12; this.comp.ratio.value = 3;
+    this.comp.attack.value = 0.01; this.comp.release.value = 0.25;
+    this.master = c.createGain();
+    this.master.gain.value = 0.9;
+    this.comp.connect(this.master);
+    this.master.connect(c.destination);
+    this.white = this.buffer(3, () => this.r() * 2 - 1);
+    this.cricketBus = this.gain(1);
+    this.cricketBus.connect(this.comp);
+    this.burnBus = this.gain(0);
+    this.burnBus.connect(this.comp);
+    this.crk = [];
+    this.crackleNext = 0;
+    this.burning = false;
+  }
+  buffer(sec, fn) {
+    const sr = this.c.sampleRate, b = this.c.createBuffer(1, Math.floor(sec * sr), sr), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = fn();
+    return b;
+  }
+  noise(t, loop = true) {
+    const s = this.c.createBufferSource();
+    s.buffer = this.white;
+    s.loop = loop;
+    s.start(t, loop ? this.r() * 2.5 : this.r() * 2.0);
+    return s;
+  }
+  filt(type, f, q = 0.7) { const b = this.c.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; }
+  gain(v = 0) { const g = this.c.createGain(); g.gain.value = v; return g; }
+  lfo(f, depth, param, t, type = 'sine') {
+    const o = this.c.createOscillator(); o.type = type; o.frequency.value = f;
+    const g = this.gain(depth);
+    o.connect(g); g.connect(param); o.start(t);
+    return o;
+  }
+  env(param, t, pts) { param.setValueAtTime(pts[0][1], t + pts[0][0]); for (let i = 1; i < pts.length; i++) param.linearRampToValueAtTime(pts[i][1], t + pts[i][0]); }
+  ambience(t) {
+    // wind: low-passed noise with slow swirling filter and gusts
+    const w = this.noise(t);
+    const lp1 = this.filt('lowpass', 380, 0.5), lp2 = this.filt('lowpass', 560, 0.8);
+    this.wind = this.gain(0);
+    this.wind.gain.setValueAtTime(0, t);
+    this.wind.gain.linearRampToValueAtTime(0.42, t + 2.5);
+    w.connect(lp1); lp1.connect(lp2); lp2.connect(this.wind); this.wind.connect(this.comp);
+    this.lfo(0.071, 150, lp1.frequency, t);
+    this.lfo(0.043, 0.16, this.wind.gain, t);
+    this.windLP = lp1;
+    const w2 = this.noise(t), bp = this.filt('bandpass', 850, 4), g2 = this.gain(0);
+    g2.gain.setValueAtTime(0, t); g2.gain.linearRampToValueAtTime(0.03, t + 4);
+    this.lfo(0.11, 260, bp.frequency, t);
+    w2.connect(bp); bp.connect(g2); g2.connect(this.comp);
+    // crickets: one tone each, gated into chirps
+    for (const [f, pan] of [[4300, -0.55], [4740, 0.5]]) {
+      const o = this.c.createOscillator(); o.frequency.value = f;
+      const g = this.gain(0), p = this.c.createStereoPanner(); p.pan.value = pan;
+      o.connect(g); g.connect(p); p.connect(this.cricketBus); o.start(t);
+      this.crk.push({ g, next: t + 0.6 + this.r() * 1.4 });
+    }
+    // candle burn bed (silent until lit)
+    const b = this.noise(t), blp = this.filt('lowpass', 220, 0.9);
+    b.connect(blp); blp.connect(this.burnBus);
+  }
+  schedule(until) {
+    for (const k of this.crk) {
+      while (k.next < until) {
+        const t = k.next, g = k.g.gain, amp = 0.035 + this.r() * 0.025;
+        const pulses = 3 + (this.r() < 0.3 ? 1 : 0);
+        for (let i = 0; i < pulses; i++) {
+          const ts = t + i * 0.034;
+          g.setValueAtTime(0, ts); g.linearRampToValueAtTime(amp, ts + 0.006); g.linearRampToValueAtTime(0, ts + 0.024);
+        }
+        k.next = t + 0.5 + this.r() * 0.9;
+      }
+    }
+    if (this.burning) {
+      if (this.crackleNext < this.c.currentTime) this.crackleNext = this.c.currentTime;
+      while (this.crackleNext < until) {
+        const t = this.crackleNext;
+        const n = this.noise(t, false), bp = this.filt('bandpass', 2500 + this.r() * 2500, 2), g = this.gain(0);
+        g.gain.setValueAtTime(0.06 + this.r() * 0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.012 + this.r() * 0.02);
+        n.connect(bp); bp.connect(g); g.connect(this.comp); n.stop(t + 0.05);
+        this.crackleNext = t + 0.15 + this.r() * 0.9;
+      }
+    }
+  }
+  carveBed(t) {
+    const n = this.noise(t), bp = this.filt('bandpass', 1400, 1.1), lp = this.filt('lowpass', 2800, 0.7);
+    const saw = this.gain(0.5);
+    this.lfo(7.5, 0.5, saw.gain, t, 'triangle');
+    this.carveG = this.gain(0);
+    n.connect(bp); bp.connect(lp); lp.connect(saw); saw.connect(this.carveG); this.carveG.connect(this.comp);
+    const n2 = this.noise(t), lp2 = this.filt('lowpass', 520, 2.5);
+    this.lfo(3.1, 180, lp2.frequency, t);
+    n2.connect(lp2); lp2.connect(this.carveG);
+  }
+  carve(level, t) { if (this.carveG) this.carveG.gain.setTargetAtTime(level * 0.5, t, 0.035); }
+  pop(t) {
+    const o = this.c.createOscillator();
+    o.frequency.setValueAtTime(210, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.13);
+    const g = this.gain(0);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    o.connect(g); g.connect(this.comp); o.start(t); o.stop(t + 0.3);
+    const n = this.noise(t, false), bp = this.filt('bandpass', 1100, 1.4), ng = this.gain(0);
+    ng.gain.setValueAtTime(0.32, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    n.connect(bp); bp.connect(ng); ng.connect(this.comp); n.stop(t + 0.1);
+  }
+  boom(t, f, a, dur) {
+    const o = this.c.createOscillator();
+    o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.25);
+    const g = this.gain(0);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(a, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.comp); o.start(t); o.stop(t + dur + 0.1);
+  }
+  strike(t) {
+    const n = this.noise(t, false), bp = this.filt('bandpass', 2400, 1.6), g = this.gain(0);
+    bp.frequency.setValueAtTime(2200, t); bp.frequency.linearRampToValueAtTime(4400, t + 0.16);
+    this.env(g.gain, t, [[0, 0], [0.02, 0.38], [0.12, 0.22], [0.19, 0]]);
+    n.connect(bp); bp.connect(g); g.connect(this.comp); n.stop(t + 0.25);
+    const f = this.noise(t + 0.14, false), lp = this.filt('lowpass', 300, 0.8), fg = this.gain(0);
+    lp.frequency.setValueAtTime(300, t + 0.14); lp.frequency.exponentialRampToValueAtTime(3200, t + 0.34); lp.frequency.exponentialRampToValueAtTime(500, t + 1.3);
+    fg.gain.setValueAtTime(0.0001, t + 0.14); fg.gain.exponentialRampToValueAtTime(0.42, t + 0.3); fg.gain.exponentialRampToValueAtTime(0.002, t + 1.5);
+    f.connect(lp); lp.connect(fg); fg.connect(this.comp); f.stop(t + 1.6);
+    this.boom(t + 0.16, 70, 0.25, 0.9);
+    this.burn(true, t + 0.3);
+  }
+  burn(on, t) {
+    this.burning = on;
+    this.burnBus.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.3);
+    if (on) this.crackleNext = t + 0.2;
+  }
+  porch(off, t) {
+    for (const dt of [0, 0.019]) {
+      const n = this.noise(t + dt, false), hp = this.filt('highpass', 2600, 0.7), g = this.gain(0);
+      g.gain.setValueAtTime(0.45, t + dt); g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.03);
+      n.connect(hp); hp.connect(g); g.connect(this.comp); n.stop(t + dt + 0.05);
+    }
+    if (off) { this.boom(t + 0.05, 42, 0.5, 2.6); this.drone(true, t + 0.2); }
+    else this.drone(false, t);
+  }
+  drone(on, t) {
+    if (!this.dr) {
+      const g = this.gain(0), lp = this.filt('lowpass', 240, 1.2);
+      for (const [f, type] of [[55, 'sawtooth'], [55.45, 'sawtooth'], [82.6, 'triangle'], [110.3, 'sine']]) {
+        const o = this.c.createOscillator(); o.type = type; o.frequency.value = f; o.connect(lp); o.start(t);
+      }
+      this.lfo(0.06, 90, lp.frequency, t);
+      lp.connect(g); g.connect(this.comp);
+      this.dr = g;
+    }
+    this.dr.gain.setTargetAtTime(on ? 0.07 : 0, t, on ? 1.2 : 0.5);
+  }
+  owl(t) {
+    const p = this.c.createStereoPanner(); p.pan.value = -0.45; p.connect(this.comp);
+    for (const [dt, f0, f1, d] of [[0, 410, 372, 0.42], [0.6, 396, 352, 0.6]]) {
+      const o = this.c.createOscillator(), g = this.gain(0), lp = this.filt('lowpass', 900, 0.7);
+      o.frequency.setValueAtTime(f0, t + dt); o.frequency.linearRampToValueAtTime(f1, t + dt + d);
+      this.env(g.gain, t + dt, [[0, 0], [0.09, 0.075], [d * 0.7, 0.05], [d, 0]]);
+      o.connect(lp); lp.connect(g); g.connect(p); o.start(t + dt); o.stop(t + dt + d + 0.05);
+    }
+  }
+  gust(t) {
+    this.wind.gain.cancelScheduledValues(t);
+    this.wind.gain.setTargetAtTime(1.0, t, 0.35); this.wind.gain.setTargetAtTime(0.38, t + 1.7, 0.7);
+    this.windLP.frequency.setTargetAtTime(950, t, 0.4); this.windLP.frequency.setTargetAtTime(380, t + 1.7, 0.7);
+    const n = this.noise(t, false), bp = this.filt('bandpass', 170, 1.0), am = this.gain(0.5), g = this.gain(0);
+    this.lfo(17, 0.5, am.gain, t);
+    this.env(g.gain, t, [[0, 0], [0.9, 0.5], [1.35, 0]]);
+    n.connect(bp); bp.connect(am); am.connect(g); g.connect(this.comp); n.stop(t + 1.5);
+  }
+  blowout(t) {
+    const n = this.noise(t, false), bp = this.filt('bandpass', 1400, 0.8), g = this.gain(0);
+    this.env(g.gain, t, [[0, 0], [0.04, 0.35], [0.3, 0]]);
+    n.connect(bp); bp.connect(g); g.connect(this.comp); n.stop(t + 0.35);
+    this.cricketBus.gain.setTargetAtTime(0, t, 0.12);
+    if (this.wind) { this.wind.gain.cancelScheduledValues(t); this.wind.gain.setTargetAtTime(0.1, t, 0.25); this.wind.gain.setTargetAtTime(0.36, t + 2.2, 1.2); }
+    this.drone(false, t);
+    this.burn(false, t);
+  }
+  reignite(t) {
+    const n = this.noise(t - 1.1, false), bp = this.filt('bandpass', 300, 2), g = this.gain(0);
+    bp.frequency.setValueAtTime(250, t - 1.1); bp.frequency.exponentialRampToValueAtTime(3600, t);
+    g.gain.setValueAtTime(0.0001, t - 1.1); g.gain.exponentialRampToValueAtTime(0.32, t - 0.02); g.gain.linearRampToValueAtTime(0, t + 0.05);
+    n.connect(bp); bp.connect(g); g.connect(this.comp); n.stop(t + 0.1);
+    this.boom(t, 36, 0.8, 3.8);
+    for (const f of [196.0, 207.65, 293.66, 415.3, 587.3]) {
+      const o = this.c.createOscillator(), og = this.gain(0);
+      o.frequency.value = f;
+      this.lfo(4.6 + this.r(), f * 0.006, o.frequency, t);
+      og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(0.04, t + 0.35); og.gain.setTargetAtTime(0.018, t + 0.6, 1.2); og.gain.setTargetAtTime(0, t + 3.5, 1.4);
+      o.connect(og); og.connect(this.comp); o.start(t); o.stop(t + 12);
+    }
+    this.burn(true, t + 0.2);
+  }
+  restoreNight(t) { this.cricketBus.gain.setTargetAtTime(1, t, 1.5); }
+}
+
+function wavBase64(buf) {
+  const ch = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate;
+  const bytes = new Uint8Array(44 + n * ch * 2), dv = new DataView(bytes.buffer);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); dv.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true); dv.setUint32(24, sr, true);
+  dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+  const data = []; for (let c = 0; c < ch; c++) data.push(buf.getChannelData(c));
+  let o = 44;
+  for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { dv.setInt16(o, clamp(data[c][i], -1, 1) * 32767, true); o += 2; }
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+// ---------------------------------------------------------------- scene state
+const BLADES = [0.018, 0.032, 0.06];
+const WARM = [1.0, 0.56, 0.2], GREEN = [0.32, 1.0, 0.42];
+
+const S = {
+  t: 0,
+  candleOn: false, candleT: -99,
+  porchOn: true, porchT: -99,
+  haunt: null,              // time the gust started
+  hauntDone: false,
+  yaw: 0,
+  phantom: null,
+  phantomBase: [],
+  phantomName: '',
+  blade: 1,
+  knife: { vis: 0, tip: [0, 0, 1], A: [0, 1, 0], B: [1, 0, 0], C: [0, 0, 1], target: null, depth: -0.05, tan: [1, 0] },
+  cursor: null,
+  lastInput: 0,
+  fadeT: -99, fadeDur: 0,
+  pending: null,
+};
+const view = { yaw: 0, pitch: 0.07, dist: 4.6, ty: 0.12, tYaw: 0, tPitch: 0.07, tDist: 4.6, shift: 0 };
+const mask = new Mask(512);
+
+function flicker(t, wild) {
+  const n = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.7 + 1.3) * 0.3 + Math.sin(t * 23.1 + 4.1) * 0.2;
+  const m = Math.sin(t * 1.7) * 0.5 + Math.sin(t * 2.9 + 2.0) * 0.5;
+  const dip = Math.max(0, Math.sin(t * 0.83 + 1.1) * Math.sin(t * 1.37)) ** 6;
+  return clamp(0.9 + (0.06 + wild * 0.35) * n + 0.04 * m - 0.25 * dip, 0.05, 1.3);
+}
+
+// light levels as a pure function of the toggles and time
+function lightsAt(t) {
+  let size = 0, col = WARM, wild = 0, green = false;
+  if (S.candleOn) {
+    const u = (t - S.candleT) / 0.75;
+    size = u < 1 ? (u < 0.35 ? ease(u / 0.35) * 1.3 : lerp(1.3, 1.0, ease((u - 0.35) / 0.65))) : 1;
+  } else {
+    size = Math.max(0, 1 - (t - S.candleT) / 0.25);
+    if (S.candleT < 0) size = 0;
+  }
+  if (S.haunt !== null && S.candleOn) {
+    const h = t - S.haunt;
+    if (h < 1.3) wild = sstep(0, 1.1, h);
+    else if (h < 1.6) { wild = 1; size *= 1 - ease((h - 1.3) / 0.3); }
+    else if (h < 3.1) size = 0;
+    else {
+      green = true;
+      const u = (h - 3.1) / 0.6;
+      size = u < 1 ? (u < 0.4 ? ease(u / 0.4) * 1.45 : lerp(1.45, 1.05, ease((u - 0.4) / 0.6))) : 1.05;
+      col = GREEN;
+    }
+  }
+  const darkness = 1 - porchLevel(t);
+  const sway = [0.012 * Math.sin(t * 2.1) + 0.006 * Math.sin(t * 5.3) + wild * 0.05 * Math.sin(t * 17.0), 0.01 * Math.sin(t * 1.7 + 1) + wild * 0.03 * Math.sin(t * 13.0)];
+  return {
+    flameSize: size,
+    candle: size * flicker(t, wild) * (green ? 0.9 : 1),
+    flameCol: col, green, sway,
+    porch: 1 - darkness,
+    moon: 1 - 0.25 * darkness,
+    exposure: 1.0 + 0.3 * darkness,
+  };
+}
+function porchLevel(t) {
+  const u = t - S.porchT;
+  if (S.porchOn) {
+    if (S.porchT < 0) return 1;
+    return u < 0.05 ? 0 : u < 0.09 ? 0.6 : u < 0.13 ? 0.1 : sstep(0.13, 0.3, u);
+  }
+  if (S.porchT < 0) return 0;
+  return u < 0 ? 1 : Math.exp(-u * 18);
+}
+
+// ---------------------------------------------------------------- the film (what the recorder renders)
+const FILM_FPS = 30;
+const FILM_SPEC = (() => {
+  const shapes = TEMPLATES.classic();
+  const ph = new Phantom(shapes, 0.5, { speed: 1.6, w: 0.032 });
+  const candle = ph.tDone + 0.35;
+  const porchOff = candle + 1.7;
+  const gust = 17.0;
+  const dur = 24.0;
+  return { ph, candle, porchOff, gust, dur, reignite: gust + 3.1 };
+})();
+const FILM_CAM = [
+  // t, yaw, pitch, dist, targetY
+  [0.0, -0.4, 0.15, 5.8, 0.2],
+  [2.0, -0.15, 0.1, 4.7, 0.12],
+  [7.0, -0.03, 0.075, 4.45, 0.1],
+  [9.6, 0.0, 0.07, 4.4, 0.1],
+  [11.4, 0.04, 0.06, 4.5, 0.12],
+  [15.6, 0.62, 0.05, 4.9, 0.16],
+  [17.8, 0.56, 0.06, 4.75, 0.13],
+  [21.2, 0.47, 0.06, 3.85, 0.05],
+  [24.0, 0.44, 0.06, 3.6, 0.04],
+];
+function filmCamera(t) {
+  const K = FILM_CAM;
+  let i = 0;
+  while (i < K.length - 2 && t > K[i + 1][0]) i++;
+  const a = K[i], b = K[i + 1];
+  const u = ease(clamp((t - a[0]) / (b[0] - a[0]), 0, 1));
+  return { yaw: lerp(a[1], b[1], u), pitch: lerp(a[2], b[2], u), dist: lerp(a[3], b[3], u), ty: lerp(a[4], b[4], u) };
+}
+function filmState(t) {
+  const F = FILM_SPEC;
+  S.t = t;
+  S.candleOn = t >= F.candle; S.candleT = t >= F.candle ? F.candle : -99;
+  S.porchOn = t < F.porchOff; S.porchT = t >= F.porchOff ? F.porchOff : -99;
+  S.haunt = t >= F.gust ? F.gust : null;
+  Object.assign(view, filmCamera(t));
+  view.shift = 0;
+  // the pumpkin turns to face the camera once it is alive
+  const turn = sstep(F.reignite + 0.4, F.reignite + 2.4, t);
+  S.yaw = view.yaw * turn * 0.92;
+  // carving, a pure function of time
+  const st = F.ph.strokesAt(t);
+  const ops = F.ph.segs.slice(0, st.done).map(seg => ({ type: seg.sh.closed ? 'fill' : 'cut', pts: seg.sh.pts, w: F.ph.w }));
+  const key = st.done + ':' + (st.active ? st.active.pts.length + ':' + st.active.pts[st.active.pts.length - 1].join(',') : '');
+  if (key !== mask._filmKey) { mask.ops = ops; mask.active = st.active; mask.dirty = true; mask._filmKey = key; }
+  let piece = null, pieceDepth = -1;
+  for (let i = 0; i < st.done; i++) {
+    const seg = F.ph.segs[i];
+    if (seg.sh.closed && t - seg.tEnd < 0.45) { piece = seg; pieceDepth = 0.34 * ease(clamp((t - seg.tEnd) / 0.45, 0, 1)); }
+  }
+  if ((piece && mask.piece?.pts) !== (piece && piece.sh.pts)) { mask.setPiece(piece ? piece.sh.pts : null, piece ? piece.tEnd : 0); }
+  if (!piece && mask.piece) mask.setPiece(null);
+  S.pieceDepth = pieceDepth;
+  const k = F.ph.knifeAt(t);
+  S.knife.vis = k ? 1 : 0;
+  if (k) {
+    const pose = knifePose(k.p, k.depth, k.tan, S.yaw, t, k.cutting ? 0.022 : 0);
+    Object.assign(S.knife, pose);
+  }
+  S.cursor = null;
+  const fadeIn = sstep(0.0, 0.9, t), fadeOut = 1 - sstep(F.dur - 1.0, F.dur - 0.05, t);
+  S.fade = fadeIn * fadeOut;
+}
+async function filmAudio() {
+  const F = FILM_SPEC, sr = 48000;
+  const ctx = new OfflineAudioContext(2, Math.ceil(F.dur * sr), sr);
+  const fx = new Sfx(ctx, 99);
+  fx.ambience(0);
+  fx.carveBed(0);
+  for (const seg of F.ph.segs) {
+    fx.carve(1, seg.tCut);
+    fx.carve(0, seg.tEnd);
+    if (seg.sh.closed) fx.pop(seg.tEnd + 0.02);
+  }
+  fx.owl(12.6);
+  fx.strike(F.candle - 0.32);
+  fx.porch(true, F.porchOff);
+  fx.gust(F.gust);
+  fx.blowout(F.gust + 1.3);
+  fx.reignite(F.reignite);
+  // schedule crickets and candle crackle across the timeline in slices so the burn state is right
+  for (let t = 0; t < F.dur; t += 0.25) {
+    fx.burning = t >= F.candle && !(t >= F.gust + 1.3 && t < F.reignite);
+    fx.schedule(t + 0.25);
+  }
+  fx.master.gain.setValueAtTime(0.9, F.dur - 1.6);
+  fx.master.gain.linearRampToValueAtTime(0, F.dur - 0.05);
+  const buf = await ctx.startRendering();
+  return wavBase64(buf);
+}
+
+// ---------------------------------------------------------------- app
+const canvas = document.getElementById('scene');
+let R;
+try {
+  R = new Renderer(canvas);
+} catch (e) {
+  const msg = document.createElement('div');
+  msg.className = 'fallback';
+  msg.textContent = e.message === 'no-webgl2'
+    ? 'Hallowlight needs WebGL 2. Open it in a recent Chrome, Edge, Firefox or Safari.'
+    : 'The scene failed to start on this device. Try another browser.';
+  document.body.appendChild(msg);
+  console.error(e);
+  return;
+}
+
+const hintEl = document.getElementById('hint');
+const toastEl = document.getElementById('toast');
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+let hintText = '';
+function hint(text) { if (text !== hintText) { hintText = text; hintEl.textContent = text; } }
+
+let scale = 0.6, frameTimes = [], quality = 1;
+function layout() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let w, h;
+  if (FILM) { w = FILM_W; h = FILM_H; canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
+  else { w = Math.round(canvas.clientWidth * dpr); h = Math.round(canvas.clientHeight * dpr); }
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const s = FILM ? 1 : scale;
+  R.resize(Math.max(64, Math.round(w * s)), Math.max(64, Math.round(h * s)));
+  if (!FILM) {
+    const dock = document.getElementById('dock');
+    const dh = dock.getBoundingClientRect().height + 14;
+    view.shift = -Math.min(0.35, (dh / canvas.clientHeight) * 0.85);
+  }
+}
+
+let audio = null, sfx = null;
+function uniforms(t) {
+  const L = lightsAt(t);
+  const aspect = canvas.width / canvas.height;
+  const cam = cameraFrame(view, aspect);
+  const k = S.knife;
+  const cur = S.cursor;
+  return {
+    uTime: t, uFrame: FILM ? Math.round(t * FILM_FPS) : (S.frame = (S.frame || 0) + 1), uQuality: FILM ? FILM_Q : quality, uShift: view.shift,
+    uCamPos: cam.pos, uCamFwd: cam.fwd, uCamRight: cam.right, uCamUp: cam.up, uTanFov: cam.tanF,
+    uYaw: S.yaw, uCandle: L.candle, uFlameSize: L.flameSize, uFlameCol: L.flameCol, uSway: L.sway,
+    uPorch: L.porch, uMoon: L.moon, uOpen: clamp(mask.open * 9, 0, 1), uPiece: S.pieceDepth ?? -1,
+    uKnife: [k.tip[0], k.tip[1], k.tip[2], k.vis], uKA: k.A, uKB: k.B, uKC: k.C,
+    uCursor: cur ? [cur[0], cur[1], cur[2], cur[3]] : [0, 0, 0, 0],
+    exposure: L.exposure * 1.05, bloom: 0.055, fade: S.fade ?? 1, grain: FILM ? 0.012 : 0.022,
+  };
+}
+function draw(t) {
+  if (mask.update()) R.uploadMask(mask.data);
+  R.render(uniforms(t), canvas.width, canvas.height);
+}
+
+if (FILM) {
+  layout();
+  window.__hl = {
+    fps: FILM_FPS,
+    duration: FILM_SPEC.dur,
+    frames: Math.round(FILM_SPEC.dur * FILM_FPS),
+    frame(i) {
+      const t = i / FILM_FPS;
+      filmState(t);
+      draw(t);
+      R.gl.finish();
+      return canvas.toDataURL('image/png');
+    },
+    still(t) { filmState(t); draw(t); R.gl.finish(); return canvas.toDataURL('image/png'); },
+    audio: filmAudio,
+    debug(t) {
+      filmState(t);
+      const segs = FILM_SPEC.ph.segs.map(s => [s.tTravel, s.tCut, s.tEnd, s.L].map(x => +x.toFixed(2)));
+      return { segs, knife: FILM_SPEC.ph.knifeAt(t), pose: { tip: S.knife.tip, A: S.knife.A }, candle: FILM_SPEC.candle, porchOff: FILM_SPEC.porchOff, done: FILM_SPEC.ph.tDone };
+    },
+  };
+  window.__hlReady = true;
+  return;
+}
+
+// -------- interactive
+const ptr = { id: null, mode: null, x: 0, y: 0, lx: 0, ly: 0, over: false, pts: new Map(), pinch: 0 };
+
+function uvFromEvent(e) {
+  const rc = canvas.getBoundingClientRect();
+  const px = e.clientX - rc.left, py = e.clientY - rc.top;
+  return [(2 * px - rc.width) / rc.height, (rc.height - 2 * py) / rc.height + view.shift];
+}
+function pick(e) {
+  const [ux, uy] = uvFromEvent(e);
+  const cam = cameraFrame(view, canvas.width / canvas.height);
+  const rd = screenRay(cam, ux, uy);
+  const q = pickBody(cam.pos, rd, S.yaw);
+  if (!q || q[2] < 0.06 || Math.abs(q[0]) > 0.86 || Math.abs(q[1]) > 0.74) return null;
+  return q;
+}
+
+function stopPhantom() {
+  if (!S.phantom) return;
+  const ph = S.phantom;
+  const st = ph.strokesAt(S.t);
+  mask.ops = S.phantomBase.concat(ph.segs.slice(0, st.done).map(seg => ({ type: seg.sh.closed ? 'fill' : 'cut', pts: seg.sh.pts, w: ph.w })));
+  mask.active = null;
+  mask.dirty = true;
+  S.phantom = null;
+  sfx?.carve(0, audio.currentTime);
+}
+function startTemplate(name, opts = {}) {
+  stopPhantom();
+  const fresh = opts.fresh !== false;
+  if (fresh) {
+    mask.clear();
+    if (S.candleOn) { S.candleOn = false; S.candleT = S.t; }
+    S.haunt = null;
+    S.yaw = 0;
+  }
+  const shapes = name === 'random' ? TEMPLATES.random((Math.random() * 1e9) | 0) : TEMPLATES[name]();
+  S.phantomBase = mask.ops.slice();
+  S.phantom = new Phantom(shapes, S.t, { speed: opts.speed || 1.45, w: BLADES[S.blade] * 0.9 + 0.004 });
+  S.phantomName = name;
+  S.phantomCommitted = 0;
+  S.autoLight = opts.autoLight !== false;
+  S.autoDark = !!opts.autoDark;
+  updateButtons();
+}
+function updatePhantom(t) {
+  const ph = S.phantom;
+  if (!ph) return;
+  const st = ph.strokesAt(t);
+  while (S.phantomCommitted < st.done) {
+    const seg = ph.segs[S.phantomCommitted++];
+    mask.ops.push({ type: seg.sh.closed ? 'fill' : 'cut', pts: seg.sh.pts, w: ph.w });
+    if (seg.sh.closed) { mask.setPiece(seg.sh.pts, t); sfx?.pop(audio.currentTime); }
+  }
+  mask.active = st.active;
+  mask.dirty = true;
+  const k = ph.knifeAt(t);
+  if (k) {
+    S.knife.vis = 1;
+    Object.assign(S.knife, knifePose(k.p, k.depth, k.tan, S.yaw, t, k.cutting ? 0.022 : 0));
+  } else S.knife.vis = 0;
+  sfx?.carve(k && k.cutting ? 1 : 0, audio.currentTime);
+  if (t >= ph.tDone) {
+    S.phantom = null;
+    mask.active = null;
+    S.knife.vis = 0;
+    if (S.autoLight) {
+      setTimeout(() => { if (!S.phantom && !S.candleOn) setCandle(true); }, 350);
+      if (S.autoDark) setTimeout(() => { if (!S.phantom && S.candleOn && S.porchOn) setPorch(false); }, 2200);
+    }
+    updateButtons();
+  }
+}
+
+// user carving
+let stroke = null;
+function beginStroke(q) {
+  stopPhantom();
+  S.attract = false;
+  stroke = { pts: [[q[0], q[1]]], w: BLADES[S.blade], len: 0 };
+  mask.active = { pts: stroke.pts, w: stroke.w };
+  mask.dirty = true;
+  S.lastInput = S.t;
+}
+function extendStroke(q) {
+  const p = [q[0], q[1]];
+  const pts = stroke.pts;
+  const last = pts[pts.length - 1];
+  const d = dist2(last, p);
+  if (d < 0.006) return;
+  // closing a loop: the new segment crosses an earlier one
+  for (let i = 0; i < pts.length - 3; i++) {
+    const X = segHit(pts[i], pts[i + 1], last, p);
+    if (X) {
+      const loop = [X, ...pts.slice(i + 1), X];
+      if (polyArea(loop) > 0.0016) {
+        commitFill(loop, stroke.w);
+        if (i > 0) mask.ops.push({ type: 'cut', pts: pts.slice(0, i + 1).concat([X]), w: stroke.w });
+        stroke = { pts: [X, p], w: stroke.w, len: d };
+        mask.active = { pts: stroke.pts, w: stroke.w };
+        mask.dirty = true;
+        return;
+      }
+    }
+  }
+  pts.push(p);
+  stroke.len += d;
+  mask.dirty = true;
+}
+function endStroke() {
+  if (!stroke) return;
+  const pts = stroke.pts;
+  const closeTo = Math.max(0.05, stroke.w * 2.2);
+  if (pts.length > 4 && stroke.len > 0.18 && dist2(pts[0], pts[pts.length - 1]) < closeTo && polyArea(pts) > 0.0016) commitFill(pts.slice(), stroke.w);
+  else if (pts.length) mask.ops.push({ type: 'cut', pts: pts.slice(), w: stroke.w });
+  stroke = null;
+  mask.active = null;
+  mask.dirty = true;
+  updateButtons();
+}
+function commitFill(pts, w) {
+  mask.ops.push({ type: 'fill', pts, w });
+  mask.setPiece(pts, S.t);
+  mask.dirty = true;
+  sfx?.pop(audio.currentTime);
+  updateButtons();
+}
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  ptr.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (ptr.pts.size === 2) {
+    if (stroke) endStroke();
+    ptr.mode = 'pinch';
+    const [a, b] = [...ptr.pts.values()];
+    ptr.pinch = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    return;
+  }
+  if (ptr.pts.size > 2) return;
+  ptr.id = e.pointerId;
+  ptr.lx = e.clientX; ptr.ly = e.clientY;
+  S.lastInput = S.t;
+  if (S.haunt !== null && S.candleOn) { /* the pumpkin is busy watching; still let people carve */ }
+  const q = pick(e);
+  if (q && e.button === 0) {
+    ptr.mode = 'carve';
+    beginStroke(q);
+    S.knife.target = q;
+  } else {
+    ptr.mode = 'orbit';
+    canvas.classList.add('drag');
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  if (ptr.pts.has(e.pointerId)) ptr.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  const rc = canvas.getBoundingClientRect();
+  ptr.nx = ((e.clientX - rc.left) / rc.width) * 2 - 1;
+  if (ptr.mode === 'pinch' && ptr.pts.size === 2) {
+    const [a, b] = [...ptr.pts.values()];
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    view.tDist = clamp(view.tDist * (ptr.pinch / Math.max(d, 1)), 3.0, 7.0);
+    ptr.pinch = d;
+    return;
+  }
+  if (ptr.mode === 'orbit' && e.pointerId === ptr.id) {
+    const dx = e.clientX - ptr.lx, dy = e.clientY - ptr.ly;
+    ptr.lx = e.clientX; ptr.ly = e.clientY;
+    view.tYaw = clamp(view.tYaw - dx * 0.006, -1.25, 1.25);
+    view.tPitch = clamp(view.tPitch + dy * 0.004, 0.0, 0.55);
+    S.lastInput = S.t;
+    return;
+  }
+  const q = pick(e);
+  if (ptr.mode === 'carve' && e.pointerId === ptr.id) {
+    S.lastInput = S.t;
+    if (q) { extendStroke(q); S.knife.target = q; }
+    else endStroke();
+    if (!q) ptr.mode = null;
+  } else if (!ptr.mode) {
+    S.knife.target = q;
+    canvas.classList.toggle('carve', !!q);
+  }
+  S.cursor = q ? [q[0], q[1], BLADES[S.blade] / 2, 1] : null;
+});
+const release = e => {
+  ptr.pts.delete(e.pointerId);
+  if (ptr.mode === 'carve' && e.pointerId === ptr.id) endStroke();
+  if (ptr.pts.size === 0) { ptr.mode = null; ptr.id = null; canvas.classList.remove('drag'); }
+  if (e.pointerType !== 'mouse') { S.knife.target = null; S.cursor = null; }
+};
+canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointercancel', release);
+canvas.addEventListener('pointerleave', e => { if (!ptr.mode) { S.knife.target = null; S.cursor = null; } });
+canvas.addEventListener('wheel', e => { e.preventDefault(); view.tDist = clamp(view.tDist * Math.exp(e.deltaY * 0.0012), 3.0, 7.0); }, { passive: false });
+
+// knife follows the pointer when a person is carving
+function updateUserKnife(dt, t) {
+  const k = S.knife;
+  const target = k.target;
+  const cutting = ptr.mode === 'carve';
+  const want = target ? 1 : 0;
+  k.userVis = lerp(k.userVis || 0, want, 1 - Math.exp(-dt * 10));
+  if (!target) { if (k.userVis < 0.05) k.vis = 0; return; }
+  const dTarget = cutting ? 0.09 : -0.06;
+  k.depth = lerp(k.depth, dTarget, 1 - Math.exp(-dt * 14));
+  const prev = k.lastFace || [target[0], target[1]];
+  const mv = [target[0] - prev[0], target[1] - prev[1]];
+  const sp = Math.hypot(mv[0], mv[1]);
+  if (sp > 1e-4) k.tan = [lerp(k.tan[0], mv[0] / sp, 0.25), lerp(k.tan[1], mv[1] / sp, 0.25)];
+  k.lastFace = [target[0], target[1]];
+  k.speed = lerp(k.speed || 0, sp / Math.max(dt, 1e-3), 0.2);
+  const saw = cutting ? clamp(k.speed * 0.03, 0.006, 0.024) : 0;
+  Object.assign(k, knifePose([target[0], target[1]], k.depth, k.tan, S.yaw, t, saw));
+  k.vis = 1;
+  sfx?.carve(cutting ? clamp(0.25 + k.speed * 0.9, 0, 1) : 0, audio.currentTime);
+}
+
+// toggles
+function setCandle(on) {
+  if (S.haunt !== null) { S.haunt = null; sfx?.restoreNight(audio.currentTime); }
+  S.candleOn = on;
+  S.candleT = S.t;
+  if (sfx) { if (on) sfx.strike(audio.currentTime); else { sfx.blowout(audio.currentTime); sfx.restoreNight(audio.currentTime + 0.5); } }
+  updateButtons();
+}
+function setPorch(on) {
+  if (S.haunt !== null) { S.haunt = null; sfx?.restoreNight(audio.currentTime); }
+  S.porchOn = on;
+  S.porchT = S.t;
+  sfx?.porch(!on, audio.currentTime);
+  updateButtons();
+}
+function freshPumpkin() {
+  stopPhantom();
+  S.fadeT = S.t; S.fadeDur = 0.7;
+  S.pending = () => {
+    mask.clear();
+    S.candleOn = false; S.candleT = -99; S.haunt = null; S.yaw = 0;
+    if (!S.porchOn) { S.porchOn = true; S.porchT = S.t; }
+    updateButtons();
+  };
+}
+
+const $ = id => document.getElementById(id);
+function updateButtons() {
+  $('candle').textContent = S.candleOn ? 'Blow out' : 'Light candle';
+  $('porch').textContent = S.porchOn ? 'Lights out' : 'Lights on';
+  $('undo').disabled = !mask.ops.length && !S.phantom;
+  for (let i = 0; i < 3; i++) $('blade-' + i).setAttribute('aria-pressed', String(S.blade === i));
+}
+document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => {
+  S.lastInput = S.t;
+  S.attract = false;
+  if (!S.porchOn) { S.porchOn = true; S.porchT = S.t; sfx?.porch(false, audio.currentTime); }
+  startTemplate(b.dataset.face);
+}));
+document.querySelectorAll('[data-blade]').forEach(b => b.addEventListener('click', () => { S.blade = +b.dataset.blade; updateButtons(); }));
+$('undo').addEventListener('click', () => {
+  if (S.phantom) stopPhantom();
+  mask.ops.pop();
+  mask.setPiece(null);
+  mask.dirty = true;
+  S.lastInput = S.t;
+  updateButtons();
+});
+$('fresh').addEventListener('click', () => { S.lastInput = S.t; freshPumpkin(); });
+$('candle').addEventListener('click', () => { S.lastInput = S.t; setCandle(!S.candleOn); });
+$('porch').addEventListener('click', () => { S.lastInput = S.t; setPorch(!S.porchOn); });
+$('sound').addEventListener('click', async () => {
+  const b = $('sound');
+  if (!audio) {
+    try {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+      sfx = new Sfx(audio, (Math.random() * 1e9) | 0);
+      sfx.ambience(audio.currentTime + 0.05);
+      sfx.carveBed(audio.currentTime + 0.05);
+      if (S.candleOn) sfx.burn(true, audio.currentTime + 0.1);
+      if (!S.porchOn) sfx.drone(true, audio.currentTime + 0.1);
+      b.setAttribute('aria-pressed', 'true');
+      b.textContent = 'Sound on';
+      return;
+    } catch (err) { toast('Sound is not available here'); return; }
+  }
+  if (audio.state === 'running') { await audio.suspend(); b.setAttribute('aria-pressed', 'false'); b.textContent = 'Sound off'; }
+  else { await audio.resume(); b.setAttribute('aria-pressed', 'true'); b.textContent = 'Sound on'; }
+});
+$('save').addEventListener('click', async () => {
+  const blob = await snapshot();
+  if (!blob) { toast('Could not capture the image'); return; }
+  const name = 'hallowlight.png';
+  let downloads = null;
+  try { downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : undefined; } catch (err) { downloads = null; }
+  if (downloads) {
+    try { await downloads.save({ filename: name, data: blob }); toast('Saved'); }
+    catch (err) { if (err && err.code !== 'declined') toast('Saving is not available here'); }
+    return;
+  }
+  if (downloads === null) { toast('Saving is not available here'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Saved');
+});
+async function snapshot() {
+  const knifeWas = S.knife.vis, cursorWas = S.cursor;
+  S.knife.vis = 0; S.cursor = null;
+  const prevScale = scale, prevQuality = quality;
+  scale = 1; quality = Math.max(2, quality); layout();
+  draw(S.t);
+  const out = document.createElement('canvas');
+  out.width = canvas.width; out.height = canvas.height;
+  const x = out.getContext('2d');
+  x.drawImage(canvas, 0, 0);
+  try { await document.fonts.load('400 32px "IM Fell English SC"'); } catch (err) { /* fallback font is fine */ }
+  const fs = Math.round(out.height * 0.03);
+  x.font = `400 ${fs}px "IM Fell English SC", Georgia, serif`;
+  x.fillStyle = 'rgba(239,230,210,0.7)';
+  x.textAlign = 'right';
+  x.fillText('Hallowlight', out.width - fs, out.height - fs);
+  scale = prevScale; quality = prevQuality; layout();
+  S.knife.vis = knifeWas; S.cursor = cursorWas;
+  return new Promise(res => out.toBlob(res, 'image/png'));
+}
+window.addEventListener('keydown', e => {
+  if (e.target instanceof HTMLInputElement) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z') $('undo').click();
+  else if (k === 'c') $('candle').click();
+  else if (k === 'l') $('porch').click();
+  else if (k === 'n') $('fresh').click();
+  else if (k === 'm') $('sound').click();
+});
+window.addEventListener('resize', layout);
+
+function updateHints() {
+  if (S.phantom) return hint(S.phantomName === 'classic' && S.attract ? 'Carving one to start you off. Drag across the pumpkin any time to take the knife.' : 'Carving…');
+  if (S.haunt !== null && lightsAt(S.t).green) return hint('Something relit it. Move across the screen and it turns to watch you.');
+  if (!mask.ops.length) return hint('Drag across the pumpkin to cut. Close a loop to push the piece in, or pick a template.');
+  if (!S.candleOn) return hint('Keep carving, or light the candle.');
+  if (S.porchOn) return hint('Turn the porch light off to see it properly.');
+  return hint('Drag the background to walk around it. Pick a template or start a new pumpkin.');
+}
+
+let last = performance.now();
+let perfAcc = 0, perfN = 0;
+function loop(now) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  S.t += dt;
+  const t = S.t;
+  // fade for a new pumpkin
+  const fu = (t - S.fadeT) / S.fadeDur;
+  S.fade = fu >= 0 && fu < 1 ? Math.abs(1 - 2 * fu) : 1;
+  if (S.pending && fu >= 0.5) { const p = S.pending; S.pending = null; p(); }
+  // camera
+  const kk = 1 - Math.exp(-dt * 5);
+  view.yaw = lerp(view.yaw, view.tYaw, kk);
+  view.pitch = lerp(view.pitch, view.tPitch, kk);
+  view.dist = lerp(view.dist, view.tDist, kk);
+  // carving
+  if (S.phantom) updatePhantom(t);
+  else updateUserKnife(dt, t);
+  // the piece being pushed in
+  if (mask.piece) {
+    const u = (t - mask.piece.t0) / 0.45;
+    if (u >= 1) { mask.setPiece(null); S.pieceDepth = -1; }
+    else S.pieceDepth = 0.34 * ease(clamp(u, 0, 1));
+  } else S.pieceDepth = -1;
+  // the haunting: it only happens once, after a while in the dark
+  if (!S.hauntDone && S.candleOn && !S.porchOn && mask.ops.length && t - Math.max(S.candleT, S.porchT, S.lastInput) > 20) {
+    S.haunt = t; S.hauntDone = true;
+    if (sfx) { const a = audio.currentTime; sfx.gust(a); sfx.blowout(a + 1.3); sfx.reignite(a + 3.1); }
+  }
+  const L = lightsAt(t);
+  const yawTarget = L.green ? clamp(view.yaw + (ptr.nx || 0) * 0.7, -1.3, 1.3) : 0;
+  S.yaw = lerp(S.yaw, yawTarget, 1 - Math.exp(-dt * (L.green ? 2.2 : 1.5)));
+  if (sfx && audio.state === 'running') sfx.schedule(audio.currentTime + 1.0);
+  updateHints();
+  // adaptive resolution
+  perfAcc += dt; perfN++;
+  if (perfAcc > 0.6) {
+    const avg = perfAcc / perfN;
+    const old = scale;
+    if (avg > 0.024) { if (quality > 1) quality = Math.max(1, quality - 0.5); else scale = Math.max(0.3, scale * 0.86); }
+    else if (avg < 0.0175) { if (scale < 1) scale = Math.min(1.0, scale * 1.07); else if (avg < 0.013) quality = Math.min(2.5, quality + 0.25); }
+    if (Math.abs(old - scale) > 1e-3) layout();
+    perfAcc = 0; perfN = 0;
+  }
+  draw(t);
+  requestAnimationFrame(loop);
+}
+
+window.__hlState = () => ({ ops: mask.ops.length, candle: S.candleOn, porch: S.porchOn, phantom: !!S.phantom, scale: +scale.toFixed(2), t: +S.t.toFixed(2), hint: hintText });
+layout();
+updateButtons();
+// open on something worth seeing: the knife carves a classic face, the candle lights, the porch goes dark
+startTemplate('classic', { autoLight: true, autoDark: true, speed: 1.25 });
+S.attract = true;
+document.fonts?.ready.then(layout);
+requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
+})();
+</script>
+</body>
+</html>
