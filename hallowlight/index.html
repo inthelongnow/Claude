@@ -1918,9 +1918,12 @@ class Sfx {
     n2.connect(lp2); lp2.connect(this.carveG);
   }
   carve(level, t) {
-    if (!this.carveG || Math.abs(level - (this.lastCarve ?? -1)) < 0.04) return;
+    if (!this.carveG) return;
+    const last = this.lastCarve ?? -1;
+    // skip tiny changes while sawing, but never skip going silent
+    if (level === last || (level > 0 && last > 0 && Math.abs(level - last) < 0.04)) return;
     this.lastCarve = level;
-    this.carveG.gain.setTargetAtTime(level * 0.5, t, 0.035);
+    this.carveG.gain.setTargetAtTime(level * 0.5, t, level > 0 ? 0.03 : 0.05);
   }
   pop(t) {
     const o = this.c.createOscillator();
@@ -2495,22 +2498,30 @@ canvas.addEventListener('wheel', e => { e.preventDefault(); view.tDist = clamp(v
 function updateUserKnife(dt, t) {
   const k = S.knife;
   const target = k.target;
-  const cutting = ptr.mode === 'carve';
-  const want = target ? 1 : 0;
-  k.userVis = lerp(k.userVis || 0, want, 1 - Math.exp(-dt * 10));
-  if (!target) { if (k.userVis < 0.05) k.vis = 0; return; }
-  const dTarget = cutting ? 0.09 : -0.06;
-  k.depth = lerp(k.depth, dTarget, 1 - Math.exp(-dt * 14));
-  const prev = k.lastFace || [target[0], target[1]];
-  const mv = [target[0] - prev[0], target[1] - prev[1]];
-  const sp = Math.hypot(mv[0], mv[1]);
-  if (sp > 1e-4) k.tan = [lerp(k.tan[0], mv[0] / sp, 0.25), lerp(k.tan[1], mv[1] / sp, 0.25)];
-  k.lastFace = [target[0], target[1]];
-  k.speed = lerp(k.speed || 0, sp / Math.max(dt, 1e-3), 0.2);
-  const saw = cutting ? clamp(k.speed * 0.03, 0.006, 0.024) : 0;
-  Object.assign(k, knifePose([target[0], target[1]], k.depth, k.tan, S.yaw, t, saw));
-  k.vis = 1;
-  sfx?.carve(cutting ? clamp(0.25 + k.speed * 0.9, 0, 1) : 0, audio.currentTime);
+  const cutting = ptr.mode === 'carve' && !!stroke;
+  k.userVis = lerp(k.userVis || 0, target ? 1 : 0, 1 - Math.exp(-dt * 10));
+  let level = 0;
+  if (target) {
+    k.depth = lerp(k.depth, cutting ? 0.09 : -0.06, 1 - Math.exp(-dt * 14));
+    // blade speed in face units per second; a fresh touch starts from rest instead of jumping
+    const prev = k.lastFace || [target[0], target[1]];
+    const mv = [target[0] - prev[0], target[1] - prev[1]];
+    const sp = Math.hypot(mv[0], mv[1]);
+    if (sp > 1e-4) k.tan = [lerp(k.tan[0], mv[0] / sp, 0.25), lerp(k.tan[1], mv[1] / sp, 0.25)];
+    k.lastFace = [target[0], target[1]];
+    k.speed = lerp(k.speed || 0, sp / Math.max(dt, 1e-3), 1 - Math.exp(-dt * 14));
+    const saw = cutting ? clamp(k.speed * 0.03, 0, 0.024) : 0;
+    Object.assign(k, knifePose([target[0], target[1]], k.depth, k.tan, S.yaw, t, saw));
+    k.vis = 1;
+    // the saw only sounds while the blade is in the pumpkin and moving
+    if (cutting && k.speed > 0.04) level = clamp(Math.sqrt(k.speed) * 0.8, 0, 1);
+  } else {
+    k.lastFace = null;
+    k.speed = 0;
+    if (k.userVis < 0.05) k.vis = 0;
+  }
+  // set every frame, so lifting a finger or sliding off the pumpkin always silences it
+  sfx?.carve(level, audio.currentTime);
 }
 
 // toggles
@@ -2700,7 +2711,7 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-window.__hlState = () => ({ ops: mask.ops.length, candle: S.candleOn, porch: S.porchOn, phantom: !!S.phantom, scale: +scale.toFixed(2), t: +S.t.toFixed(2), hint: hintText });
+window.__hlState = () => ({ ops: mask.ops.length, candle: S.candleOn, porch: S.porchOn, phantom: !!S.phantom, scale: +scale.toFixed(2), t: +S.t.toFixed(2), hint: hintText, audio: audio ? audio.state : null, carve: sfx ? sfx.lastCarve ?? 0 : null, carveGain: sfx && sfx.carveG ? +sfx.carveG.gain.value.toFixed(3) : null, mode: ptr.mode });
 layout();
 updateButtons();
 // open on something worth seeing: the knife carves a classic face, the candle lights, the porch goes dark
