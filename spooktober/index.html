@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spooktober</title>
+<meta name="description" content="A 46-second Halloween short film rendered live by a single GLSL fragment shader, with a procedurally generated soundtrack. One HTML file. Zero assets.">
+<style>
+  :root { --bg: #000; --fg: #e9e2d3; --accent: #ff8c1a; --dim: #8a8378; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #000; --fg: #e9e2d3; } }
+  :root[data-theme="dark"] { --bg: #000; --fg: #e9e2d3; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: 'Liberation Serif', 'Times New Roman', Georgia, serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+  #frame { position: relative; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; background: #000; overflow: hidden; }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #title { font-weight: 700; font-size: calc(var(--fw) * 0.105); letter-spacing: 0.06em; color: #ff7a12; opacity: 0;
+           text-shadow: 0 0 calc(var(--fw) * 0.01) #ff9a3c, 0 0 calc(var(--fw) * 0.05) rgba(255,100,0,0.85), 0 calc(var(--fw)*0.004) 0 #6a1a00;
+           filter: url(#drip); white-space: nowrap; line-height: 1; }
+  #sub { margin-top: calc(var(--fw) * 0.03); font-size: calc(var(--fw) * 0.019); letter-spacing: 0.22em; text-transform: uppercase; color: #cfc6b4; opacity: 0; line-height: 1.8; }
+  #intro, #outro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 40%, rgba(40,16,4,0.92), rgba(0,0,0,0.97)); }
+  .card { max-width: 34em; padding: 0 16px; text-align: center; }
+  .card h1 { font-size: calc(var(--fw) * 0.07); letter-spacing: 0.08em; margin: 0 0 0.3em; color: #ff8c1a; text-shadow: 0 0 20px rgba(255,120,20,0.6); }
+  .card p { font-size: calc(var(--fw) * 0.016); line-height: 1.6; color: #cfc6b4; margin: 0.4em 0; }
+  .card p.hint { color: var(--dim); font-size: calc(var(--fw) * 0.012); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 1.6em; }
+  button { font: inherit; font-size: calc(var(--fw) * 0.018); letter-spacing: 0.2em; text-transform: uppercase; color: #ffb366; background: transparent; border: 1px solid #ff8c1a; padding: 0.7em 1.6em; margin-top: 1.4em; cursor: pointer; border-radius: 2px; }
+  button:hover { background: rgba(255,140,26,0.12); }
+  #outro { display: none; }
+  #err { position: absolute; left: 0; right: 0; top: 0; color: #f66; background: rgba(0,0,0,0.85); font: 12px/1.4 monospace; padding: 8px; white-space: pre-wrap; display: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="frame">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="drip" x="-30%" y="-50%" width="160%" height="300%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="3" seed="13" result="noise"/>
+        <feDisplacementMap id="dispmap" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </svg>
+    <div id="title">SPOOKTOBER</div>
+    <div id="sub">a 46-second horror short rendered by one fragment shader<br>one html file &middot; zero assets &middot; procedural soundtrack</div>
+  </div>
+  <div id="intro"><div class="card">
+    <h1>SPOOKTOBER</h1>
+    <p>A 46-second horror short, rendered live by a single GLSL fragment shader, with a soundtrack synthesized on the fly by the Web Audio API.</p>
+    <p>No models. No textures. No samples. One HTML file.</p>
+    <button id="play">&#9654;&nbsp; enter the graveyard</button>
+    <p class="hint">headphones recommended &middot; F for fullscreen</p>
+  </div></div>
+  <div id="outro"><div class="card">
+    <h1>SPOOKTOBER</h1>
+    <p>Everything you just saw was computed, pixel by pixel, from a few hundred lines of GLSL. Everything you heard came from oscillators and noise.</p>
+    <button id="replay">&#8635;&nbsp; watch again</button>
+  </div></div>
+  <div id="err"></div>
+</div></div>
+
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec3  uCamPos;
+uniform vec3  uCamTgt;
+uniform float uFov;
+uniform float uFlash;
+uniform float uBolt;
+uniform float uBoltSeed;
+uniform vec3  uGhost;
+uniform float uGhostA;
+uniform vec3  uLanternPos;
+uniform float uLantern;
+uniform vec3  uTreeA;
+uniform vec3  uTreeB;
+uniform vec3  uHousePos;
+uniform float uWindows;
+uniform float uBats;
+uniform float uFade;
+uniform float uDebug;
+uniform float uGateY;
+uniform float uScare;
+
+out vec4 fragColor;
+
+const float PI = 3.14159265;
+const vec3 MOON_DIR = vec3(0.3640, 0.3467, 0.8667);   // normalize(0.42, 0.40, 1.0)
+const vec3 MOON_COL = vec3(0.62, 0.70, 0.95);
+const vec3 BOLT_DIR = vec3(-0.2825, 0.2072, 0.9366);  // normalize(-0.30, 0.22, 1.0)
+const vec3 FLASH_COL = vec3(0.85, 0.88, 1.0);
+const vec3 LANTERN_COL = vec3(1.0, 0.52, 0.14);
+const vec3 GHOST_COL = vec3(0.55, 0.85, 1.0);
+const float FAR = 46.0;
+
+// ---------------------------------------------------------------- hashing & noise
+float hash11(float n) { return fract(sin(n) * 43758.5453123); }
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec2  hash22(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
+float hash13(vec3 p3) { p3 = fract(p3 * 0.1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+float noise2(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1, 0)), f.x), mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), f.x), f.y);
+}
+float noise3(vec3 p) {
+  vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash13(i), hash13(i + vec3(1, 0, 0)), f.x), mix(hash13(i + vec3(0, 1, 0)), hash13(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash13(i + vec3(0, 0, 1)), hash13(i + vec3(1, 0, 1)), f.x), mix(hash13(i + vec3(0, 1, 1)), hash13(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float fbm2(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise2(p); p = p * 2.03 + vec2(17.1, 9.3); a *= 0.5; } return s; }
+float fbm3(vec3 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 3; i++) { s += a * noise3(p); p = p * 2.05 + vec3(11.0, 7.0, 3.0); a *= 0.5; } return s; }
+float noise1(float x) { float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(hash11(i), hash11(i + 1.0), f); }
+
+// ---------------------------------------------------------------- primitives
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+mat2 rotSmall(float a) { float a2 = a * a; float c = 1.0 - 0.5 * a2 + a2 * a2 * 0.0417; float s = a * (1.0 - a2 * 0.1667); return mat2(c, -s, s, c); }
+float sdBox(vec3 p, vec3 b) { vec3 q = abs(p) - b; return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0); }
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r1, float r2) {
+  vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - mix(r1, r2, h);
+}
+float sdCylY(vec3 p, float r, float h) { vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r, h); return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)); }
+// cone: apex at origin, base circle at y = -h with radius h*c.x/c.y
+float sdCone(vec3 p, vec2 c, float h) {
+  vec2 q = h * vec2(c.x / c.y, -1.0);
+  vec2 w = vec2(length(p.xz), p.y);
+  vec2 a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0);
+  vec2 b = w - q * vec2(clamp(w.x / q.x, 0.0, 1.0), 1.0);
+  float k = sign(q.y);
+  float d = min(dot(a, a), dot(b, b));
+  float s = max(k * (w.x * q.y - w.y * q.x), k * (w.y - q.y));
+  return sqrt(d) * sign(s);
+}
+// isosceles triangle in 2D: apex at origin, base at y = q.y, half-width q.x
+float sdTriI(vec2 p, vec2 q) {
+  p.x = abs(p.x);
+  vec2 a = p - q * clamp(dot(p, q) / dot(q, q), 0.0, 1.0);
+  vec2 b = p - q * vec2(clamp(p.x / q.x, 0.0, 1.0), 1.0);
+  float s = -sign(q.y);
+  vec2 d = min(vec2(dot(a, a), s * (p.x * q.y - p.y * q.x)), vec2(dot(b, b), s * (p.y - q.y)));
+  return -sqrt(d.x) * sign(d.y);
+}
+float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+vec2 opU(vec2 a, vec2 b) { return a.x < b.x ? a : b; }
+
+// ---------------------------------------------------------------- terrain
+float terrainLo(vec2 xz) {
+  float h = 0.35 * sin(xz.x * 0.21 + 1.3) * cos(xz.y * 0.17 + 0.4);
+  vec2 d = (xz - vec2(-6.0, 25.0)) * vec2(0.11, 0.095);
+  h += 4.5 * exp(-dot(d, d));
+  return h;
+}
+float terrainDetail(vec2 xz) {
+  float flt = smoothstep(0.5, 1.9, length(xz - uLanternPos.xz));
+  return (0.09 * sin(xz.x * 1.31 + 0.5) * sin(xz.y * 1.07 + 2.0) + 0.045 * sin(xz.x * 2.93 + xz.y * 2.27 + 1.0) * sin(xz.x * 1.71 - xz.y * 2.61)) * flt;
+}
+float terrain(vec2 xz) { return terrainLo(xz) + terrainDetail(xz); }
+// signed height above the ground, cheap when far above it
+float groundDist(vec3 p, float tl) {
+  float h = p.y - tl;
+  if (h > 1.2) return (h - 0.14) * 0.8;
+  return (h - terrainDetail(p.xz)) * 0.8;
+}
+
+// ---------------------------------------------------------------- tombstones (domain repetition)
+float sdTombs(vec3 p, float tl) {
+  float vb = p.y - tl - 2.7;
+  if (vb > 0.5) return vb;
+  vec2 cell = floor((p.xz + vec2(1.6, 0.0)) / 3.2);
+  vec2 f = p.xz + vec2(1.6, 0.0) - cell * 3.2;
+  float bd = max(min(min(f.x, 3.2 - f.x), min(f.y, 3.2 - f.y)) + 0.3, vb);
+  vec2 h = hash22(cell);
+  vec2 h2 = hash22(cell + 7.7);
+  vec2 c = (cell + 0.5) * 3.2 - vec2(1.6, 0.0) + (h - 0.5) * 1.5;
+  // keep the path clear and reserve the hero cells next to the pumpkin
+  if (abs(c.x) < 1.35 || h2.x < 0.22 || (cell.x == 1.0 && (cell.y == 1.0 || cell.y == 2.0))) return bd;
+  vec3 q = p; q.xz -= c;
+  q.xz = rotSmall((h.x - 0.5) * 0.9) * q.xz;
+  q.yz = rotSmall((h.y - 0.5) * 0.28) * q.yz;
+  q.y -= tl - 0.22;
+  float ty = h2.y;
+  float d;
+  if (ty < 0.45) {                                   // rounded-top slab
+    float w = 0.30 + 0.18 * fract(h.x * 7.0); float hg = 0.75 + 0.55 * fract(h.y * 5.0); float th = 0.08;
+    d = min(sdBox(q - vec3(0.0, (hg - w) * 0.5, 0.0), vec3(w, (hg - w) * 0.5, th)), max(length(q.xy - vec2(0.0, hg - w)) - w, abs(q.z) - th));
+  } else if (ty < 0.72) {                            // cross
+    float hg = 0.9 + 0.5 * fract(h.y * 5.0);
+    d = min(sdBox(q - vec3(0.0, hg * 0.5, 0.0), vec3(0.075, hg * 0.5, 0.075)), sdBox(q - vec3(0.0, hg * 0.72, 0.0), vec3(0.34, 0.075, 0.075)));
+  } else if (ty < 0.88) {                            // obelisk
+    float hg = 1.2 + 0.7 * fract(h.y * 5.0);
+    d = sdBox(q - vec3(0.0, hg * 0.5, 0.0), vec3(0.17, hg * 0.5, 0.17));
+    d = min(d, sdCone(q - vec3(0.0, hg + 0.25, 0.0), normalize(vec2(0.17, 0.25)), 0.25));
+  } else {                                           // wide slab
+    d = sdBox(q - vec3(0.0, 0.45, 0.0), vec3(0.55, 0.45, 0.07)) - 0.01;
+  }
+  d = min(d, sdBox(q - vec3(0.0, 0.08, 0.0), vec3(0.55, 0.08, 0.3)));   // plinth
+  return min(d, bd);
+}
+
+// hero tombstone leaning behind the pumpkin
+float sdHeroStone(vec3 p) {
+  vec3 q = p - (uLanternPos + vec3(0.75, -0.42, 0.95));
+  float bound = length(q - vec3(0.0, 0.5, 0.0)) - 1.0;
+  if (bound > 0.4) return bound;
+  q.xz = mat2(0.9394, -0.3429, 0.3429, 0.9394) * q.xz;
+  q.yz = mat2(0.9928, 0.1197, -0.1197, 0.9928) * q.yz;
+  float w = 0.42, hg = 1.15, th = 0.09;
+  float d = min(sdBox(q - vec3(0.0, (hg - w) * 0.5, 0.0), vec3(w, (hg - w) * 0.5, th)), max(length(q.xy - vec2(0.0, hg - w)) - w, abs(q.z) - th));
+  d = min(d, sdBox(q - vec3(0.0, 0.08, 0.0), vec3(0.6, 0.08, 0.3)));
+  return d;
+}
+
+// ---------------------------------------------------------------- dead tree
+float sdTree(vec3 p) {
+  float d = sdCapsule(p, vec3(0.0, -0.6, 0.0), vec3(0.1, 2.6, 0.05), 0.30, 0.14);
+  d = min(d, sdCapsule(p, vec3(0.05, 2.2, 0.0), vec3(1.4, 3.6, 0.3), 0.11, 0.03));
+  d = min(d, sdCapsule(p, vec3(0.0, 2.5, 0.0), vec3(-1.2, 3.9, -0.4), 0.11, 0.03));
+  d = min(d, sdCapsule(p, vec3(0.1, 2.6, 0.05), vec3(0.3, 4.3, 0.9), 0.10, 0.03));
+  d = min(d, sdCapsule(p, vec3(0.08, 1.7, 0.0), vec3(1.0, 2.2, -0.9), 0.08, 0.02));
+  d = min(d, sdCapsule(p, vec3(0.9, 3.2, 0.2), vec3(1.3, 4.2, 0.0), 0.05, 0.015));
+  d = min(d, sdCapsule(p, vec3(-0.7, 3.3, -0.2), vec3(-1.6, 3.5, 0.3), 0.05, 0.015));
+  d = min(d, sdCapsule(p, vec3(-0.9, 3.6, -0.3), vec3(-1.0, 4.6, -0.6), 0.05, 0.015));
+  d = min(d, sdCapsule(p, vec3(0.2, 3.6, 0.5), vec3(-0.4, 4.5, 1.2), 0.05, 0.015));
+  d = min(d, sdCapsule(p, vec3(1.1, 3.4, 0.25), vec3(2.0, 3.7, 0.6), 0.045, 0.012));
+  d = min(d, sdCapsule(p, vec3(-1.1, 3.85, -0.4), vec3(-1.9, 4.4, -0.2), 0.04, 0.012));
+  return d;
+}
+float sdTreeAt(vec3 p, vec3 pos, mat2 r) {
+  vec3 q = p - pos;
+  float bound = length(q - vec3(0.0, 2.2, 0.0)) - 3.1;
+  if (bound > 0.6) return bound;
+  q.xz = r * q.xz;
+  return sdTree(q);
+}
+const mat2 TREE_ROT_A = mat2(0.9211, -0.3894, 0.3894, 0.9211);
+const mat2 TREE_ROT_B = mat2(-0.5048, -0.8632, 0.8632, -0.5048);
+
+// ---------------------------------------------------------------- haunted house
+float sdHouse(vec3 p) {
+  float body = sdBox(p - vec3(0.0, 2.0, 0.0), vec3(3.0, 2.0, 2.4));
+  float roof = max(max(p.y - (6.1 - abs(p.z) * 0.78), 3.95 - p.y), abs(p.x) - 3.3);
+  vec3 tq = p - vec3(-3.3, 0.0, -2.2);
+  float tower = sdCylY(tq - vec3(0.0, 3.6, 0.0), 1.15, 3.6);
+  float troof = sdCone(tq - vec3(0.0, 9.8, 0.0), normalize(vec2(1.4, 2.6)), 2.6);
+  float chim = sdBox(p - vec3(1.8, 5.5, 0.9), vec3(0.32, 1.3, 0.32));
+  float dormer = max(max(p.y - (5.6 - abs(p.x - 1.0) * 1.1), 4.0 - p.y), abs(p.z + 2.0) - 0.9);
+  return min(min(body, roof), min(min(tower, troof), min(chim, dormer)));
+}
+
+// ---------------------------------------------------------------- fence & gate
+vec2 sdFence(vec3 p) {
+  vec3 q = p; q.x = abs(q.x);
+  float gy = uGateY;
+  vec3 pq = q - vec3(1.9, gy, -6.0);
+  float pillar = sdBox(pq - vec3(0.0, 0.8, 0.0), vec3(0.22, 0.8, 0.22));
+  pillar = min(pillar, sdBox(pq - vec3(0.0, 1.62, 0.0), vec3(0.29, 0.05, 0.29)));
+  pillar = min(pillar, length(pq - vec3(0.0, 1.86, 0.0)) - 0.2);
+  vec2 res = vec2(pillar, 2.0);
+  float dR = sdBox(vec3(q.x - 8.55, p.y - gy - 0.7, p.z + 6.0), vec3(6.45, 1.3, 0.15));
+  if (dR < 0.4) {
+    float fy = terrainLo(p.xz);
+    vec3 b = vec3(mod(q.x, 0.4) - 0.2, p.y - fy, p.z + 6.0);
+    float bar = sdCylY(b - vec3(0.0, 0.6, 0.0), 0.022, 0.6);
+    float spike = sdCone(b - vec3(0.0, 1.38, 0.0), normalize(vec2(0.045, 0.2)), 0.2);
+    float rail1 = sdBox(b - vec3(0.0, 1.02, 0.0), vec3(0.25, 0.028, 0.02));
+    float rail2 = sdBox(b - vec3(0.0, 0.30, 0.0), vec3(0.25, 0.028, 0.02));
+    res = opU(res, vec2(min(min(bar, spike), min(rail1, rail2)), 10.0));
+  } else {
+    res = opU(res, vec2(dR, 10.0));
+  }
+  return res;
+}
+
+// ---------------------------------------------------------------- jack-o'-lantern
+vec2 sdPumpkin(vec3 q) {
+  float sc = uScare;
+  q -= vec3(0.0, 0.12, -0.22) * sc;
+  float a = atan(q.z, q.x);
+  float ridge = 1.0 - 0.06 * (0.5 + 0.5 * cos(a * 8.0));
+  vec3 s = q / vec3(1.0, 0.80, 1.0);
+  float rr = length(s);
+  float r = 0.44 * ridge;
+  float outer = (rr - r) * 0.78;
+  float inner = (rr - (r - 0.075)) * 0.78;
+  float shell = max(outer, -inner);
+  shell = max(shell, -(length(q - vec3(0.0, 0.52, 0.0)) - 0.17));          // top dimple
+  vec2 f = q.xy;
+  vec2 ef = rotSmall(0.45 * sc) * vec2(abs(f.x) - 0.16 - 0.02 * sc, f.y - 0.17 - 0.04 * sc);
+  float eyes = sdTriI(vec2(ef.x, -ef.y) / (1.0 + 0.55 * sc), vec2(0.10, 0.15)) * (1.0 + 0.55 * sc);
+  float nose = sdTriI(vec2(f.x, -(f.y - 0.05)), vec2(0.06, 0.10));
+  float teeth = abs(fract(f.x * 7.0) * 2.0 - 1.0);
+  float ta = 0.045 + 0.03 * sc;
+  float yu = -0.10 + 0.05 * sc - (0.9 - 0.5 * sc) * f.x * f.x - ta * teeth;
+  float yl = -0.30 - 0.14 * sc + 0.5 * f.x * f.x - ta * (1.0 - teeth);
+  float mouth = max(abs(f.x) - 0.30 - 0.05 * sc, max(f.y - yu, yl - f.y));
+  float face = min(min(eyes, nose), mouth);
+  float cut = max(face, q.z + 0.12);                                        // carve the front only
+  shell = max(shell, -cut);
+  vec2 res = vec2(shell, 6.0);
+  res = opU(res, vec2(sdCapsule(q, vec3(0.0, 0.30, 0.0), vec3(0.06, 0.53, 0.03), 0.06, 0.04), 9.0));
+  float fl = length((q - vec3(0.0, -0.06 + 0.03 * sin(uTime * 13.0), 0.0)) * vec3(1.0, 0.55, 1.0)) - 0.09;
+  res = opU(res, vec2(fl, 8.0));
+  return res;
+}
+
+// ---------------------------------------------------------------- scene
+float gLod = 0.0;   // 1.0 = far away: only the ground and the house survive the fog
+vec2 map(vec3 p) {
+  float tl = terrainLo(p.xz);
+  float g = groundDist(p, tl);
+  vec3 lp = p - vec3(uLanternPos.x, uLanternPos.y - 0.59, uLanternPos.z);
+  float mound = (length(lp * vec3(1.0, 4.0, 1.0)) - 1.0) * 0.25;
+  g = smin(g, mound, 0.25);
+  vec2 res = vec2(g, 1.0);
+  vec3 hp = p - uHousePos;
+  float hb = length(hp - vec3(0.0, 5.0, 0.0)) - 9.5;
+  res = opU(res, vec2(hb > 1.0 ? hb : sdHouse(hp), 4.0));
+  if (gLod > 0.5) return res;
+  res = opU(res, vec2(sdTombs(p, tl), 2.0));
+  res = opU(res, vec2(sdHeroStone(p), 2.0));
+  res = opU(res, vec2(sdTreeAt(p, uTreeA, TREE_ROT_A), 3.0));
+  res = opU(res, vec2(sdTreeAt(p, uTreeB, TREE_ROT_B), 3.0));
+  res = opU(res, sdFence(p));
+  vec3 pq = p - uLanternPos;
+  float pb = length(pq) - 0.9;
+  if (pb < 0.5) res = opU(res, sdPumpkin(pq)); else res = opU(res, vec2(pb, 6.0));
+  return res;
+}
+
+vec2 mapS(vec3 p) {
+  float tl = terrainLo(p.xz);
+  float g = groundDist(p, tl);
+  vec3 lp = p - vec3(uLanternPos.x, uLanternPos.y - 0.59, uLanternPos.z);
+  float mound = (length(lp * vec3(1.0, 4.0, 1.0)) - 1.0) * 0.25;
+  g = smin(g, mound, 0.25);
+  vec2 res = vec2(g, 1.0);
+  vec3 hp = p - uHousePos;
+  float hb = length(hp - vec3(0.0, 5.0, 0.0)) - 9.5;
+  res = opU(res, vec2(hb > 1.0 ? hb : sdHouse(hp), 4.0));
+  res = opU(res, vec2(sdTombs(p, tl), 2.0));
+  res = opU(res, vec2(sdHeroStone(p), 2.0));
+  vec3 pq = p - uLanternPos;
+  float pb = length(pq) - 0.9;
+  if (pb < 0.5) res = opU(res, sdPumpkin(pq)); else res = opU(res, vec2(pb, 6.0));
+  return res;
+}
+
+vec3 calcNormal(vec3 p) {
+  const vec2 e = vec2(1.0, -1.0) * 0.0012;
+  return normalize(e.xyy * map(p + e.xyy).x + e.yyx * map(p + e.yyx).x + e.yxy * map(p + e.yxy).x + e.xxx * map(p + e.xxx).x);
+}
+
+float softShadow(vec3 ro, vec3 rd, float maxt, float k) {
+  float res = 1.0, t = 0.04;
+  for (int i = 0; i < 22; i++) {
+    float h = mapS(ro + rd * t).x;
+    if (h < 0.001) return 0.0;
+    res = min(res, k * h / t);
+    t += clamp(h, 0.03, 0.5);
+    if (t > maxt || res < 0.02) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+// ---------------------------------------------------------------- sky
+float sdBat(vec2 p, float flap) {
+  p.x = abs(p.x);
+  float body = length((p - vec2(0.0, -0.02)) * vec2(1.0, 0.75)) - 0.17;
+  body = min(body, sdTriI(vec2(p.x - 0.07, -(p.y - 0.30)), vec2(0.045, 0.16)));
+  vec2 w = p - vec2(0.12, 0.02);
+  w = rot(flap * 0.6) * w;
+  float mem = length((w - vec2(0.42, 0.04)) / vec2(0.50, 0.27)) - 1.0;
+  float sc1 = length((w - vec2(0.22, -0.30)) / vec2(0.21, 0.19)) - 1.0;
+  float sc2 = length((w - vec2(0.64, -0.27)) / vec2(0.21, 0.19)) - 1.0;
+  float wing = max(mem, -min(sc1, sc2));
+  wing = max(wing, -w.x);
+  return min(body, wing);
+}
+float boltPath(float y, float s) {
+  return (noise2(vec2(y * 9.0 + s, s)) - 0.5) * 0.34 + (noise2(vec2(y * 33.0 + s * 2.0, s + 5.0)) - 0.5) * 0.08;
+}
+vec3 sky(vec3 rd) {
+  float y = rd.y;
+  vec3 col = mix(vec3(0.10, 0.11, 0.18), vec3(0.010, 0.012, 0.03), smoothstep(-0.05, 0.45, y)) * 0.7;
+  // stars
+  {
+    vec2 su = vec2(atan(rd.z, rd.x), asin(clamp(rd.y, -1.0, 1.0))) * 90.0;
+    vec2 ci = floor(su); vec2 cf = fract(su) - 0.5; vec2 h = hash22(ci) - 0.5;
+    float sel = step(0.93, hash12(ci + 7.3));
+    float st = sel * smoothstep(0.07, 0.0, length(cf - h * 0.8));
+    st *= 0.55 + 0.45 * sin(uTime * 2.0 + hash12(ci) * 30.0);
+    col += vec3(0.85, 0.9, 1.0) * st * 0.9 * smoothstep(0.0, 0.25, y);
+  }
+  // moon
+  float cosA = dot(rd, MOON_DIR);
+  float ang = acos(clamp(cosA, -1.0, 1.0));
+  const float MR = 0.085;
+  vec3 mX = normalize(cross(vec3(0.0, 1.0, 0.0), MOON_DIR)); vec3 mY = cross(MOON_DIR, mX);
+  vec2 mu = vec2(dot(rd, mX), dot(rd, mY)) / max(cosA, 0.3);
+  float disc = smoothstep(MR, MR - 0.004, ang);
+  float cr = fbm2(mu * 22.0 + 5.0);
+  float cr2 = noise2(mu * 60.0);
+  vec3 moon = vec3(0.98, 0.95, 0.85) * (0.68 + 0.38 * cr + 0.08 * cr2) * (1.0 - 0.45 * smoothstep(0.55, 1.0, ang / MR));
+  col += vec3(0.45, 0.5, 0.75) * (0.55 * exp(-ang * 9.0) + 0.18 * exp(-ang * 2.5));
+  col = mix(col, moon, disc);
+  // clouds
+  float cov = 0.0;
+  if (y > 0.005) {
+    vec2 cp = rd.xz / (y + 0.12) * 1.4 + vec2(uTime * 0.035, uTime * 0.012);
+    float cl = fbm2(cp * 0.55);
+    cov = smoothstep(0.40, 0.72, cl) * smoothstep(0.0, 0.18, y);
+    float thin = smoothstep(0.40, 0.90, cl);
+    vec3 cloudCol = vec3(0.045, 0.045, 0.07)
+                  + vec3(0.32, 0.33, 0.42) * exp(-ang * 2.2) * (1.0 - thin * 0.6)
+                  + FLASH_COL * uFlash * (0.5 + 0.6 * (1.0 - thin));
+    col = mix(col, cloudCol, cov);
+  }
+  col += FLASH_COL * uFlash * 0.35 * (1.0 - cov * 0.5);
+  // lightning bolt
+  if (uBolt > 0.0) {
+    vec3 bX = normalize(cross(vec3(0.0, 1.0, 0.0), BOLT_DIR)); vec3 bY = cross(BOLT_DIR, bX);
+    float cb = dot(rd, BOLT_DIR);
+    if (cb > 0.5) {
+      vec2 bu = vec2(dot(rd, bX), dot(rd, bY)) / cb;
+      float s = uBoltSeed * 13.7;
+      float w = abs(bu.x - boltPath(bu.y, s));
+      float seg = smoothstep(-0.26, -0.22, bu.y) * smoothstep(0.42, 0.38, bu.y);
+      float bolt = (exp(-w * 260.0) * 1.6 + exp(-w * 45.0) * 0.35) * seg;
+      float by0 = 0.10 + 0.12 * hash11(s);
+      float pathB = boltPath(by0, s) + (by0 - bu.y) * (0.5 + 0.4 * hash11(s + 1.0)) + (noise2(vec2(bu.y * 27.0 + s, 9.0)) - 0.5) * 0.06;
+      float wb = abs(bu.x - pathB);
+      bolt += exp(-wb * 300.0) * 0.9 * step(bu.y, by0) * smoothstep(-0.22, -0.12, bu.y) * step(by0 - 0.28, bu.y);
+      col += vec3(0.85, 0.82, 1.0) * bolt * uBolt * 2.5;
+    }
+  }
+  // bats crossing the moon
+  if (uBats > 0.001) {
+    for (int i = 0; i < 7; i++) {
+      float fi = float(i);
+      vec2 c = vec2(-0.55 + mod(uTime * (0.075 + 0.02 * hash11(fi + 9.0)) + fi * 0.16, 1.2), 0.03 * sin(uTime * 1.5 + fi * 1.7) + (hash11(fi) - 0.5) * 0.16);
+      float size = 0.020 + 0.012 * hash11(fi + 3.0);
+      float flap = sin(uTime * (13.0 + fi) + fi * 2.0);
+      float b = sdBat((mu - c) / size, flap);
+      col = mix(col, vec3(0.0), smoothstep(0.06, -0.03, b) * uBats);
+    }
+  }
+  return col;
+}
+
+// ---------------------------------------------------------------- shading
+float windowLit(vec3 hp, out float idx) {
+  // front wall (z = -2.4) of the house body, in local coordinates
+  idx = 0.0;
+  float lit = 0.0;
+  if (abs(hp.z + 2.4) < 0.08 && abs(hp.x) < 3.0) {
+    vec2 w = vec2(mod(hp.x + 1.6, 1.6) - 0.8, hp.y);
+    float ix = floor((hp.x + 2.4) / 1.6);
+    if (ix >= 0.0 && ix < 3.0) {
+      float r1 = max(abs(w.x) - 0.32, abs(w.y - 1.4) - 0.5);
+      float r2 = max(abs(w.x) - 0.32, abs(w.y - 3.1) - 0.45);
+      if (r1 < 0.0) { lit = 1.0; idx = ix; }
+      if (r2 < 0.0) { lit = 1.0; idx = ix + 3.0; }
+      // window cross bars
+      if (lit > 0.0 && (abs(w.x) < 0.03 || abs(fract(w.y + 0.5) - 0.5) < 0.03)) lit = 0.0;
+    }
+  }
+  // tower window
+  vec3 tq = hp - vec3(-3.3, 0.0, -2.2);
+  if (abs(tq.x) < 0.22 && abs(tq.y - 5.4) < 0.4 && tq.z < -0.9) { lit = 1.0; idx = 6.0; }
+  return lit;
+}
+
+vec3 shade(vec3 p, vec3 n, vec3 rd, float m, float dist) {
+  vec3 alb = vec3(0.2); vec3 emis = vec3(0.0); float rough = 1.0;
+  int mi = int(m + 0.5);
+  if (mi == 1) {
+    float path = smoothstep(1.4, 0.6, abs(p.x)) * smoothstep(14.0, 10.0, p.z) * smoothstep(-14.0, -10.0, p.z);
+    float nz = noise2(p.xz * 2.5);
+    float nz2 = noise2(p.xz * 11.0);
+    alb = mix(vec3(0.075, 0.105, 0.05), vec3(0.11, 0.085, 0.055), path) * (0.65 + 0.55 * nz) * (0.8 + 0.4 * nz2);
+    vec2 bq = p.xz * 3.5;
+    vec2 bg = vec2(noise2(bq + vec2(0.08, 0.0)) - noise2(bq - vec2(0.08, 0.0)), noise2(bq + vec2(0.0, 0.08)) - noise2(bq - vec2(0.0, 0.08)));
+    n = normalize(n - vec3(bg.x, 0.0, bg.y) * 1.4 * smoothstep(25.0, 5.0, dist));
+  } else if (mi == 2) {
+    float nz = noise3(p * 6.0);
+    alb = vec3(0.34, 0.35, 0.37) * (0.7 + 0.55 * nz);
+    float moss = smoothstep(0.7, 0.0, p.y - terrainLo(p.xz));
+    alb = mix(alb, vec3(0.12, 0.20, 0.08), moss * 0.65 * smoothstep(0.3, 0.7, nz));
+  } else if (mi == 3) {
+    alb = vec3(0.10, 0.075, 0.055) * (0.6 + 0.7 * noise3(p * 7.0));
+  } else if (mi == 4) {
+    alb = vec3(0.11, 0.09, 0.11) * (0.7 + 0.5 * noise3(p * 3.0));
+    vec3 hp = p - uHousePos;
+    float idx; float w = windowLit(hp, idx);
+    if (w > 0.0) {
+      float lit = smoothstep(idx, idx + 0.6, uWindows) * (0.75 + 0.25 * noise1(uTime * 14.0 + idx * 5.0));
+      emis = vec3(1.0, 0.72, 0.32) * 3.0 * lit;
+      alb = vec3(0.03, 0.03, 0.05);
+    }
+  } else if (mi == 6) {
+    vec3 q = p - uLanternPos - vec3(0.0, 0.12, -0.22) * uScare;
+    vec3 s = q / vec3(1.0, 0.80, 1.0);
+    float a = atan(q.z, q.x);
+    float ridge = 0.5 + 0.5 * cos(a * 8.0);
+    float r = 0.44 * (1.0 - 0.06 * ridge);
+    if (length(s) < r - 0.035) {                                     // inner pulp, lit by the candle
+      vec3 fq = q - vec3(0.0, -0.06, 0.0);
+      float fd = dot(fq, fq);
+      alb = vec3(0.9, 0.45, 0.15) * (0.7 + 0.5 * noise3(q * 25.0));
+      emis = LANTERN_COL * uLantern * (0.5 + 1.6 / (1.0 + fd * 14.0)) * (0.8 + 0.4 * noise3(q * 18.0));
+    } else {
+      alb = vec3(0.92, 0.36, 0.05) * (0.78 + 0.22 * (1.0 - ridge)) * (0.85 + 0.3 * noise3(q * 14.0));
+      rough = 0.45;
+      emis = LANTERN_COL * uLantern * 0.10 * (0.6 + 0.4 * noise3(q * 9.0));   // subsurface glow through the skin
+    }
+  } else if (mi == 8) {
+    emis = vec3(1.0, 0.85, 0.5) * 7.0 * uLantern * (1.0 + 1.5 * uScare); alb = vec3(0.0);
+  } else if (mi == 9) {
+    alb = vec3(0.22, 0.26, 0.10) * (0.7 + 0.5 * noise3(p * 30.0));
+  } else if (mi == 10) {
+    alb = vec3(0.05, 0.05, 0.06); rough = 0.3;
+  }
+
+  vec3 col = emis;
+  // moonlight
+  float dif = max(dot(n, MOON_DIR), 0.0);
+  float sh = (dif > 0.0 && dist < 20.0 && mi != 6 && mi != 9) ? softShadow(p + n * 0.03, MOON_DIR, 12.0, 12.0) : 1.0;
+  col += alb * MOON_COL * 0.68 * dif * sh;
+  // sky ambient
+  col += alb * vec3(0.05, 0.07, 0.12) * (0.45 + 0.55 * n.y) * 1.0;
+  // moon glint
+  vec3 hv = normalize(MOON_DIR - rd);
+  col += MOON_COL * pow(max(dot(n, hv), 0.0), 40.0) * 0.08 * sh * (1.0 - rough * 0.7);
+  // the lantern
+  vec3 lv = uLanternPos - p; float ld2 = dot(lv, lv);
+  if (ld2 < 140.0 && mi != 8) {
+    float ld = sqrt(ld2); vec3 ldir = lv / ld;
+    float ldif = max(dot(n, ldir), 0.0);
+    if (ldif > 0.0) {
+      float lsh = (mi == 6) ? 1.0 : (ld2 < 30.0 ? softShadow(p + n * 0.03, ldir, ld - 0.26, 10.0) : 1.0);
+      col += alb * LANTERN_COL * uLantern * 2.4 * ldif * lsh / (0.5 + ld2);
+    }
+  }
+  // lightning
+  if (uFlash > 0.002) {
+    float fdif = max(dot(n, BOLT_DIR), 0.0);
+    float fsh = (fdif > 0.0 && dist < 20.0) ? softShadow(p + n * 0.03, BOLT_DIR, 12.0, 24.0) : 1.0;
+    col += alb * FLASH_COL * uFlash * (2.6 * fdif * fsh + 0.45);
+  }
+  // ghost glow
+  if (uGhostA > 0.001) {
+    vec3 gv = uGhost - p; float gd2 = dot(gv, gv);
+    col += alb * GHOST_COL * uGhostA * 0.7 * max(dot(n, gv * inversesqrt(gd2)), 0.0) / (0.5 + gd2);
+  }
+  return col;
+}
+
+// ---------------------------------------------------------------- ghost (volumetric)
+float ghostDensity(vec3 p, out float shadeK) {
+  vec3 q = (p - uGhost) / 1.3;
+  q.x += 0.05 * sin(uTime * 2.3 + q.y * 3.0);
+  float head = length((q - vec3(0.0, 0.55, 0.0)) * vec3(1.0, 1.1, 1.0)) - 0.32;
+  float ry = clamp((0.4 - q.y) / 0.7, 0.0, 1.0);
+  float rad = mix(0.30, 0.42, ry);
+  float ang = atan(q.z, q.x);
+  float hem = -0.38 + 0.07 * sin(ang * 5.0 + uTime * 3.0) + 0.04 * sin(ang * 11.0 - uTime * 2.0);
+  float body = max(length(q.xz) - rad, max(q.y - 0.5, hem - q.y));
+  float d = smin(head, body, 0.15);
+  float arms = min(sdCapsule(q, vec3(0.25, 0.2, 0.0), vec3(0.62, 0.05 + 0.05 * sin(uTime * 2.0), -0.15), 0.08, 0.06),
+                   sdCapsule(q, vec3(-0.25, 0.2, 0.0), vec3(-0.62, 0.05 + 0.05 * cos(uTime * 1.7), -0.15), 0.08, 0.06));
+  d = smin(d, arms, 0.1);
+  float dens = smoothstep(0.08, -0.14, d);
+  if (q.z < 0.0) {
+    vec2 eq = q.xy - vec2(0.0, 0.60); eq.x = abs(eq.x) - 0.12;
+    dens *= 1.0 - smoothstep(0.11, 0.05, length(eq * vec2(1.0, 0.8)));
+    dens *= 1.0 - smoothstep(0.10, 0.04, length((q.xy - vec2(0.0, 0.38)) * vec2(1.4, 1.0)));
+  }
+  dens *= 0.65 + 0.35 * noise3(q * 6.0 + vec3(0.0, -uTime * 2.0, 0.0));
+  shadeK = 0.55 + 0.55 * smoothstep(-0.5, 0.6, q.y);
+  return dens;
+}
+vec3 ghostPass(vec3 col, vec3 ro, vec3 rd, float tmax, float jitter) {
+  if (uGhostA < 0.001) return col;
+  vec3 c = uGhost + vec3(0.0, 0.2, 0.0); float R = 1.7;
+  vec3 oc = ro - c; float b = dot(oc, rd); float cc = dot(oc, oc) - R * R; float disc = b * b - cc;
+  if (disc < 0.0) return col;
+  float sq = sqrt(disc); float t0 = max(-b - sq, 0.0); float t1 = min(-b + sq, tmax);
+  if (t1 <= t0) return col;
+  const int N = 24; float dt = (t1 - t0) / float(N);
+  float acc = 0.0; vec3 accC = vec3(0.0);
+  for (int i = 0; i < N; i++) {
+    vec3 p = ro + rd * (t0 + (float(i) + jitter) * dt);
+    float k; float dn = ghostDensity(p, k) * dt;
+    acc += dn; accC += dn * k;
+  }
+  if (acc < 1e-4) return col;
+  float alpha = (1.0 - exp(-acc * 5.5)) * uGhostA;
+  vec3 gcol = GHOST_COL * (accC / acc) * 1.5;
+  return mix(col, gcol, alpha);
+}
+
+// ---------------------------------------------------------------- fog
+float fogDens(vec3 p) {
+  float h = p.y - terrainLo(p.xz);
+  float d = 0.12 * exp(-max(h, 0.0) * 0.85) * (0.45 + 1.1 * fbm3(p * vec3(0.35, 0.6, 0.35) + vec3(uTime * 0.15, uTime * 0.03, uTime * 0.07)));
+  return d + 0.004;
+}
+vec3 applyFog(vec3 col, vec3 ro, vec3 rd, float tmax, float jitter) {
+  float tm = min(tmax, 45.0);
+  const int N = 16;
+  float dt = tm / float(N);
+  vec3 acc = vec3(0.0); float tr = 1.0;
+  float fwd = max(dot(rd, MOON_DIR), 0.0);
+  for (int i = 0; i < N; i++) {
+    float t = (float(i) + jitter) * dt;
+    vec3 p = ro + rd * t;
+    float dens = fogDens(p) * dt;
+    vec3 light = MOON_COL * 0.15 * (0.6 + 0.5 * fwd * fwd) + vec3(0.02, 0.025, 0.05);
+    vec3 lv = uLanternPos - p; float ld2 = dot(lv, lv);
+    light += LANTERN_COL * uLantern * 0.75 / (1.0 + ld2 * 1.2);
+    light += FLASH_COL * uFlash * 0.45;
+    vec3 gv = uGhost - p;
+    light += GHOST_COL * uGhostA * 0.25 / (0.5 + dot(gv, gv) * 2.0);
+    float a = 1.0 - exp(-dens);
+    acc += tr * light * a;
+    tr *= 1.0 - a;
+  }
+  return col * tr + acc;
+}
+
+// ---------------------------------------------------------------- will-o'-the-wisps (screen-space sprites, depth tested)
+vec3 wisps(vec2 uv, vec3 ro, vec3 rt, vec3 up, vec3 fw, float tmax) {
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 10; i++) {
+    float fi = float(i);
+    float side = (hash11(fi + 2.0) < 0.5) ? -1.0 : 1.0;
+    vec3 wp = vec3(side * (2.0 + 5.0 * hash11(fi)) + 0.6 * sin(uTime * 0.3 + fi * 2.0), 0.0, -5.0 + 16.0 * hash11(fi + 11.0) + 0.7 * cos(uTime * 0.23 + fi));
+    wp.y = terrainLo(wp.xz) + 0.5 + 0.35 * sin(uTime * 0.7 + fi * 1.3) + 0.3 * hash11(fi + 5.0);
+    vec3 d = wp - ro; float depth = dot(d, fw);
+    if (depth < 0.4 || depth > tmax) continue;
+    vec2 sp = vec2(dot(d, rt), dot(d, up)) / depth * uFov;
+    float sz = 0.022 / depth * uFov;
+    vec2 dd = uv - sp;
+    float g = exp(-dot(dd, dd) / (sz * sz)) + 0.12 * exp(-length(dd) / (sz * 6.0));
+    float pulse = 0.5 + 0.5 * sin(uTime * 2.1 + fi * 4.0);
+    acc += vec3(0.45, 1.0, 0.65) * g * (0.45 + 0.55 * pulse) * 0.7 * exp(-depth * 0.06);
+  }
+  return acc;
+}
+
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;
+  if (abs(uv.y) > 0.86) { fragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+  vec3 ro = uCamPos;
+  vec3 fw = normalize(uCamTgt - ro);
+  vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), fw));
+  vec3 up = cross(fw, rt);
+  vec3 rd = normalize(uv.x * rt + uv.y * up + uFov * fw);
+  float jitter = fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y) + fract(uTime) * 0.37);
+
+  float t = 0.0, m = 0.0; vec3 p = ro; int steps = 0;
+  for (int i = 0; i < 140; i++) {
+    p = ro + rd * t;
+    gLod = t > 30.0 ? 1.0 : 0.0;
+    vec2 h = map(p);
+    steps = i;
+    if (h.x < 0.0004 + 0.0012 * t) { m = h.y; break; }
+    t += h.x * (t < 8.0 ? 0.9 : 1.0);
+    if (t > FAR) break;
+  }
+  if (uDebug > 0.5) { float k = float(steps) / 140.0; fragColor = vec4(k, 1.0 - abs(k - 0.5) * 2.0, 1.0 - k, 1.0) * (m == 0.0 ? 0.6 : 1.0); return; }
+  vec3 col;
+  if (m == 0.0 || t > FAR) { t = FAR; col = sky(rd); }
+  else { gLod = 0.0; vec3 n = calcNormal(p); col = shade(p, n, rd, m, t); }
+
+  col = ghostPass(col, ro, rd, t, jitter);
+  col = applyFog(col, ro, rd, t, jitter);
+  col += wisps(uv, ro, rt, up, fw, t);
+
+  col *= 1.15;
+  col = aces(col);
+  col = pow(col, vec3(1.0 / 2.2));
+  float vig = 1.0 - 0.42 * dot(uv * vec2(0.8, 1.0), uv * vec2(0.8, 1.0));
+  col *= clamp(vig, 0.0, 1.0);
+  col += (hash12(gl_FragCoord.xy + vec2(fract(uTime * 0.731) * 53.0, fract(uTime * 0.377) * 91.0)) - 0.5) * 0.045;
+  col *= uFade;
+  fragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(() => {
+'use strict';
+// ============================================================ timeline
+const DUR = 46.0;
+const MOON_DIR = [0.3640, 0.3467, 0.8667];
+function terrainLo(x, z) {
+  let h = 0.35 * Math.sin(x * 0.21 + 1.3) * Math.cos(z * 0.17 + 0.4);
+  const dx = (x + 6) * 0.11, dz = (z - 25) * 0.095;
+  return h + 4.5 * Math.exp(-(dx * dx + dz * dz));
+}
+const LANTERN = [1.55, terrainLo(1.55, 5.6) + 0.42, 5.6];
+const TREE_A = [-5.5, terrainLo(-5.5, 3.0), 3.0];
+const TREE_B = [6.5, terrainLo(6.5, 11.0), 11.0];
+const HOUSE = [-6.0, terrainLo(-6.0, 25.0) - 0.3, 25.0];
+
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, x) => a + (b - a) * x;
+const smooth = (a, b, x) => { x = clamp((x - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
+const hashf = n => { const s = Math.sin(n * 12.9898) * 43758.5453; return s - Math.floor(s); };
+const noise1 = x => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hashf(i), hashf(i + 1), u); };
+
+function catmull(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return p1.map((_, i) => 0.5 * (2 * p1[i] + (-p0[i] + p2[i]) * t + (2 * p0[i] - 5 * p1[i] + 4 * p2[i] - p3[i]) * t2 + (-p0[i] + 3 * p1[i] - 3 * p2[i] + p3[i]) * t3));
+}
+function sampleKeys(keys, t) {
+  if (t <= keys[0].t) return keys[0].v.slice();
+  if (t >= keys[keys.length - 1].t) return keys[keys.length - 1].v.slice();
+  let i = 0; while (keys[i + 1].t <= t) i++;
+  const u = (t - keys[i].t) / (keys[i + 1].t - keys[i].t);
+  return catmull(keys[Math.max(i - 1, 0)].v, keys[i].v, keys[i + 1].v, keys[Math.min(i + 2, keys.length - 1)].v, u);
+}
+const moonTgt = (p) => [p[0] + MOON_DIR[0] * 30, p[1] + MOON_DIR[1] * 30, p[2] + MOON_DIR[2] * 30];
+// camera keys: [px,py,pz, tx,ty,tz, fov]
+const CAM_A = [
+  { t: 0.0,  v: [0.0, 1.5, -9.5, ...moonTgt([0.0, 1.5, -9.5]), 1.15] },
+  { t: 3.6,  v: [0.0, 1.5, -9.5, ...moonTgt([0.0, 1.5, -9.5]), 1.15] },
+  { t: 7.2,  v: [0.0, 1.45, -9.4, 0.3, 1.0, 0.0, 1.15] },
+  { t: 12.0, v: [0.05, 1.3, -6.6, 0.4, 0.95, 3.0, 1.15] },
+  { t: 17.0, v: [0.2, 1.25, -2.6, -0.3, 1.0, 7.0, 1.15] },
+  { t: 22.0, v: [0.35, 1.25, 0.4, -1.2, 1.0, 6.0, 1.15] },
+  { t: 27.0, v: [0.55, 1.15, 2.1, 1.2, 0.75, 5.6, 1.25] },
+  { t: 33.0, v: [1.15, 0.85, 3.3, 1.55, 0.5, 5.6, 1.45] },
+  { t: 39.9, v: [1.4, 0.7, 4.1, 1.55, 0.42, 5.6, 1.65] },
+];
+const CAM_B = [
+  { t: 40.0, v: [-0.5, 1.7, -3.0, 0.8, 0.9, 6.0, 1.1] },
+  { t: 46.0, v: [-0.6, 1.8, -3.6, 0.8, 0.9, 6.0, 1.1] },
+];
+// lightning: time, strength, bolt seed, thunder delay (s), distance 0..1
+const LIGHTNING = [
+  { t: 9.2,  s: 1.0, seed: 1, delay: 1.5, dist: 0.6 },
+  { t: 20.8, s: 0.7, seed: 2, delay: 2.4, dist: 0.8 },
+  { t: 30.5, s: 0.45, seed: 3, delay: 3.2, dist: 1.0 },
+  { t: 36.4, s: 1.0, seed: 4, delay: 0.8, dist: 0.3 },
+  { t: 37.7, s: 0.85, seed: 5, delay: 1.1, dist: 0.4 },
+  { t: 39.45, s: 0.9, seed: 6, delay: 0.12, dist: 0.0 },
+];
+function flashAt(t) {
+  let f = 0, bolt = 0, seed = 0;
+  for (const L of LIGHTNING) {
+    const dt = t - L.t; if (dt < 0 || dt > 1.5) continue;
+    let env = Math.exp(-dt * 9);
+    if (dt > 0.12) env += 0.6 * Math.exp(-(dt - 0.12) * 12);
+    if (dt > 0.30) env += 0.35 * Math.exp(-(dt - 0.30) * 10);
+    f += L.s * env;
+    if (dt < 0.09 || (dt > 0.12 && dt < 0.19)) { bolt = 1; seed = L.seed; }
+  }
+  return { f: Math.min(f, 1.6), bolt, seed };
+}
+function ghostAt(t, cam) {
+  const yg = terrainLo(-1.0, 6.0) + 0.75;
+  let pos = [-2.6, yg, 7.6], a = 0;
+  if (t >= 16.0 && t < 28.0) {
+    const u = smooth(16.5, 24.5, t);
+    pos = [lerp(-2.6, 0.2, u), yg + 0.25 * Math.sin(t * 1.1) + smooth(24.5, 27.5, t) * 1.8, lerp(7.6, 4.4, u)];
+    a = smooth(16.8, 19.5, t) * 0.9 * (1 - smooth(25.0, 27.5, t));
+  }
+  return { pos, a };
+}
+function state(t) {
+  const st = {};
+  const shotB = t >= 39.95;
+  let cam = sampleKeys(shotB ? CAM_B : CAM_A, t);
+  if (!shotB) {
+    const g = ghostAt(t, cam);
+    const w = smooth(17.5, 19.5, t) * 0.75 * (1 - smooth(24.0, 26.5, t));
+    cam[3] = lerp(cam[3], g.pos[0], w); cam[4] = lerp(cam[4], g.pos[1], w); cam[5] = lerp(cam[5], g.pos[2], w);
+  }
+  // handheld drift
+  cam[0] += (noise1(t * 1.3) - 0.5) * 0.03; cam[1] += (noise1(t * 1.7 + 5) - 0.5) * 0.03;
+  cam[3] += (noise1(t * 0.9 + 9) - 0.5) * 0.06; cam[4] += (noise1(t * 1.1 + 13) - 0.5) * 0.06;
+  st.cam = cam;
+  const g = ghostAt(t, cam);
+  st.ghost = g.pos; st.ghostA = g.a;
+  const fl = flashAt(t);
+  st.flash = fl.f; st.bolt = fl.bolt; st.boltSeed = fl.seed;
+  const surge = smooth(32, 39, t);
+  st.scare = shotB ? 0 : smooth(39.3, 39.5, t);
+  st.lantern = (0.72 + 0.28 * noise1(t * 9) + 0.12 * (noise1(t * 37) - 0.5)) * (1 + 0.35 * surge) * (0.8 + 0.2 * noise1(t * 60 * surge)) * (1 + 1.2 * st.scare);
+  if (shotB) st.lantern *= 0.9;
+  st.windows = t < 36.5 ? 0 : clamp((t - 36.6) / 0.35, 0, 7.5);
+  st.bats = t < 9 ? 1 : (1 - smooth(9, 11, t)) + (shotB ? 0.6 : 0);
+  let fade = 0.3 + 0.7 * smooth(0, 1.6, t);
+  if (t >= 39.72 && t < 40.6) fade = 0;
+  if (t >= 40.6) fade = smooth(40.6, 42.0, t) * (1 - smooth(45.0, 46.0, t));
+  st.fade = fade;
+  st.titleA = smooth(40.9, 42.4, t) * (1 - smooth(45.0, 45.8, t));
+  st.titleDisp = 70 * (1 - smooth(40.9, 43.4, t)) + 4 + 3 * Math.sin(t * 2);
+  st.subA = smooth(42.4, 43.6, t) * (1 - smooth(45.0, 45.8, t));
+  return st;
+}
+
+// ============================================================ renderer
+const canvas = document.getElementById('c');
+const frameEl = document.getElementById('frame');
+const titleEl = document.getElementById('title');
+const subEl = document.getElementById('sub');
+const dispEl = document.getElementById('dispmap');
+const errEl = document.getElementById('err');
+const params = new URLSearchParams(location.search);
+const RENDER = params.has('render');
+const STILL = params.has('t');
+let gl, prog, U = {};
+
+function fail(msg) { errEl.textContent = msg; errEl.style.display = 'block'; console.error(msg); }
+function initGL() {
+  gl = canvas.getContext('webgl2', { preserveDrawingBuffer: RENDER || STILL, antialias: false, alpha: false, powerPreference: 'high-performance' });
+  if (!gl) { fail('WebGL2 is not available in this browser.'); return false; }
+  const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  try {
+    prog = gl.createProgram();
+    gl.attachShader(prog, mk(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }'));
+    gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent.trim()));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  } catch (e) { fail('Shader error: ' + e.message); return false; }
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  for (const n of ['uRes', 'uTime', 'uCamPos', 'uCamTgt', 'uFov', 'uFlash', 'uBolt', 'uBoltSeed', 'uGhost', 'uGhostA', 'uLanternPos', 'uLantern', 'uTreeA', 'uTreeB', 'uHousePos', 'uWindows', 'uBats', 'uFade', 'uDebug', 'uGateY', 'uScare']) U[n] = gl.getUniformLocation(prog, n);
+  gl.uniform1f(U.uDebug, params.has('debug') ? 1 : 0);
+  gl.uniform1f(U.uGateY, terrainLo(1.9, -6.0));
+  gl.uniform3fv(U.uLanternPos, LANTERN); gl.uniform3fv(U.uTreeA, TREE_A); gl.uniform3fv(U.uTreeB, TREE_B); gl.uniform3fv(U.uHousePos, HOUSE);
+  return true;
+}
+let scale = 1;
+function resize(w, h) {
+  if (w === undefined) {
+    const r = frameEl.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    w = Math.round(r.width * dpr * scale); h = Math.round(r.height * dpr * scale);
+    const cap = 1600; if (w > cap) { h = Math.round(h * cap / w); w = cap; }
+  }
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  frameEl.style.setProperty('--fw', frameEl.getBoundingClientRect().width + 'px');
+}
+function draw(t) {
+  const s = state(t);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform1f(U.uTime, t);
+  gl.uniform3f(U.uCamPos, s.cam[0], s.cam[1], s.cam[2]);
+  gl.uniform3f(U.uCamTgt, s.cam[3], s.cam[4], s.cam[5]);
+  gl.uniform1f(U.uFov, s.cam[6]);
+  gl.uniform1f(U.uFlash, s.flash); gl.uniform1f(U.uBolt, s.bolt); gl.uniform1f(U.uBoltSeed, s.boltSeed);
+  gl.uniform3f(U.uGhost, s.ghost[0], s.ghost[1], s.ghost[2]); gl.uniform1f(U.uGhostA, s.ghostA);
+  gl.uniform1f(U.uLantern, s.lantern); gl.uniform1f(U.uScare, s.scare); gl.uniform1f(U.uWindows, s.windows); gl.uniform1f(U.uBats, s.bats); gl.uniform1f(U.uFade, s.fade);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  titleEl.style.opacity = s.titleA.toFixed(3);
+  subEl.style.opacity = s.subA.toFixed(3);
+  dispEl.setAttribute('scale', s.titleDisp.toFixed(1));
+}
+
+// ============================================================ soundtrack
+function makeNoise(ctx, seconds) {
+  const n = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  let s = 1234567;
+  for (let i = 0; i < n; i++) { s = (s * 1664525 + 1013904223) >>> 0; d[i] = (s / 4294967296) * 2 - 1; }
+  return buf;
+}
+function buildSoundtrack(ctx, t0) {
+  const master = ctx.createGain(); master.gain.value = 1.0;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.008; comp.release.value = 0.25;
+  const out = ctx.createGain(); out.gain.value = 0.9;
+  master.connect(comp); comp.connect(out); out.connect(ctx.destination);
+  const noiseBuf = makeNoise(ctx, 5.0);
+  const end = t0 + DUR;
+  const CUT = t0 + 39.72;            // picture cuts to black here
+  const curve = (fn, dur, rate = 25) => { const n = Math.max(2, Math.ceil(dur * rate)); const a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = fn(i / rate); return a; };
+
+  // --- wind: filtered noise with wandering gain and centre frequency
+  {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500;
+    const g = ctx.createGain();
+    g.gain.setValueCurveAtTime(curve(t => (t < 39.72 ? 1 : 0.35) * (0.045 + 0.085 * noise1(t * 0.35) + 0.05 * noise1(t * 1.1 + 7) + 0.04 * smooth(32, 39.4, t)), DUR), t0, DUR);
+    bp.frequency.setValueCurveAtTime(curve(t => 280 + 520 * noise1(t * 0.27 + 3), DUR), t0, DUR);
+    src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(master);
+    src.start(t0); src.stop(end);
+  }
+  // --- drone: two detuned saws through a dark low-pass, plus a sub
+  [[55, 'sawtooth', 0.035], [55.45, 'sawtooth', 0.035], [36.7, 'sine', 0.09], [82.4, 'triangle', 0.02]].forEach(([f, type, amp], i) => {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = f;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 3;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(amp, t0 + 7);
+    g.gain.setValueAtTime(amp, t0 + 30); g.gain.linearRampToValueAtTime(amp * 1.6, CUT - 0.05);
+    g.gain.setValueAtTime(0, CUT); g.gain.setValueAtTime(0, t0 + 40.6); g.gain.linearRampToValueAtTime(amp * 0.8, t0 + 42.5);
+    g.gain.setValueAtTime(amp * 0.8, t0 + 44.5); g.gain.linearRampToValueAtTime(0, end);
+    o.connect(lp); lp.connect(g); g.connect(master); o.start(t0); o.stop(end);
+  });
+  // --- church bell: inharmonic partials
+  function bell(time, f0, amp) {
+    [[1.0, 1.0, 5.0], [2.0, 0.55, 3.6], [2.4, 0.5, 3.2], [3.0, 0.3, 2.6], [4.5, 0.18, 1.8], [5.33, 0.1, 1.3], [6.8, 0.06, 1.0]].forEach(([r, a, dec]) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f0 * r;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, time); g.gain.linearRampToValueAtTime(amp * a, time + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0004, time + dec); o.connect(g); g.connect(master); o.start(time); o.stop(time + dec + 0.1);
+    });
+    const c = ctx.createBufferSource(); c.buffer = noiseBuf; const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = f0 * 4; hp.Q.value = 2;
+    const cg = ctx.createGain(); cg.gain.setValueAtTime(amp * 0.5, time); cg.gain.exponentialRampToValueAtTime(0.0005, time + 0.08);
+    c.connect(hp); hp.connect(cg); cg.connect(master); c.start(time); c.stop(time + 0.1);
+  }
+  bell(t0 + 0.7, 98, 0.22); bell(t0 + 3.6, 98, 0.2); bell(t0 + 6.5, 98, 0.17);
+  bell(t0 + 40.8, 73.4, 0.2);
+  // --- music box: a limping waltz in E minor that slows and sours
+  const MEL = [76, 79, 83, 79, 76, 79, 84, 79, 76, 78, 83, 78, 75, 78, 83, 78, 76, 79, 83, 86, 84, 83, 79, 76, 74, 78, 81, 78, 75, 79, 83, 0];
+  function boxNote(time, midi, vel, detune) {
+    if (!midi) return;
+    const f = 440 * Math.pow(2, (midi - 69) / 12);
+    [[1, 1.0, 1.7], [2, 0.3, 0.9], [3, 0.1, 0.5], [4.2, 0.04, 0.3]].forEach(([r, a, dec]) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * r; o.detune.value = detune;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, time); g.gain.linearRampToValueAtTime(vel * a * 0.11, time + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0003, time + dec); o.connect(g); g.connect(master); o.start(time); o.stop(time + dec + 0.05);
+    });
+  }
+  { let t = 7.2, k = 0; while (t < 38.6) {
+      const slow = t > 31 ? 1 + (t - 31) * 0.28 : 1;
+      const det = t > 31 ? -(t - 31) * 55 : 0;
+      boxNote(t0 + t, MEL[k % MEL.length], 0.75 + 0.25 * noise1(k * 0.7), det + (noise1(k * 3.1) - 0.5) * 10);
+      t += 0.265 * slow; k++; } }
+  // --- thunder
+  function thunder(time, strength, dist) {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.6;
+    lp.frequency.setValueAtTime(lerp(1100, 260, dist), time); lp.frequency.exponentialRampToValueAtTime(55, time + 4.5);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(strength * lerp(1.1, 0.5, dist), time + lerp(0.03, 0.45, dist));
+    g.gain.exponentialRampToValueAtTime(0.001, time + lerp(3.6, 6.5, dist));
+    const mg = ctx.createGain(); mg.gain.setValueCurveAtTime(curve(t => 0.45 + 0.55 * noise1(t * 7.0 + dist * 31), 7.0, 40), time, 7.0);
+    src.connect(lp); lp.connect(g); g.connect(mg); mg.connect(master); src.start(time); src.stop(time + 7.0);
+    if (dist < 0.5) {
+      const c = ctx.createBufferSource(); c.buffer = noiseBuf;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+      const cg = ctx.createGain(); cg.gain.setValueAtTime(strength * 0.9 * (1 - dist), time); cg.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+      c.connect(hp); hp.connect(cg); cg.connect(master); c.start(time); c.stop(time + 0.35);
+    }
+  }
+  for (const L of LIGHTNING) thunder(t0 + L.t + L.delay, L.s, L.dist);
+  // --- owl
+  function hoot(time) {
+    [0, 0.42].forEach((off, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(i ? 350 : 390, time + off); o.frequency.exponentialRampToValueAtTime(i ? 300 : 345, time + off + 0.3);
+      const bp = ctx.createBiquadFilter(); bp.type = 'lowpass'; bp.frequency.value = 900;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, time + off); g.gain.linearRampToValueAtTime(0.07, time + off + 0.05);
+      g.gain.setValueAtTime(0.07, time + off + 0.22); g.gain.exponentialRampToValueAtTime(0.0005, time + off + 0.38);
+      o.connect(bp); bp.connect(g); g.connect(master); o.start(time + off); o.stop(time + off + 0.45);
+    });
+  }
+  hoot(t0 + 13.6); hoot(t0 + 28.3);
+  // --- heartbeat (accelerating)
+  function thump(time, amp) {
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(68, time); o.frequency.exponentialRampToValueAtTime(34, time + 0.16);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, time); g.gain.linearRampToValueAtTime(amp, time + 0.012); g.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+    o.connect(g); g.connect(master); o.start(time); o.stop(time + 0.25);
+  }
+  { let t = 33.0, period = 0.95; while (t < 39.5) { const amp = 0.25 + 0.35 * smooth(33, 39, t); thump(t0 + t, amp); thump(t0 + t + 0.19, amp * 0.6); period = Math.max(0.42, period * 0.94); t += period; } }
+  // --- the scream at the cut: a cluster of sines screeching up, then nothing
+  for (let i = 0; i < 7; i++) {
+    const o = ctx.createOscillator(); o.type = i % 2 ? 'sawtooth' : 'square';
+    const f = 420 + i * 95;
+    o.frequency.setValueAtTime(f, t0 + 39.44); o.frequency.exponentialRampToValueAtTime(f * 2.4, CUT);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t0 + 39.44); g.gain.linearRampToValueAtTime(0.06, t0 + 39.47); g.gain.setValueAtTime(0.06, CUT - 0.01); g.gain.linearRampToValueAtTime(0, CUT);
+    o.connect(g); g.connect(master); o.start(t0 + 39.44); o.stop(CUT + 0.02);
+  }
+  // --- title swell: slow breathy noise rising, then fading with the card
+  {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(120, t0 + 40.7); bp.frequency.exponentialRampToValueAtTime(900, t0 + 45.5);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t0 + 40.7); g.gain.linearRampToValueAtTime(0.12, t0 + 44.5); g.gain.linearRampToValueAtTime(0, end);
+    src.connect(bp); bp.connect(g); g.connect(master); src.start(t0 + 40.7); src.stop(end);
+  }
+  return out;
+}
+
+// ============================================================ modes
+let audioCtx = null, startAt = 0, raf = 0, playing = false;
+const intro = document.getElementById('intro'), outro = document.getElementById('outro');
+
+function loop() {
+  const t = audioCtx.currentTime - startAt;
+  if (t >= DUR) { playing = false; outro.style.display = 'flex'; return; }
+  const t1 = performance.now();
+  draw(Math.max(t, 0));
+  const dtms = performance.now() - t1;
+  if (dtms > 45 && scale > 0.5) { scale *= 0.85; resize(); }
+  raf = requestAnimationFrame(loop);
+}
+async function start() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  await audioCtx.resume();
+  intro.style.display = 'none'; outro.style.display = 'none';
+  startAt = audioCtx.currentTime + 0.15;
+  buildSoundtrack(audioCtx, startAt);
+  playing = true;
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+}
+function wavFromBuffer(buf) {
+  const ch = buf.numberOfChannels, n = buf.length, rate = buf.sampleRate;
+  const bytes = 44 + n * ch * 2, ab = new ArrayBuffer(bytes), v = new DataView(ab);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, ch, true); v.setUint32(24, rate, true); v.setUint32(28, rate * ch * 2, true); v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, n * ch * 2, true);
+  const chans = []; for (let c = 0; c < ch; c++) chans.push(buf.getChannelData(c));
+  let o = 44;
+  for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { const s = Math.max(-1, Math.min(1, chans[c][i])); v.setInt16(o, s < 0 ? s * 32768 : s * 32767, true); o += 2; }
+  let bin = ''; const u8 = new Uint8Array(ab);
+  for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+  return btoa(bin);
+}
+
+window.__spook = {
+  DUR,
+  setup(w, h) { resize(w, h); return gl ? gl.getParameter(gl.RENDERER) : 'no gl'; },
+  frame(t) { draw(t); gl.finish(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); return true; },
+  async audio(rate = 44100) {
+    const ctx = new OfflineAudioContext(2, Math.ceil(rate * DUR), rate);
+    buildSoundtrack(ctx, 0);
+    const buf = await ctx.startRendering();
+    return wavFromBuffer(buf);
+  },
+  state,
+};
+
+if (RENDER) {
+  const w = parseInt(params.get('w') || '1280', 10), h = parseInt(params.get('h') || '720', 10);
+  document.body.style.cssText = 'margin:0;width:' + w + 'px;height:' + h + 'px;overflow:hidden;background:#000';
+  document.getElementById('stage').style.cssText = 'position:static;display:block;width:' + w + 'px;height:' + h + 'px';
+  frameEl.style.cssText = 'position:relative;width:' + w + 'px;height:' + h + 'px;max-width:none;max-height:none';
+  intro.classList.add('hidden'); outro.classList.add('hidden');
+  if (initGL()) { resize(w, h); draw(0); }
+} else {
+  if (initGL()) {
+    resize();
+    window.addEventListener('resize', () => resize());
+    if (STILL) { intro.classList.add('hidden'); draw(parseFloat(params.get('t')) || 0); }
+    else {
+      draw(0.0);
+      document.getElementById('play').addEventListener('click', start);
+      document.getElementById('replay').addEventListener('click', start);
+      window.addEventListener('keydown', e => {
+        if (e.key === 'f' || e.key === 'F') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
+        if (e.key === ' ' && !playing) start();
+      });
+    }
+  }
+}
+})();
+</script>
+</body>
+</html>
