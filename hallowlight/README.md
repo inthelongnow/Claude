@@ -1,5 +1,7 @@
 # Hallowlight
 
+![A carved jack-o'-lantern glowing in the fog at night, light spilling from its face onto fallen leaves](poster.jpg)
+
 Carve a jack-o'-lantern by moonlight, right in the browser. Drag across the pumpkin and a knife follows your
 cursor and cuts. Close a loop and the piece gets pushed in. Then light the candle and turn the porch light off,
 and light pours out of the face into the fog.
@@ -26,15 +28,15 @@ If you leave it glowing in the dark for a while, something happens.
 ## How it works
 
 - **The pumpkin** is a signed distance field raymarched in a WebGL2 fragment shader: a squashed ellipsoid
-  whose radius dips along 10 creases, hollowed into a 6 cm shell, with a curved stem, a zigzag lid cut and a
+  whose radius dips along 10 creases, hollowed into a thin shell, with a curved stem, a zigzag lid cut and a
   candle inside.
 - **Carving** draws your strokes into a 512×512 canvas, then turns it into a signed distance field on the CPU
   (Felzenszwalb–Huttenlocher exact Euclidean distance transform) every time the cut changes. The shader
   subtracts that field from the shell, extruded front-to-back, so cuts have real walls, lit flesh and soft
   edges at any zoom. A second channel holds the piece that is being pushed in.
 - **Candlelight leaving the cuts**: for any point in the scene, the shader intersects the segment from the
-  flame to that point with the shell, looks up whether the exit point is in a cut, and lights the point if it
-  is. That one test lights the ground, the other pumpkins, the knife and the fog.
+  flame to that point with ellipsoids fitted to the shell, looks up whether the exit points are in a cut, and
+  lights the point if they are. That one test lights the ground, the other pumpkins, the knife and the fog.
 - **The light shafts** are single-scattering through drifting 3D noise fog, integrated with equiangular
   sampling (Kulla & Fajardo 2012), which spends samples where the point light is close. 22 samples per pixel
   are enough in real time.

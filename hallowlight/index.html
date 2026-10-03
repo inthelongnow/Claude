@@ -361,7 +361,6 @@ class Mask {
     this.dirty = true;
     this.pieceDirty = false;
     this.open = 0;               // carved area fraction (0..1)
-    this.version = 0;
   }
   px(p) { return [(p[0] / (2 * FACE_EXT) + 0.5) * this.N, (0.5 - p[1] / (2 * FACE_EXT)) * this.N]; }
   wpx(w) { return w * this.N / (2 * FACE_EXT); }
@@ -469,7 +468,6 @@ class Mask {
       this.pieceDirty = false;
       changed = true;
     }
-    if (changed) this.version++;
     return changed;
   }
   clear() { this.ops = []; this.active = null; this.setPiece(null); this.dirty = true; }
@@ -676,9 +674,8 @@ class Phantom {
     this.speed = speed;
     this.segs = [];
     let t = t0 + (enter ? 0.7 : 0.15);
-    let prev = enter ? null : null;
+    let prev = null;
     this.t0 = t0;
-    this.enterFrom = [0.95, 0.95];
     this.enter = enter;
     for (const sh of shapes) {
       const pts = sh.pts;
@@ -696,7 +693,6 @@ class Phantom {
     }
     this.tExit = t;
     this.tDone = t + 0.7;
-    this.committed = 0;
   }
   pointAt(seg, s) {
     const { pts, closed } = seg.sh, cum = seg.cum;
@@ -1651,7 +1647,7 @@ function makeBackdrop(W = 4096, H = 512) {
 // ---------------------------------------------------------------- renderer
 class Renderer {
   constructor(canvas) {
-    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: FILM, powerPreference: 'high-performance' });
     if (!gl) throw new Error('no-webgl2');
     this.gl = gl;
     this.canvas = canvas;
@@ -1885,6 +1881,10 @@ class Sfx {
     b.connect(blp); blp.connect(this.burnBus);
   }
   schedule(until) {
+    if (this.autoOwl) {
+      if (this.owlNext === undefined) this.owlNext = this.c.currentTime + 14 + this.r() * 10;
+      if (until > this.owlNext) { this.owl(this.owlNext); this.owlNext += 28 + this.r() * 30; }
+    }
     for (const k of this.crk) {
       while (k.next < until) {
         const t = k.next, g = k.g.gain, amp = 0.035 + this.r() * 0.025;
@@ -1917,7 +1917,11 @@ class Sfx {
     this.lfo(3.1, 180, lp2.frequency, t);
     n2.connect(lp2); lp2.connect(this.carveG);
   }
-  carve(level, t) { if (this.carveG) this.carveG.gain.setTargetAtTime(level * 0.5, t, 0.035); }
+  carve(level, t) {
+    if (!this.carveG || Math.abs(level - (this.lastCarve ?? -1)) < 0.04) return;
+    this.lastCarve = level;
+    this.carveG.gain.setTargetAtTime(level * 0.5, t, 0.035);
+  }
   pop(t) {
     const o = this.c.createOscillator();
     o.frequency.setValueAtTime(210, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.13);
@@ -1987,7 +1991,7 @@ class Sfx {
     this.wind.gain.setTargetAtTime(1.0, t, 0.35); this.wind.gain.setTargetAtTime(0.38, t + 1.7, 0.7);
     this.windLP.frequency.setTargetAtTime(950, t, 0.4); this.windLP.frequency.setTargetAtTime(380, t + 1.7, 0.7);
     const n = this.noise(t, false), bp = this.filt('bandpass', 170, 1.0), am = this.gain(0.5), g = this.gain(0);
-    this.lfo(17, 0.5, am.gain, t);
+    this.lfo(17, 0.5, am.gain, t).stop(t + 1.6);
     this.env(g.gain, t, [[0, 0], [0.9, 0.5], [1.35, 0]]);
     n.connect(bp); bp.connect(am); am.connect(g); g.connect(this.comp); n.stop(t + 1.5);
   }
@@ -2009,7 +2013,7 @@ class Sfx {
     for (const f of [196.0, 207.65, 293.66, 415.3, 587.3]) {
       const o = this.c.createOscillator(), og = this.gain(0);
       o.frequency.value = f;
-      this.lfo(4.6 + this.r(), f * 0.006, o.frequency, t);
+      this.lfo(4.6 + this.r(), f * 0.006, o.frequency, t).stop(t + 12);
       og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(0.04, t + 0.35); og.gain.setTargetAtTime(0.018, t + 0.6, 1.2); og.gain.setTargetAtTime(0, t + 3.5, 1.4);
       o.connect(og); og.connect(this.comp); o.start(t); o.stop(t + 12);
     }
@@ -2169,8 +2173,7 @@ function filmState(t) {
     Object.assign(S.knife, pose);
   }
   S.cursor = null;
-  const fadeIn = sstep(0.0, 0.9, t), fadeOut = 1 - sstep(F.dur - 1.0, F.dur - 0.05, t);
-  S.fade = fadeIn * fadeOut;
+  S.fade = 1 - sstep(F.dur - 1.0, F.dur - 0.05, t);
 }
 async function filmAudio() {
   const F = FILM_SPEC, sr = 48000;
@@ -2228,7 +2231,7 @@ function toast(msg) {
 let hintText = '';
 function hint(text) { if (text !== hintText) { hintText = text; hintEl.textContent = text; } }
 
-let scale = 0.6, frameTimes = [], quality = 1;
+let scale = 0.6, quality = 1;
 function layout() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   let w, h;
@@ -2292,7 +2295,7 @@ if (FILM) {
 }
 
 // -------- interactive
-const ptr = { id: null, mode: null, x: 0, y: 0, lx: 0, ly: 0, over: false, pts: new Map(), pinch: 0 };
+const ptr = { id: null, mode: null, lx: 0, ly: 0, nx: 0, pts: new Map(), pinch: 0 };
 
 function uvFromEvent(e) {
   const rc = canvas.getBoundingClientRect();
@@ -2332,6 +2335,7 @@ function startTemplate(name, opts = {}) {
   S.phantom = new Phantom(shapes, S.t, { speed: opts.speed || 1.45, w: BLADES[S.blade] * 0.9 + 0.004 });
   S.phantomName = name;
   S.phantomCommitted = 0;
+  S.phantomKey = '';
   S.autoLight = opts.autoLight !== false;
   S.autoDark = !!opts.autoDark;
   updateButtons();
@@ -2345,8 +2349,8 @@ function updatePhantom(t) {
     mask.ops.push({ type: seg.sh.closed ? 'fill' : 'cut', pts: seg.sh.pts, w: ph.w });
     if (seg.sh.closed) { mask.setPiece(seg.sh.pts, t); sfx?.pop(audio.currentTime); }
   }
-  mask.active = st.active;
-  mask.dirty = true;
+  const key = st.done + ':' + (st.active ? st.active.pts.length + ':' + st.active.pts[st.active.pts.length - 1].join(',') : '');
+  if (key !== S.phantomKey) { S.phantomKey = key; mask.active = st.active; mask.dirty = true; }
   const k = ph.knifeAt(t);
   if (k) {
     S.knife.vis = 1;
@@ -2484,6 +2488,7 @@ const release = e => {
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 canvas.addEventListener('pointerleave', e => { if (!ptr.mode) { S.knife.target = null; S.cursor = null; } });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { e.preventDefault(); view.tDist = clamp(view.tDist * Math.exp(e.deltaY * 0.0012), 3.0, 7.0); }, { passive: false });
 
 // knife follows the pointer when a person is carving
@@ -2528,6 +2533,11 @@ function freshPumpkin() {
   S.fadeT = S.t; S.fadeDur = 0.7;
   S.pending = () => {
     mask.clear();
+    if (sfx) {
+      if (S.candleOn) sfx.burn(false, audio.currentTime);
+      if (!S.porchOn) sfx.porch(false, audio.currentTime);
+      sfx.restoreNight(audio.currentTime);
+    }
     S.candleOn = false; S.candleT = -99; S.haunt = null; S.yaw = 0;
     if (!S.porchOn) { S.porchOn = true; S.porchT = S.t; }
     updateButtons();
@@ -2565,6 +2575,7 @@ $('sound').addEventListener('click', async () => {
     try {
       audio = new (window.AudioContext || window.webkitAudioContext)();
       sfx = new Sfx(audio, (Math.random() * 1e9) | 0);
+      sfx.autoOwl = true;
       sfx.ambience(audio.currentTime + 0.05);
       sfx.carveBed(audio.currentTime + 0.05);
       if (S.candleOn) sfx.burn(true, audio.currentTime + 0.1);
@@ -2619,6 +2630,10 @@ async function snapshot() {
 window.addEventListener('keydown', e => {
   if (e.target instanceof HTMLInputElement) return;
   const k = e.key.toLowerCase();
+  if (e.metaKey || e.ctrlKey || e.altKey) {
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); $('undo').click(); }
+    return;
+  }
   if (k === 'z') $('undo').click();
   else if (k === 'c') $('candle').click();
   else if (k === 'l') $('porch').click();
