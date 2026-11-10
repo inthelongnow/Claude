@@ -1,0 +1,162 @@
+<section class="mod" id="loop" data-nav="How training works" data-group="The training" hidden>
+  <header>
+    <div class="eyebrow">The training</div>
+    <h1>How the training works</h1>
+    <p class="lede">Your brain's activity is measured, turned into picture and sound within a fraction of a second, and shown back to you. With that information, the brain adjusts itself.</p>
+  </header>
+
+  <ol class="flow" style="--n:5">
+    <li><b>Your brain</b>produces its rhythms, as it always does.</li>
+    <li><b>Sensors</b>pick the signal up at the scalp. They only read.</li>
+    <li><b>Amplifier and software</b>measure the part of the signal we are training, many times a second.</li>
+    <li><b>Picture and sound</b>change with that measurement: brighter, clearer, fuller.</li>
+    <li><b>Your brain, again</b>takes in the change and adjusts, mostly without effort. Then the loop repeats.</li>
+  </ol>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="lpMode"><span class="lab">Kind of feedback</span>
+        <button class="btn" type="button" data-v="band">A target to reach</button>
+        <button class="btn" type="button" data-v="ilf">A continuous mirror</button>
+      </div>
+      <button class="btn" type="button" id="lpSound" aria-pressed="false">Sound off</button>
+      <button class="btn" type="button" id="lpPlay">Pause</button>
+    </div>
+    <div class="cols">
+      <div class="stack">
+        <div class="cap" id="lpChartCap"></div>
+        <canvas id="lpChart" style="height:230px" aria-label="Simulated training signal over time"></canvas>
+        <div class="controls" id="lpBandCtl">
+          <button class="btn primary" type="button" id="lpHold">Hold to settle</button>
+          <label class="seg" for="lpTarget"><span class="lab">Target</span><input type="range" id="lpTarget" min="30" max="85" value="55" style="width:150px"></label>
+          <span class="cap num" id="lpStat"></span>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="lp-screen" id="lpScreen" aria-hidden="true">
+          <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+            <rect width="320" height="200" fill="#9fc4e8"/>
+            <circle cx="232" cy="62" r="26" fill="#ffe9a8"/>
+            <path d="M0 132 Q60 92 128 122 T260 108 T320 118 V200 H0Z" fill="#6f9f86"/>
+            <path d="M0 152 Q80 126 170 148 T320 140 V200 H0Z" fill="#4f7f6a"/>
+            <path d="M0 172 Q110 160 200 170 T320 166 V200 H0Z" fill="#3d6a8a"/>
+          </svg>
+          <span id="lpScreenTag">what you watch</span>
+        </div>
+        <div class="cap">The picture stands in for the film, game or sounds used in a real session.</div>
+      </div>
+    </div>
+    <div class="prose" id="lpText" aria-live="polite"></div>
+  </div>
+
+  <ul class="points">
+    <li><b>It is not a test</b>There is nothing to get right. Trying hard tends to get in the way. Comfortable, curious attention is all that is asked.</li>
+    <li><b>Feedback only ever rewards</b>When the signal drifts, the picture and sound simply ease off. Nothing is punished and nothing is pushed into the brain.</li>
+    <li><b>Repetition does the work</b>One session is practice. Change builds across many sessions, which is why regular attendance matters.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Sitaram et al. Closed-loop brain training: the science of neurofeedback. <i>Nat Rev Neurosci</i>, 2017. <a href="https://consensus.app/papers/details/fcea36026b4a5af6950eed08508bb06b/?utm_source=claude_desktop">link</a></li>
+      <li>Dessy et al. Train your brain? Can we really selectively train specific EEG frequencies with neurofeedback training. <i>Front Hum Neurosci</i>, 2020. <a href="https://consensus.app/papers/details/25dd977d5fcf544eb52e4fab64c3d7b9/?utm_source=claude_desktop">link</a></li>
+      <li>Weber et al. Predictors of neurofeedback training outcome: a systematic review. <i>NeuroImage Clin</i>, 2020. <a href="https://consensus.app/papers/details/71b81161696b50ebb64e16097c76e5bb/?utm_source=claude_desktop">link</a></li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed., chapters 1 and 6 (reward and inhibit thresholds). Collura. <i>Technical Foundations of Neurofeedback</i>, chapter 1.</li>
+      <li>Kirk (ed.). <i>Restoring the Brain</i>, 2nd ed., chapters 2 and 3 (infra-low frequency training described by its developers as continuous feedback without thresholds).</li>
+    </ol>
+    <p>The standard scientific account is learning inside a closed loop. Studies show many people can learn to change a trained rhythm, though not everyone does, and how specific the change is to the trained rhythm is still debated. The signal on this page is simulated.</p>
+  </details>
+</section>
+<style>
+  .lp-screen { position: relative; border-radius: 12px; overflow: hidden; background: var(--screen); aspect-ratio: 16 / 10; max-width: 100%; border: 6px solid var(--screen); }
+  .lp-screen svg { width: 100%; height: 100%; display: block; filter: brightness(var(--fb-b, 0.4)) saturate(var(--fb-s, 0.3)) blur(var(--fb-x, 3px)); transform: scale(var(--fb-z, 1)); }
+  .lp-screen span { position: absolute; left: 10px; bottom: 8px; font-size: 0.75rem; color: var(--screen-ink); background: rgba(13, 20, 26, 0.6); padding: 1px 8px; border-radius: 999px; }
+  #lpHold { touch-action: none; user-select: none; -webkit-user-select: none; }
+</style>
+<script>
+NF.register('loop', {
+  init(sec) {
+    const { $ } = NF, clamp = NF.clamp;
+    const TEXT = {
+      band: `<p><b>A target to reach.</b> This is how frequency-band training works. The software watches one rhythm we want more of. When it rises above the target line, the picture brightens and the sound plays. When it drifts below, they fade. Rhythms we want less of work the same way in reverse: the reward simply waits while they are too high.</p>
+        <p>The target is set so that you succeed much of the time, and it is adjusted as you go. <b>Try it:</b> hold the button to stand in for your brain settling into the pattern, then let go. In a real session there is no button. You watch and listen, and the brain works it out largely by itself.</p>`,
+      ilf: `<p><b>A continuous mirror.</b> This is how infra-low frequency training works. There is no target line and nothing to earn. Picture and sound follow a very slow signal from your brain continuously, rising and falling with it.</p>
+        <p>The developers of this method compare it to practising in front of a dance-studio mirror: the brain recognises its own activity in what it sees and hears, and steadies itself. I tune the training frequency to you, based on how you feel during and after sessions, which is why your reports matter so much.</p>`,
+    };
+    let mode = 'band', hold = false, u = 0, T = 0.55, fb = 0, hist = [], now = 0, sound = false, audio = null;
+    const wander = t => 0.5 * Math.sin(t * 0.61) + 0.3 * Math.sin(t * 0.23 + 1.3) + 0.2 * Math.sin(t * 1.37 + 0.4);
+    const rest = t => 0.46 + 0.17 * wander(t) + 0.018 * Math.sin(t * 5.3) + 0.012 * Math.sin(t * 8.7 + 1);
+    const slow = t => 0.5 + 0.34 * Math.sin(6.283 * t / 15) + 0.1 * Math.sin(6.283 * t / 5.7 + 1);
+    const SPAN = 24;
+    const chart = NF.canvas($('#lpChart', sec), (ctx, w, h) => {
+      const padL = 8, padR = 8, padT = 12, padB = 22, X = t => padL + (w - padL - padR) * (1 - (now - t) / SPAN), Y = v => padT + (h - padT - padB) * (1 - clamp(v, 0, 1.15) / 1.15);
+      ctx.font = NF.font(12); ctx.fillStyle = NF.css('--ink-3'); ctx.textBaseline = 'alphabetic';
+      ctx.strokeStyle = NF.css('--line-2'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, h - padB + 0.5); ctx.lineTo(w - padR, h - padB + 0.5); ctx.stroke();
+      ctx.textAlign = 'left'; ctx.fillText(`${SPAN} seconds ago`, padL, h - 5); ctx.textAlign = 'right'; ctx.fillText('now', w - padR, h - 5);
+      const pts = hist.filter(p => now - p.t <= SPAN);
+      if (mode === 'band') {
+        // shade time spent in target
+        ctx.fillStyle = NF.css('--accent-soft');
+        for (let i = 1; i < pts.length; i++) if (pts[i].v >= T) ctx.fillRect(X(pts[i - 1].t), padT, Math.max(1, X(pts[i].t) - X(pts[i - 1].t) + 0.5), h - padT - padB);
+        ctx.strokeStyle = NF.css('--ink-2'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(padL, Y(T)); ctx.lineTo(w - padR, Y(T)); ctx.stroke();
+        ctx.fillStyle = NF.css('--ink-2'); ctx.textAlign = 'left'; ctx.fillText('target', padL + 4, Y(T) - 5);
+      }
+      if (pts.length > 1) {
+        ctx.strokeStyle = NF.css(mode === 'band' ? '--b-theta' : '--b-isf'); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+        pts.forEach((p, i) => { i ? ctx.lineTo(X(p.t), Y(p.v)) : ctx.moveTo(X(p.t), Y(p.v)); }); ctx.stroke();
+        const p = pts[pts.length - 1]; ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 5, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = NF.css('--surface'); ctx.lineWidth = 2; ctx.stroke();
+      }
+    });
+    const screen = $('#lpScreen', sec);
+    const show = () => {
+      screen.style.setProperty('--fb-b', (0.35 + 0.75 * fb).toFixed(3));
+      screen.style.setProperty('--fb-s', (0.25 + 0.85 * fb).toFixed(3));
+      screen.style.setProperty('--fb-x', (3.5 * (1 - fb)).toFixed(2) + 'px');
+      screen.style.setProperty('--fb-z', (1 + 0.06 * fb).toFixed(3));
+      if (audio) audio.gain.gain.setTargetAtTime(sound ? 0.02 + 0.09 * fb : 0, audio.ctx.currentTime, 0.08);
+    };
+    const setMode = v => {
+      mode = v; hold = false; hist = []; for (let t = now - SPAN; t < now; t += 0.05) hist.push({ t, v: v === 'band' ? rest(t) : slow(t) });
+      $('#lpBandCtl', sec).hidden = v !== 'band';
+      $('#lpText', sec).innerHTML = TEXT[v];
+      $('#lpChartCap', sec).textContent = v === 'band' ? 'Strength of the rhythm being trained. Shaded stretches are time spent above the target.' : 'A very slow signal from the brain, sped up here so you can watch it move. Real infra-low signals are slower still.';
+    };
+    NF.choice($('#lpMode', sec), setMode, 'band'); setMode('band');
+    const holdBtn = $('#lpHold', sec), down = e => { hold = true; holdBtn.setPointerCapture?.(e.pointerId); }, up = () => { hold = false; };
+    holdBtn.addEventListener('pointerdown', down); holdBtn.addEventListener('pointerup', up); holdBtn.addEventListener('pointercancel', up); holdBtn.addEventListener('lostpointercapture', up);
+    holdBtn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); hold = true; } });
+    holdBtn.addEventListener('keyup', up); holdBtn.addEventListener('blur', up);
+    $('#lpTarget', sec).addEventListener('input', e => { T = e.target.value / 100; });
+    $('#lpSound', sec).addEventListener('click', e => {
+      sound = !sound; e.currentTarget.setAttribute('aria-pressed', String(sound)); e.currentTarget.textContent = sound ? 'Sound on' : 'Sound off';
+      if (sound && !audio) {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)(), gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination);
+          [196, 294, 392].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = [1, 0.5, 0.25][i]; o.connect(g).connect(gain); o.start(); });
+          audio = { ctx, gain };
+        } catch (err) { sound = false; e.currentTarget.textContent = 'Sound unavailable'; }
+      }
+      audio?.ctx.resume?.(); show();
+    });
+    this.loop = NF.loop((dt, t) => {
+      now = t;
+      if (dt > 0) {
+        let v;
+        if (mode === 'band') { u += ((hold ? 1 : 0) - u) * Math.min(1, dt * 1.4); v = rest(t) + 0.4 * u; fb += (clamp((v - T) / 0.1 + 0.5, 0, 1) - fb) * Math.min(1, dt * 6); }
+        else { v = slow(t); fb += (clamp((v - 0.1) / 0.85, 0, 1) - fb) * Math.min(1, dt * 6); }
+        hist.push({ t, v }); while (hist.length && t - hist[0].t > 32) hist.shift();
+        if (mode === 'band') { const r = hist.filter(p => t - p.t <= 30); $('#lpStat', sec).textContent = `Above target ${Math.round(100 * r.filter(p => p.v >= T).length / Math.max(1, r.length))}% of the last ${Math.min(30, Math.round(t - r[0].t))} seconds`; }
+      }
+      show(); chart.render();
+    });
+    NF.playButton($('#lpPlay', sec), this.loop);
+    this.redraw = () => chart.render();
+    this.quiet = () => { if (audio) audio.gain.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.05); };
+    // a static first frame when motion is reduced
+    for (let t = -SPAN; t < 0; t += 0.05) hist.push({ t, v: rest(t) });
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); this.quiet?.(); },
+});
+</script>

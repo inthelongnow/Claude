@@ -1,0 +1,175 @@
+<section class="mod" id="sensors" data-nav="Sensors and signal" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>Where the sensors go, and why stillness helps</h1>
+    <p class="lede">Sensor positions follow a worldwide map of the head. The brain's signal is tiny, so a blink or a tight jaw can drown it out.</p>
+  </header>
+
+  <div class="cols even">
+    <div class="panel">
+      <div class="controls">
+        <div class="seg" id="senMode"><span class="lab">Show</span>
+          <button class="btn" type="button" data-v="train">A training pair</button>
+          <button class="btn" type="button" data-v="map">A full brain map</button>
+        </div>
+      </div>
+      <svg id="senHead" viewBox="0 0 400 420" role="group" aria-label="Sensor positions seen from above, nose at the top"></svg>
+      <p class="cap">Seen from above, nose at the top, your left on the left. Choose any position.</p>
+    </div>
+    <div class="stack">
+      <div class="panel" id="senInfo" aria-live="polite"></div>
+      <div class="panel">
+        <h3>Reading the names</h3>
+        <dl class="kv">
+          <dt>Letter</dt><dd>The region underneath: <b>F</b> frontal, <b>C</b> central, <b>T</b> temporal, <b>P</b> parietal, <b>O</b> occipital. <b>Fp</b> is the very front.</dd>
+          <dt>Number</dt><dd>Odd numbers are on the left, even numbers on the right. A <b>z</b> means the midline.</dd>
+          <dt>Spacing</dt><dd>Positions are measured as 10% and 20% steps between landmarks on your own head, so the map fits every head size. It is called the 10-20 system.</dd>
+        </dl>
+        <p class="cap">T3, T4, T5 and T6 are written T7, T8, P7 and P8 in the newer naming.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Brain signal, and everything else</h2>
+    <div class="controls">
+      <div class="seg" id="senArt"><span class="lab">Try</span>
+        <button class="btn" type="button" data-a="blink">Blink</button>
+        <button class="btn" type="button" data-a="look">Look sideways</button>
+        <button class="btn" type="button" data-a="jaw">Clench the jaw</button>
+        <button class="btn" type="button" data-a="move">Shift in the chair</button>
+        <button class="btn" type="button" data-a="pop">Loose sensor</button>
+      </div>
+      <button class="btn" type="button" id="senPlay">Pause</button>
+    </div>
+    <div class="cols">
+      <ol class="rows sen-rows" id="senRows"></ol>
+      <div class="stack" id="senWhy" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <ul class="points">
+    <li><b>The signal is tiny</b>Brain activity at the scalp is measured in millionths of a volt. Eyes, muscles and movement produce signals many times larger.</li>
+    <li><b>Software cannot always tell</b>Left alone, a blink can read as slow brain activity and a tight jaw as fast activity. That would reward the wrong thing.</li>
+    <li><b>So we keep it clean</b>Feedback pauses during blinks and movement, I check the signal during set-up, and for a brain map the noisy stretches are removed before analysis.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Marcuse, Fields &amp; Yoo. <i>Rowan's Primer of EEG</i>, 2nd ed. Chapter 1: origin of the EEG signal, eye, muscle, movement and electrode artifacts.</li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed. Chapter 5: the 10-20 system and brain maps.</li>
+    </ol>
+    <p>Region descriptions are broad associations. Every task draws on networks spanning many regions, and a sensor picks up activity from a wide area beneath it.</p>
+  </details>
+</section>
+<style>
+  #senHead { width: 100%; max-width: 420px; margin: 0 auto; display: block; }
+  #senHead .site { cursor: pointer; }
+  #senHead .site circle { fill: var(--surface); stroke: var(--ink-3); stroke-width: 1.5; }
+  #senHead .site text { font: 600 11px var(--font-body); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  #senHead .site:hover circle { stroke: var(--ink); }
+  #senHead .site.all circle { fill: var(--accent-soft); stroke: var(--accent); }
+  #senHead .site.on circle { fill: var(--accent); stroke: var(--accent); }
+  #senHead .site.on text { fill: var(--accent-ink); }
+  #senHead .site:focus-visible circle { stroke: var(--accent); stroke-width: 3; }
+  #senHead .site:focus { outline: none; }
+  .sen-rows li { grid-template-columns: 110px minmax(0, 1fr); }
+  .sen-rows canvas { height: 84px; }
+  .sen-rows .nm { line-height: 1.2; padding-left: 4px; } .sen-rows .nm span { display: block; font-size: 0.8rem; color: var(--ink-3); }
+</style>
+<script>
+NF.register('sensors', {
+  init(sec) {
+    const { $, $$ } = NF, R = 150, CX = 200, CY = 215;
+    const SITES = { Fp1: [-0.25, -0.77], Fp2: [0.25, -0.77], F7: [-0.65, -0.47], F3: [-0.33, -0.4], Fz: [0, -0.4], F4: [0.33, -0.4], F8: [0.65, -0.47], T3: [-0.8, 0], C3: [-0.4, 0], Cz: [0, 0], C4: [0.4, 0], T4: [0.8, 0], T5: [-0.65, 0.47], P3: [-0.33, 0.4], Pz: [0, 0.4], P4: [0.33, 0.4], T6: [0.65, 0.47], O1: [-0.25, 0.77], O2: [0.25, 0.77] };
+    const REGION = {
+      Fp: ['Front of the forehead', 'Planning, decisions, and steadying emotion and impulses. Closest to the eyes, so blinks show up most strongly here.'],
+      F: ['Frontal', 'Attention, holding things in mind, organising, and mood.'],
+      C: ['Central', 'The strip that handles movement and body sensation. Home of the SMR rhythm that often features in training.'],
+      T: ['Temporal, above the ear', 'Hearing, language (more on the left), memory and emotional tone. Close to the jaw muscles, so clenching shows up here.'],
+      P: ['Parietal', 'Body awareness, attention to space, and bringing the senses together.'],
+      O: ['Back of the head', 'Vision. Eyes-closed alpha is strongest here.'],
+    };
+    const side = n => /z$/.test(n) ? 'midline' : (+n.slice(-1) % 2 ? 'left side' : 'right side');
+    const xy = n => [CX + SITES[n][0] * R, CY + SITES[n][1] * R];
+    let mode = 'train', pair = ['T4', 'P4'], last = 'T4';
+
+    const svg = $('#senHead', sec);
+    svg.innerHTML = `
+      <path d="M${CX - 16} ${CY - R + 3} L${CX} ${CY - R - 20} L${CX + 16} ${CY - R + 3}" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M${CX - R - 1} ${CY - 22} q-16 22 0 44 M${CX + R + 1} ${CY - 22} q16 22 0 44" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="var(--well)" stroke="var(--ink-3)" stroke-width="1.5"/>
+      <line id="senLink" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+      ${Object.keys(SITES).map(n => { const [x, y] = xy(n); return `<g class="site" data-n="${n}" tabindex="0" role="button" aria-label="${n}"><circle cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y}">${n}</text></g>`; }).join('')}
+      <text x="${CX}" y="${CY + R + 28}" text-anchor="middle" style="font:500 12px var(--font-body);fill:var(--ink-3)">back of the head</text>`;
+
+    const paint = () => {
+      $$('.site', svg).forEach(g => { g.classList.toggle('on', mode === 'train' ? pair.includes(g.dataset.n) : g.dataset.n === last); g.classList.toggle('all', mode === 'map'); });
+      const link = $('#senLink', svg);
+      if (mode === 'train' && pair.length === 2) { const [a, b] = pair.map(xy); link.setAttribute('x1', a[0]); link.setAttribute('y1', a[1]); link.setAttribute('x2', b[0]); link.setAttribute('y2', b[1]); link.style.display = ''; } else link.style.display = 'none';
+      const key = last.startsWith('Fp') ? 'Fp' : last[0], [where, what] = REGION[key];
+      const extra = (last === 'F7' || last === 'F8') ? ' F7 and F8 sit low on the side, over the front of the temporal region.' : '';
+      const modeText = mode === 'train'
+        ? `<p><b>A training pair${pair.length === 2 ? ': ' + pair.join(' and ') : ''}.</b> Training needs only a few sensors: one or two on the sites being trained, plus one or two more that act as reference and ground. With a pair like this the software works with the difference between the two sites, so what gets trained is how those two areas relate. Which sites we use depends on your goals and how you respond. Choose two positions to show a pair.</p>`
+        : `<p><b>A full brain map.</b> A cap records all 19 positions at the same moment, with eyes closed and then eyes open, plus references on the earlobes. That gives a picture of the whole surface at once.</p>`;
+      $('#senInfo', sec).innerHTML = `<h3>${last} <span style="font:400 var(--fs-0) var(--font-body);color:var(--ink-3)">${where}, ${side(last)}</span></h3><p style="color:var(--ink-2)">${what}${extra}</p><div class="prose" style="border-top:1px solid var(--line-2);padding-top:12px">${modeText}</div>`;
+    };
+    const pickSite = n => { last = n; if (mode === 'train') { if (pair.includes(n)) pair = pair.filter(x => x !== n); else { pair.push(n); if (pair.length > 2) pair.shift(); } } paint(); };
+    svg.addEventListener('click', e => { const g = e.target.closest('.site'); if (g) pickSite(g.dataset.n); });
+    svg.addEventListener('keydown', e => { const g = e.target.closest('.site'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pickSite(g.dataset.n); } });
+    NF.choice($('#senMode', sec), v => { mode = v; paint(); }, 'train');
+    paint();
+
+    // ---- signal and artifact demo ----
+    const CH = [
+      { n: 'Front', s: 'Fp1, near the eyes', lv: [0, 0.3, 0.34, 0.3, 0.42, 0.2], syn: NF.synth(3) },
+      { n: 'Side', s: 'T4, near the jaw', lv: [0, 0.24, 0.3, 0.36, 0.46, 0.24], syn: NF.synth(5) },
+      { n: 'Back', s: 'O2', lv: [0, 0.2, 0.24, 0.85, 0.3, 0.14], syn: NF.synth(8) },
+    ];
+    const WHY = {
+      none: ['A clean signal', 'Three sensors, five seconds. The back of the head shows the bigger, regular alpha rhythm. Press a button to see what each kind of interference does.', ''],
+      blink: ['Blink', 'The front of the eye carries a small electrical charge. In a blink the eyeball rolls, and the frontal sensors see a wave many times larger than brain activity.', 'Blink as you need to. The software pauses for blinks, and during a brain map I will ask for stretches with eyes closed or a soft gaze.'],
+      look: ['Looking sideways', 'Moving the eyes swings that same charge toward one side, which produces a slow step at the front and side sensors.', 'Rest your gaze on one spot on the screen.'],
+      jaw: ['Clenched jaw', 'Jaw and forehead muscles make fast, fuzzy electrical activity right under the side and front sensors. It can pass for fast brain rhythms.', 'Teeth slightly apart, tongue resting, shoulders down. When the jaw softens the fuzz disappears.'],
+      move: ['Shifting position', 'Movement tugs the wires and shifts the sensors on the skin, sending large slow swings through every channel at once.', 'Get comfortable before we start. If you need to move, go ahead; I will wait for the signal to settle.'],
+      pop: ['A loose sensor', 'A sensor that loses contact shows sudden jumps in that one channel only.', 'Nothing for you to do. This is my cue to re-seat it, and it is part of why set-up takes a few minutes.'],
+    };
+    const WIN = 5, sm = (x, a, b) => { const u = NF.clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+    const fuzz = t => Math.sin(t * 913.7) * Math.sin(t * 1291.3 + 1.7) + 0.5 * Math.sin(t * 2113.1);
+    const SHAPE = {
+      blink: (c, x) => [0.85, 0.12, 0][c] * Math.exp(-((x - 0.3) ** 2) / 0.012),
+      look: (c, x) => [0.34, -0.55, 0][c] * (sm(x, 0.05, 0.16) - sm(x, 0.8, 0.95)),
+      jaw: (c, x, t) => x < 0 || x > 1.3 ? 0 : [0.22, 0.5, 0.12][c] * sm(x, 0, 0.1) * (1 - sm(x, 1.15, 1.3)) * fuzz(t),
+      move: (c, x) => x < 0 ? 0 : [0.7, 0.8, 0.75][c] * Math.exp(-x * 1.7) * Math.sin(6.283 * 1.25 * x + c * 0.6),
+      pop: (c, x) => c !== 2 || x < 0 ? 0 : 0.9 * Math.exp(-x * 6) - (x > 0.45 ? 0.6 * Math.exp(-(x - 0.45) * 7) : 0),
+    };
+    let events = [], now = 0, shown = 'none';
+    const rowsEl = $('#senRows', sec);
+    rowsEl.innerHTML = CH.map(c => `<li><div class="nm"><b>${c.n}</b><span>${c.s}</span></div><canvas aria-hidden="true"></canvas></li>`).join('');
+    const strips = $$('canvas', rowsEl).map((cv, ci) => NF.canvas(cv, (ctx, w, h) => {
+      const c = CH[ci], mid = h / 2, n = Math.round(w * 2);
+      ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.strokeStyle = NF.css('--trace'); ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const u = i / n, t = now - WIN + WIN * u; let v = 0;
+        for (let k = 1; k < 6; k++) v += c.lv[k] * NF.BANDS[k].amp * c.syn.val(k, t) * 0.2;
+        for (const e of events) v += SHAPE[e.type](ci, t - e.t0, t);
+        const y = mid - NF.clamp(v, -1, 1) * h * 0.46; i ? ctx.lineTo(u * w, y) : ctx.moveTo(u * w, y);
+      }
+      ctx.stroke();
+    }));
+    const paintSig = () => strips.forEach(s => s.render());
+    const why = () => { const [h, w, a] = WHY[shown]; $('#senWhy', sec).innerHTML = `<h3>${h}</h3><p style="color:var(--ink-2)">${w}</p>${a ? `<p class="note"><b>What I will ask.</b> ${a}</p>` : ''}`; $$('#senArt button', sec).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.a === shown))); };
+    $('#senArt', sec).addEventListener('click', e => {
+      const b = e.target.closest('button[data-a]'); if (!b) return;
+      shown = b.dataset.a; events.push({ type: shown, t0: now - (this.loop.playing ? 0.2 : 2.6) }); why(); paintSig();
+    });
+    this.loop = NF.loop((dt, t) => { now = t + 100; events = events.filter(e => now - e.t0 < WIN + 3); paintSig(); });
+    NF.playButton($('#senPlay', sec), this.loop);
+    this.redraw = paintSig;
+    why();
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>

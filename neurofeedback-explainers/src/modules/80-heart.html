@@ -1,0 +1,235 @@
+<section class="mod" id="heart" data-nav="Heart and breath" data-group="The body" hidden>
+  <header>
+    <div class="eyebrow">The body</div>
+    <h1>Heart and breath</h1>
+    <p class="lede">Your heart does not tick like a clock. It speeds up a little as you breathe in and slows as you breathe out. Slow, gentle breathing makes that swing larger, and practising it is called heart-rate variability biofeedback.</p>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="hrSrc"><span class="lab">Signal</span>
+        <button class="btn" type="button" data-v="demo">Demonstration</button>
+        <button class="btn" type="button" data-v="strap">Chest strap</button>
+      </div>
+      <span class="cap" id="hrStatus" role="status"></span>
+    </div>
+    <div class="cols">
+      <div class="stack">
+        <div class="hr-stats">
+          <div class="hr-big"><svg id="hrIcon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.4 1.1 4.3 2.4.9-1.3 2.3-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg><span id="hrNow">--</span><small>beats a minute</small></div>
+          <dl class="hr-tiles">
+            <div><dt>Swing with the breath</dt><dd><span id="hrSwing">--</span> <small>beats a minute</small></dd></div>
+            <div><dt>Beat-to-beat variation (RMSSD, last minute)</dt><dd><span id="hrRmssd">--</span> <small>ms</small></dd></div>
+          </dl>
+        </div>
+        <canvas id="hrChart" style="height:270px" aria-label="Heart rate over the last minute"></canvas>
+        <p class="cap">Heart rate, beat by beat, over the last minute. Shaded stretches are in-breaths on the pacer. Look for a smooth wave that rises with each in-breath and falls with each out-breath.</p>
+      </div>
+      <div class="stack">
+        <canvas id="hrPacer" style="height:250px" aria-label="Breathing pacer"></canvas>
+        <div class="seg" id="hrRate"><span class="lab">Breaths a minute</span>
+          <button class="btn" type="button" data-v="7">7</button><button class="btn" type="button" data-v="6.5">6.5</button><button class="btn" type="button" data-v="6">6</button><button class="btn" type="button" data-v="5.5">5.5</button><button class="btn" type="button" data-v="5">5</button><button class="btn" type="button" data-v="4.5">4.5</button>
+        </div>
+        <div class="seg" id="hrRatio"><span class="lab">Rhythm</span>
+          <button class="btn" type="button" data-v="0.5">Even</button><button class="btn" type="button" data-v="0.4">Longer out-breath</button>
+        </div>
+        <div><button class="btn" type="button" id="hrPacerBtn" aria-pressed="true">Pacer on</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols even">
+    <div class="panel">
+      <h2>Finding your pace</h2>
+      <p class="cap">Most adults get their largest swing somewhere between 4.5 and 6.5 breaths a minute. Stay at each pace for a minute or two and compare. Each pace you try is logged here.</p>
+      <div class="scroll-x"><table class="hr-log"><thead><tr><th>Breaths a minute</th><th>Breaths counted</th><th>Average swing</th></tr></thead><tbody id="hrLog"></tbody></table></div>
+      <div class="controls"><button class="btn" type="button" id="hrClear">Clear the log</button><span class="cap">Near enough is good enough: in a four-week trial, training at a personal pace and at a fixed 6 a minute worked about equally well.</span></div>
+    </div>
+    <div class="stack">
+      <div class="note care"><b>Breathe gently.</b> Slower, not bigger. If you feel light-headed, tingly or short of air, you are over-breathing: take smaller, softer breaths, or go back to breathing normally.</div>
+      <div class="note"><b>A small swing is not a bad sign.</b> The swing naturally gets smaller with age and varies with fitness and some medications. In one study, healthy but inactive men in their sixties swung about 10 beats a minute during slow breathing, compared with about 22 in young men. What matters is how your own pattern changes with practice.</div>
+      <div class="note"><b>What practice does.</b> Across 58 randomized trials, this kind of training showed small-to-moderate benefits, largest for anxiety, low mood, anger and performance. Programmes usually ask for short daily practice, often under 20 minutes.</div>
+      <p class="cap">For learning only. This is not a medical device and cannot detect heart problems. If your rhythm looks irregular, or you have a heart or breathing condition, talk with your physician before practising.</p>
+    </div>
+  </div>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Lehrer et al. Heart rate variability biofeedback improves emotional and physical health and performance: a systematic review and meta analysis (58 studies). <i>Appl Psychophysiol Biofeedback</i>, 2020. <a href="https://consensus.app/papers/details/3470bb70b74350e087806c2e03f2ba6a/?utm_source=claude_desktop">link</a></li>
+      <li>Goessl et al. The effect of heart rate variability biofeedback training on stress and anxiety: a meta-analysis. <i>Psychol Med</i>, 2017. <a href="https://consensus.app/papers/details/a8d0cad142835fce9e193560f8930a06/?utm_source=claude_desktop">link</a></li>
+      <li>Lehrer et al. Response to: Resonance frequency assessment. <i>Biofeedback</i>, 2021 (adult resonance rates of 4.5 to 6.5 breaths a minute). <a href="https://consensus.app/papers/details/35fdf5b5fc82527fbaa61ba02144aa10/?utm_source=claude_desktop">link</a></li>
+      <li>Sumińska et al. Resonance frequency versus fixed 0.1 Hz breathing in HRV biofeedback: a four-week randomized comparison (n=88). <i>Sci Rep</i>, 2026. <a href="https://consensus.app/papers/details/bec6492d46c35467bffb9f4e966266d6/?utm_source=claude_desktop">link</a></li>
+      <li>Meehan &amp; Shaffer. Do longer exhalations increase HRV during slow-paced breathing? <i>Appl Psychophysiol Biofeedback</i>, 2024 (a longer out-breath made no difference). <a href="https://consensus.app/papers/details/13a9f0a052e25a15b9ddeedbe94cf98a/?utm_source=claude_desktop">link</a></li>
+      <li>Szulczewski. An anti-hyperventilation instruction decreases the drop in end-tidal CO2 and symptoms of hyperventilation during breathing at 0.1 Hz. <i>Appl Psychophysiol Biofeedback</i>, 2019. <a href="https://consensus.app/papers/details/f79d45d48001545e8d031e639f7a8014/?utm_source=claude_desktop">link</a></li>
+      <li>Melo et al. Effects of age and physical activity on the autonomic control of heart rate in healthy men. <i>Braz J Med Biol Res</i>, 2005. <a href="https://consensus.app/papers/details/6769ea9fc4c4504582a0123650eeacc7/?utm_source=claude_desktop">link</a></li>
+      <li>Vann-Adibe et al. Efficacy and methodology of remote heart rate variability biofeedback interventions for mental health: a systematic review and meta-analysis. <i>Appl Psychophysiol Biofeedback</i>, 2025. <a href="https://consensus.app/papers/details/2662255c4cf95fca8a05412e95644597/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The demonstration signal is simulated and is built to swing most near 5.5 breaths a minute, to show what finding a pace looks like. A chest strap that sends beat-to-beat intervals over Bluetooth (the standard heart-rate profile) works in Chrome or Edge on a computer when this page is opened from the saved file.</p>
+  </details>
+</section>
+<style>
+  .hr-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; }
+  .hr-big { display: flex; align-items: baseline; gap: 8px; font-size: 3.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  .hr-big svg { width: 26px; height: 26px; color: var(--b-beta); align-self: center; transform-origin: center; }
+  .hr-big small, .hr-tiles small { font-size: var(--fs--1); font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
+  .hr-tiles { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; }
+  .hr-tiles dt { font-size: var(--fs--1); color: var(--ink-3); } .hr-tiles dd { margin: 0; font-size: var(--fs-2); font-weight: 600; line-height: 1.15; }
+  #hrRate .lab, #hrRatio .lab { flex-basis: 100%; }
+  #hrRate .btn { min-width: 52px; justify-content: center; padding-inline: 8px; }
+  .hr-log { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  .hr-log th { text-align: left; font-size: var(--fs--1); color: var(--ink-3); font-weight: 600; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
+  .hr-log td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-2); }
+  .hr-log tr.best td { color: var(--ink); font-weight: 600; }
+  .hr-log td.empty { color: var(--ink-3); }
+</style>
+<script>
+NF.register('heart', {
+  init(sec) {
+    const { $, $$ } = NF, clock = () => performance.now() / 1000, med = a => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+    let samples = [];                 // { t, rr, hr, bad }
+    let src = 'demo', hasRR = true, beatClock = null, demoTimer = 0, device = null;
+    const pacer = { on: !NF.reduced, rate: 6, fi: 0.5, t0: clock(), base: 0 };
+    let filling = false;              // true while the demonstration's first minute is being generated
+    let breaths = [];                 // { id, t0, dur, fi, rate, min, max, n, first }
+    const log = new Map();            // rate -> [swing per completed breath]
+    const status = (msg, tone) => { const el = $('#hrStatus', sec); el.textContent = msg; el.style.color = tone ? `var(--${tone})` : ''; };
+
+    // ---- pacer timing ----
+    const cyc = t => pacer.base + (t - pacer.t0) * pacer.rate / 60;      // cycle number, fractional
+    const phase = t => { const c = cyc(t); return c - Math.floor(c); };
+    const rebase = () => { const t = clock(); pacer.base = Math.floor(cyc(t)) + 1; pacer.t0 = t; if (breaths.length) breaths[breaths.length - 1].cut = true; };
+    const breathAt = t => {
+      const id = Math.floor(cyc(t)); let b = breaths[breaths.length - 1];
+      if (!b || b.id !== id) {
+        if (b && !b.cut && !b.first && !b.pre && b.n >= 3) { const a = log.get(b.rate) || []; a.push(b.max - b.min); log.set(b.rate, a); paintLog(); }
+        const dur = 60 / pacer.rate; b = { id, t0: pacer.t0 + (id - pacer.base) * dur, dur, fi: pacer.fi, rate: pacer.rate, min: 1e9, max: -1e9, n: 0, first: !b || b.cut, pre: filling };
+        breaths.push(b); if (breaths.length > 40) breaths.shift();
+      }
+      return b;
+    };
+
+    // ---- beats in ----
+    const addRR = (rr, at) => {
+      const now = clock();
+      if (!(rr >= 300 && rr <= 2000)) { beatClock = null; return; }
+      let t = at ?? (beatClock == null ? now : beatClock + rr / 1000);   // rebuild beat times from the intervals themselves
+      if (at == null && Math.abs(t - now) > 1.5) t = now;
+      beatClock = t;
+      const recent = samples.slice(-5).filter(s => !s.bad).map(s => s.rr);
+      const bad = recent.length >= 3 && Math.abs(rr - med(recent)) > 0.3 * med(recent);   // skipped or extra beat, or a strap glitch
+      const s = { t, rr, hr: 60000 / rr, bad }; samples.push(s);
+      while (samples.length && now - samples[0].t > 70) samples.shift();
+      if (!bad) {
+        $('#hrNow', sec).textContent = Math.round(s.hr);
+        if (pacer.on) { const b = breathAt(t); b.min = Math.min(b.min, s.hr); b.max = Math.max(b.max, s.hr); b.n++; }
+        if (!NF.reduced) { const ic = $('#hrIcon', sec); ic.style.transition = 'none'; ic.style.transform = 'scale(1.3)'; requestAnimationFrame(() => { ic.style.transition = 'transform .25s ease-out'; ic.style.transform = 'scale(1)'; }); }
+      }
+    };
+
+    // ---- demonstration signal: the swing is largest near 5.5 breaths a minute ----
+    const demoRR = t => {
+      let osc, amp;
+      if (pacer.on) { const p = phase(t), fi = pacer.fi; osc = p < fi ? -Math.cos(Math.PI * p / fi) : Math.cos(Math.PI * (p - fi) / (1 - fi)); amp = 3 + 6.5 * Math.exp(-(((pacer.rate - 5.5) / 1.1) ** 2)); }
+      else { osc = Math.sin(6.283 * 0.24 * t); amp = 2.2; }
+      return 60000 / (66 + amp * osc + 1.2 * Math.sin(t * 0.21) + (Math.random() - 0.5) * 1.6);
+    };
+    const demoBeat = () => { if (src !== 'demo') return; const rr = demoRR(clock()); addRR(rr); demoTimer = setTimeout(demoBeat, rr); };
+    // start the demonstration with a minute already on screen, so the wave is visible at once
+    const demoFill = () => { const now = clock(); samples = []; breaths = []; pacer.base = 0; pacer.t0 = now - 60; filling = true; for (let t = now - 60; t < now;) { const rr = demoRR(t); addRR(rr, t); t += rr / 1000; } filling = false; beatClock = null; };
+    const stopDemo = () => { clearTimeout(demoTimer); demoTimer = 0; };
+
+    // ---- chest strap over Bluetooth (standard Heart Rate service) ----
+    const onHR = e => {
+      const v = e.target.value, flags = v.getUint8(0), wide = flags & 1; let i = wide ? 3 : 2;
+      if (flags & 0x08) i += 2;                                     // skip the energy field when present
+      if (flags & 0x10) { hasRR = true; for (; i + 1 < v.byteLength; i += 2) addRR(v.getUint16(i, true) / 1024 * 1000); }
+      else { hasRR = false; const hr = wide ? v.getUint16(1, true) : v.getUint8(1); if (hr > 0) addRR(60000 / hr); status('Connected, but this strap sends heart rate only, not beat-to-beat timing. The wave will look smoothed and beat-to-beat variation is not shown.', 'caution'); }
+    };
+    const subscribe = async () => {
+      const server = await device.gatt.connect(), svc = await server.getPrimaryService('heart_rate'), ch = await svc.getCharacteristic('heart_rate_measurement');
+      ch.addEventListener('characteristicvaluechanged', onHR); await ch.startNotifications();
+      samples = []; beatClock = null; hasRR = true; status(`Connected to ${device.name || 'the strap'}. Breathe with the circle.`, 'ok');
+    };
+    const connect = async () => {
+      if (!navigator.bluetooth) { status('A chest strap needs Chrome or Edge on a computer, with this page opened from the saved file. The demonstration signal works everywhere.', 'caution'); return false; }
+      try {
+        status('Choose your strap in the browser pop-up.');
+        device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
+        device.addEventListener('gattserverdisconnected', async () => {
+          if (src !== 'strap') return; status('The strap disconnected. Trying to reconnect.', 'caution');
+          for (let k = 0; k < 4 && src === 'strap'; k++) { await new Promise(r => setTimeout(r, 1500)); try { await subscribe(); return; } catch (err) { /* try again */ } }
+          if (src === 'strap') status('Lost the strap. Check that it is on and the contacts are damp, then choose Chest strap again.', 'stop');
+        });
+        await subscribe(); return true;
+      } catch (err) { status(err && err.name === 'NotFoundError' ? 'No strap was chosen.' : 'Could not connect to a strap here. If this page is open inside another site, open the saved file in Chrome or Edge instead.', 'caution'); return false; }
+    };
+    const srcCtl = NF.choice($('#hrSrc', sec), async v => {
+      if (v === 'strap') { stopDemo(); src = 'strap'; samples = []; $('#hrNow', sec).textContent = '--'; if (!(await connect())) { src = 'demo'; srcCtl.set('demo'); hasRR = true; demoFill(); demoBeat(); } }
+      else { src = 'demo'; try { device?.gatt?.disconnect(); } catch (err) { /* already gone */ } samples = []; beatClock = null; hasRR = true; status('Simulated heart rate that follows the pacer. Not a real person.'); stopDemo(); demoFill(); demoBeat(); }
+    }, 'demo');
+    status('Simulated heart rate that follows the pacer. Not a real person.');
+    demoFill();
+
+    // ---- numbers ----
+    const stats = () => {
+      const now = clock(), good = samples.filter(s => !s.bad);
+      // the last few complete breaths at the pace now showing
+      const done = breaths.filter(b => b.n >= 3 && !b.cut && b.rate === pacer.rate && b.fi === pacer.fi && b.id < Math.floor(cyc(now))).slice(-3);
+      let swing = NaN;
+      if (pacer.on && done.length) swing = done.reduce((a, b) => a + b.max - b.min, 0) / done.length;
+      else if (!pacer.on) { const w = good.filter(s => now - s.t <= 12).map(s => s.hr); if (w.length > 5) swing = Math.max(...w) - Math.min(...w); }
+      let rmssd = NaN; const w = samples.filter(s => now - s.t <= 60);
+      if (hasRR && w.length > 8) { let sum = 0, n = 0; for (let i = 1; i < w.length; i++) if (!w[i].bad && !w[i - 1].bad) { const d = w[i].rr - w[i - 1].rr; sum += d * d; n++; } if (n > 5) rmssd = Math.sqrt(sum / n); }
+      $('#hrSwing', sec).textContent = isNaN(swing) ? '--' : Math.round(swing);
+      $('#hrRmssd', sec).textContent = isNaN(rmssd) ? '--' : Math.round(rmssd);
+      if (samples.length && now - samples[samples.length - 1].t > 4) $('#hrNow', sec).textContent = '--';
+    };
+    function paintLog() {
+      const rows = [...log.entries()].filter(([, a]) => a.length).map(([r, a]) => [r, a.length, a.reduce((x, y) => x + y, 0) / a.length]).sort((a, b) => b[0] - a[0]);
+      const best = rows.filter(r => r[1] >= 3).sort((a, b) => b[2] - a[2])[0];
+      $('#hrLog', sec).innerHTML = rows.length ? rows.map(r => `<tr class="${best && rows.length > 1 && r === best ? 'best' : ''}"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(1)} beats a minute${best && rows.length > 1 && r === best ? ' · largest so far' : ''}</td></tr>`).join('') : '<tr><td class="empty" colspan="3">Nothing logged yet. The first full breath at each pace starts the count.</td></tr>';
+    }
+    $('#hrClear', sec).addEventListener('click', () => { log.clear(); paintLog(); });
+    paintLog();
+
+    // ---- drawing ----
+    const chart = NF.canvas($('#hrChart', sec), (ctx, w, h) => {
+      const now = clock(), WIN = 60, pL = 40, pR = 10, pT = 10, pB = 24, X = t => pL + (w - pL - pR) * (1 - (now - t) / WIN);
+      const vis = samples.filter(s => !s.bad && now - s.t <= WIN);
+      let lo = 55, hi = 85; if (vis.length > 2) { const hs = vis.map(s => s.hr), a = Math.min(...hs), b = Math.max(...hs), mid = (a + b) / 2, span = Math.max(24, (b - a) * 1.4); lo = mid - span / 2; hi = mid + span / 2; }
+      const Y = v => pT + (h - pT - pB) * (1 - (v - lo) / (hi - lo));
+      if (pacer.on) { ctx.fillStyle = NF.css('--accent-soft'); for (const b of breaths) { const x0 = Math.max(pL, X(b.t0)), x1 = Math.min(w - pR, X(b.t0 + b.dur * b.fi), X(now)); if (x1 > x0) ctx.fillRect(x0, pT, x1 - x0, h - pT - pB); } }
+      ctx.font = NF.font(12); ctx.fillStyle = NF.css('--ink-3'); ctx.strokeStyle = NF.css('--line-2'); ctx.lineWidth = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const step = hi - lo > 45 ? 20 : 10; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { const y = Math.round(Y(v)) + 0.5; ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(w - pR, y); ctx.stroke(); ctx.fillText(v, pL - 8, y); }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; [[60, '1 minute ago'], [30, '30 seconds'], [0, 'now']].forEach(([s, l], i) => { ctx.textAlign = i === 0 ? 'left' : i === 2 ? 'right' : 'center'; ctx.fillText(l, X(now - s), h - 6); });
+      if (vis.length < 2) { ctx.textAlign = 'center'; ctx.font = NF.font(15); ctx.fillText(src === 'demo' ? 'starting…' : 'waiting for heartbeats', w / 2, h / 2); return; }
+      ctx.strokeStyle = NF.css('--b-beta'); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath(); vis.forEach((s, i) => { i ? ctx.lineTo(X(s.t), Y(s.hr)) : ctx.moveTo(X(s.t), Y(s.hr)); }); ctx.stroke();
+      const last = vis[vis.length - 1]; ctx.fillStyle = NF.css('--b-beta'); ctx.beginPath(); ctx.arc(X(last.t), Y(last.hr), 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = NF.css('--surface'); ctx.lineWidth = 2; ctx.stroke();
+    });
+    const pacerCv = NF.canvas($('#hrPacer', sec), (ctx, w, h) => {
+      const S = Math.min(w, h), cx = w / 2, cy = h / 2, p = pacer.on ? phase(clock()) : pacer.fi, inh = p < pacer.fi;
+      const u = inh ? p / pacer.fi : 1 - (p - pacer.fi) / (1 - pacer.fi), e = u * u * (3 - 2 * u), r = S * (0.2 + 0.26 * e), dur = 60 / pacer.rate;
+      ctx.strokeStyle = NF.css('--line'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, S * 0.46, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = NF.css('--accent-soft'); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = NF.css('--accent'); ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = NF.css('--ink'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = NF.font(Math.round(S * 0.085), 600);
+      ctx.fillText(pacer.on ? (inh ? 'Breathe in' : 'Breathe out') : 'Pacer off', cx, cy - S * 0.03);
+      ctx.fillStyle = NF.css('--ink-2'); ctx.font = NF.font(Math.round(S * 0.055));
+      ctx.fillText(`${(dur * pacer.fi).toFixed(1)} s in · ${(dur * (1 - pacer.fi)).toFixed(1)} s out`, cx, cy + S * 0.07);
+    });
+    NF.choice($('#hrRate', sec), v => { pacer.rate = +v; rebase(); }, '6');
+    NF.choice($('#hrRatio', sec), v => { pacer.fi = +v; rebase(); }, '0.5');
+    const pb = $('#hrPacerBtn', sec), paintPb = () => { pb.textContent = pacer.on ? 'Pacer on' : 'Pacer off'; pb.setAttribute('aria-pressed', String(pacer.on)); };
+    pb.addEventListener('click', () => { pacer.on = !pacer.on; rebase(); paintPb(); }); paintPb();
+
+    let raf = 0, lastStat = 0;
+    const frame = () => { raf = requestAnimationFrame(frame); if (pacer.on) breathAt(clock()); chart.render(); pacerCv.render(); const n = clock(); if (n - lastStat > 0.5) { lastStat = n; stats(); } };
+    this.begin = () => { if (!raf) { raf = requestAnimationFrame(frame); if (src === 'demo' && !demoTimer) { demoFill(); demoBeat(); } } };
+    this.end = () => { cancelAnimationFrame(raf); raf = 0; stopDemo(); };
+    this.redraw = () => { chart.render(); pacerCv.render(); };
+  },
+  start() { this.begin(); },
+  stop() { this.end(); },
+});
+</script>

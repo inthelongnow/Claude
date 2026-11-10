@@ -1,0 +1,123 @@
+<section class="mod" id="approaches" data-nav="Kinds of training" data-group="The training" hidden>
+  <header>
+    <div class="eyebrow">The training</div>
+    <h1>Kinds of training</h1>
+    <p class="lede">The approaches I use differ mainly in how fast or slow the rhythms are that they work with, and in whether you are reaching a target or simply being shown your own signal.</p>
+  </header>
+
+  <div class="panel">
+    <div class="seg" id="apPick"><span class="lab">Approach</span></div>
+    <div class="scroll-x"><svg id="apLadder" viewBox="0 0 1000 318" role="img" aria-label="Where each approach sits on a scale from very slow to fast brain rhythms"></svg></div>
+    <p class="cap">Each step to the right is ten times faster. The left end is one wave in nearly three hours; the right end is a hundred waves a second.</p>
+  </div>
+
+  <div class="cols">
+    <div class="panel" id="apCard" aria-live="polite"></div>
+    <div class="stack">
+      <div class="note"><b>How they fit together.</b> We begin with what suits your goals and how settled your system is, usually the steadier foundation work first. Other approaches are added only if and when they fit. Not everyone uses all of them.</div>
+      <div class="note"><b>How I choose.</b> From our assessment interview, from a brain map if you have one, and above all from how you respond. Your reports during and between sessions guide every adjustment.</div>
+    </div>
+  </div>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Kirk (ed.). <i>Restoring the Brain</i>, 2nd ed., chapters 2 and 3: infra-low frequency training, its frequency range, and tuning to the individual's response.</li>
+      <li>Othmer. In Budzynski et al. (eds.), <i>Introduction to Quantitative EEG and Neurofeedback</i>, 2nd ed., chapter 1: synchrony training and the place of Alpha-Theta after stabilisation.</li>
+      <li>Martins-Mourao (ed.). <i>Alpha Theta Neurofeedback in the 21st Century</i>, chapter 1: the session, crossover, and cautions.</li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed., chapters 5 and 6: brain maps; reward and inhibit training.</li>
+      <li>Bazzana et al. Infra-low frequency neurofeedback: a systematic mixed studies review. <i>Front Hum Neurosci</i>, 2022. <a href="https://consensus.app/papers/details/813c9d127fe45f05af30f84082a76dcb/?utm_source=claude_desktop">link</a></li>
+      <li>Hammond. The need for individualization in neurofeedback: heterogeneity in QEEG patterns associated with diagnoses and symptoms. <i>Appl Psychophysiol Biofeedback</i>, 2010. <a href="https://consensus.app/papers/details/96b89da30de85e7980b7b997b4aa3eb4/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The evidence line on each card is a short summary. The section What research says gives the detail and the studies behind it.</p>
+  </details>
+</section>
+<style>
+  #apLadder { width: 100%; min-width: 760px; display: block; }
+  #apLadder text { font-family: var(--font-body); fill: var(--ink-3); font-size: 13px; }
+  #apLadder .lane { cursor: pointer; }
+  #apLadder .lane .bar { fill: var(--well); stroke: var(--line); stroke-width: 1; }
+  #apLadder .lane .dot { fill: var(--surface); stroke: var(--ink-3); stroke-width: 2; }
+  #apLadder .lane text.nm { fill: var(--ink-2); font-size: 14px; font-weight: 600; }
+  #apLadder .lane.on .bar { fill: var(--accent); stroke: var(--accent); }
+  #apLadder .lane.on .dot { fill: var(--accent); stroke: var(--accent); }
+  #apLadder .lane.on text.nm { fill: var(--ink); }
+  #apLadder .lane.read .bar { fill: none; stroke-width: 2; stroke: var(--ink-3); }
+  #apLadder .lane.read.on .bar { fill: var(--accent-soft); stroke: var(--accent); }
+  #apCard h2 { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+  #apCard h2 small { font: 400 var(--fs-0) var(--font-body); color: var(--ink-3); }
+</style>
+<script>
+NF.register('approaches', {
+  init(sec) {
+    const { $, $$ } = NF, X = f => 60 + (Math.log10(f) + 4) / 6 * 900;
+    // span: [from Hz, to Hz]; marks: single frequencies
+    const A = [
+      { id: 'map', n: 'Brain map (qEEG)', kind: 'Assessment, not training', span: [1, 45], read: true, rows: [
+        ['What it is', 'A recording from 19 positions at once using a cap, with eyes closed and then eyes open. Software compares your rhythms with a reference database of people your age and draws the differences as colour maps.'],
+        ['Your part', 'Sit quietly while it records. Come rested, with your usual caffeine and your medication as prescribed.'],
+        ['What it gives us', 'A picture of where your patterns differ from typical, which helps me choose where and what to train.'],
+        ['What it is not', 'A diagnosis. The same patterns turn up across different conditions, and a difference from average is sometimes the brain compensating. A map is read alongside your history and what you tell me.'],
+        ['Is it required?', 'No. I suggest one when it is appropriate and you want it. Some people are not ready for one yet, or prefer not to, and training can be planned without it.'],
+        ['The evidence', 'Choosing training from a map is supported by clinic studies without comparison groups. No trial yet shows it works better than standard protocols.']] },
+      { id: 'ilf', n: 'Infra-low frequency training', kind: 'A continuous mirror', span: [0.0001, 0.1], rows: [
+        ['What it is', 'Training on the brain\'s slowest shifts, below 0.1 Hz. Two sensors are used, and the signal is the difference between them.'],
+        ['Your part', 'Watch a film or game while picture and sound follow the slow signal. There is no target to reach.'],
+        ['How it is tuned', 'The training frequency is set for you, from how you feel during and after sessions. Calmer, clearer and more even means we are close. Edgy, heavy or sleepy means I adjust it.'],
+        ['How it tends to feel', 'When well tuned, people often describe feeling calm and alert at the same time.'],
+        ['The evidence', 'Early. Mostly clinic reports and a few small trials with mixed results. Because it is tuned person by person, it is hard to test in standard group trials.']] },
+      { id: 'band', n: 'Frequency-band training', kind: 'A target to reach', span: [4, 30], rows: [
+        ['What it is', 'Encouraging more of one rhythm and less of others at a chosen position. A common example is more SMR (12 to 15 Hz) with less theta and less fast beta. Also called amplitude training.'],
+        ['Your part', 'Watch and listen. Picture and sound respond whenever your rhythms are in the target zone.'],
+        ['How it is tuned', 'Targets are set so that you succeed much of the time, and I adjust them as you go.'],
+        ['How it tends to feel', 'Usually like quiet, absorbed attention. Some people feel pleasantly tired afterwards.'],
+        ['The evidence', 'The most studied form. People reliably learn to shift the trained rhythm. How much of the symptom change comes from the feedback signal itself, beyond the overall training experience, is still debated.']] },
+      { id: 'sync', n: 'Synchrony training', kind: 'Two sites in step', marks: [0.01, 10, 40], rows: [
+        ['What it is', 'Two positions are rewarded for rising and falling together, in step, at a chosen speed: very slow (0.01 Hz), alpha (about 10 Hz) or gamma (40 Hz).'],
+        ['Your part', 'Usually eyes closed or softly focused, listening.'],
+        ['When it comes in', 'After the foundation training is settled, as a complement to it.'],
+        ['How it tends to feel', 'Described as calming and alerting. It leans toward rest and letting go, where the foundation training leans toward engagement. Each speed feels a little different.'],
+        ['The evidence', 'Early. Laboratory studies show that synchrony can be trained. Clinical outcome trials of these protocols have not been done yet.']] },
+      { id: 'at', n: 'Alpha-Theta', kind: 'A deeply relaxed state', span: [4, 12], rows: [
+        ['What it is', 'Eyes-closed training in which different sounds signal alpha and theta. As you settle, theta rises over alpha: a twilight state between waking and sleep. The aim is the experience of that state more than training a rhythm.'],
+        ['Your part', 'Recline, close your eyes, let go and listen. Afterwards we talk through anything that came up, at your pace.'],
+        ['What can come up', 'Imagery, memories and emotion sometimes surface. That is expected.'],
+        ['When it comes in', 'Only after steadier regulation is in place, so that what comes up can be met from a settled footing. It is not the right fit for everyone, and I suggest it only when it suits you.'],
+        ['The evidence', 'A long clinical history in trauma and addiction work, and controlled studies in performing artists. Modern controlled trials are few and small.']] },
+    ];
+    const BANDX = [['isf', 0.0001, 0.1, 'Infra-slow', 0], ['delta', 1, 4, 'Delta', 0], ['theta', 4, 8, 'Theta', 1], ['alpha', 8, 12, 'Alpha', 0], ['beta', 12, 30, 'Beta', 1], ['gamma', 30, 100, 'Gamma', 0]];
+    const TICKS = [[0.0001, '0.0001 Hz', 'one wave in 2¾ hours'], [0.001, '0.001', '17 minutes'], [0.01, '0.01', '100 seconds'], [0.1, '0.1', '10 seconds'], [1, '1 Hz', '1 second'], [10, '10', 'a tenth of a second'], [100, '100 Hz', 'a hundredth']];
+    const LY = i => 26 + i * 36, AX = 252;
+    let sel = 'ilf';
+    const lanes = A.map((a, i) => {
+      const y = LY(i);
+      if (a.marks) {
+        const xs = a.marks.map(X);
+        return `<g class="lane" data-id="${a.id}"><rect x="40" y="${y - 15}" width="930" height="30" fill="transparent"/><path d="M${xs[0]} ${y}H${xs[xs.length - 1]}" stroke="var(--line)" stroke-width="1"/>
+          ${a.marks.map((f, j) => `<circle class="dot" cx="${xs[j]}" cy="${y}" r="7"/><text x="${xs[j]}" y="${y - 13}" text-anchor="middle">${f} Hz</text>`).join('')}
+          <text class="nm" x="${xs[0] - 16}" y="${y + 5}" text-anchor="end">${a.n}</text></g>`;
+      }
+      const x0 = X(a.span[0]), x1 = X(a.span[1]), left = x0 > 500;
+      return `<g class="lane${a.read ? ' read' : ''}" data-id="${a.id}"><rect x="40" y="${y - 15}" width="930" height="30" fill="transparent"/><rect class="bar" x="${x0}" y="${y - 9}" width="${x1 - x0}" height="18" rx="4"/>
+        <text class="nm" x="${left ? x0 - 12 : x1 + 12}" y="${y + 5}" text-anchor="${left ? 'end' : 'start'}">${a.n}</text></g>`;
+    }).join('');
+    const bands = BANDX.map(([id, lo, hi, nm, up]) => { const x0 = X(lo), x1 = X(hi), cx = (x0 + x1) / 2, ty = up ? AX - 28 : AX - 12; return `<rect x="${x0 + 1}" y="${AX}" width="${x1 - x0 - 2}" height="12" fill="var(--b-${id})"/><text x="${cx}" y="${ty}" text-anchor="middle" style="fill:var(--ink-2)">${nm}</text>${up ? `<path d="M${cx} ${ty + 4}V${AX - 2}" stroke="var(--ink-3)" stroke-width="1"/>` : ''}`; }).join('');
+    const ticks = TICKS.map(([f, a, b]) => `<path d="M${X(f)} ${AX + 12}v7" stroke="var(--ink-3)" stroke-width="1"/><text x="${X(f)}" y="${AX + 34}" text-anchor="middle" style="fill:var(--ink-2)">${a}</text><text x="${X(f)}" y="${AX + 52}" text-anchor="middle" style="font-size:12px">${b}</text>`).join('');
+    $('#apLadder', sec).innerHTML = `${TICKS.map(([f]) => `<path d="M${X(f)} 8V${AX}" stroke="var(--line-2)" stroke-width="1"/>`).join('')}${lanes}<rect x="${X(0.1) + 1}" y="${AX}" width="${X(1) - X(0.1) - 2}" height="12" fill="var(--well)"/>${bands}${ticks}`;
+
+    const pick = $('#apPick', sec);
+    pick.insertAdjacentHTML('beforeend', A.map(a => `<button class="btn" type="button" data-v="${a.id}">${a.n}</button>`).join(''));
+    const choose = id => {
+      sel = id; const a = A.find(x => x.id === id);
+      $$('#apLadder .lane', sec).forEach(g => g.classList.toggle('on', g.dataset.id === id));
+      // on a narrow screen the scale scrolls sideways: bring the chosen approach into view
+      const box = $('.scroll-x', sec), mark = $('#apLadder .lane.on .bar, #apLadder .lane.on .dot', sec);
+      if (mark && box.scrollWidth > box.clientWidth + 2) { const r = mark.getBoundingClientRect(), b = box.getBoundingClientRect(); box.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2); }
+      $('#apCard', sec).innerHTML = `<h2>${a.n}<small>${a.kind}</small></h2><dl class="kv">${a.rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    };
+    const ctl = NF.choice(pick, choose, sel);
+    $('#apLadder', sec).addEventListener('click', e => { const g = e.target.closest('.lane'); if (g) { ctl.set(g.dataset.id); choose(g.dataset.id); } });
+    choose(sel);
+  },
+});
+</script>

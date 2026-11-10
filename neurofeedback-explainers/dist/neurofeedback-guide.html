@@ -1,0 +1,1671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neurofeedback Client Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" media="print" data-async>
+<style>
+/* Layout: a left rail of client questions; one working column that pairs a wide "instrument" figure with plain-language notes. */
+:root {
+  --bg: #f4f6f7; --surface: #ffffff; --well: #edf1f3; --line: #d5dde2; --line-2: #e6ebee;
+  --ink: #15222b; --ink-2: #42525d; --ink-3: #66757f;
+  --accent: #2a5a8a; --accent-ink: #ffffff; --accent-soft: #e3ecf5;
+  --trace: #22323d; --ghost: #b9c4cb;
+  --b-isf: #6250d6; --b-delta: #1baf7a; --b-theta: #2a78d6; --b-alpha: #008300; --b-beta: #e87ba4; --b-gamma: #eda100;
+  --g1: #184f95; --g2: #2a78d6; --g3: #6da7ec; --g4: #9ec5f4;           /* evidence scale, one hue, strong to faint */
+  --ok: #0b6b34; --caution: #8a5a00; --stop: #a8281f;
+  --screen: #0d141a; --screen-ink: #e9eff3;
+  --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs--1: 0.875rem; --fs-0: 1rem; --fs-1: 1.19rem; --fs-2: 1.5rem; --fs-3: 2rem;
+  --r: 10px; --gap: clamp(12px, 1.5vw, 20px);
+  font-size: 17px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151a; --surface: #161d24; --well: #1e2832; --line: #2c3945; --line-2: #222c36;
+    --ink: #e7edf1; --ink-2: #b7c3cc; --ink-3: #8d9ba6;
+    --accent: #8ab6e3; --accent-ink: #0f151a; --accent-soft: #1c2c3d;
+    --trace: #d5dde3; --ghost: #4a5864;
+    --b-isf: #9085e9; --b-delta: #199e70; --b-theta: #3987e5; --b-alpha: #008300; --b-beta: #d55181; --b-gamma: #c98500;
+    --g1: #9ec5f4; --g2: #5598e7; --g3: #256abf; --g4: #184f95;
+    --ok: #5fc98a; --caution: #e0b050; --stop: #f08a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151a; --surface: #161d24; --well: #1e2832; --line: #2c3945; --line-2: #222c36;
+  --ink: #e7edf1; --ink-2: #b7c3cc; --ink-3: #8d9ba6;
+  --accent: #8ab6e3; --accent-ink: #0f151a; --accent-soft: #1c2c3d;
+  --trace: #d5dde3; --ghost: #4a5864;
+  --b-isf: #9085e9; --b-delta: #199e70; --b-theta: #3987e5; --b-alpha: #008300; --b-beta: #d55181; --b-gamma: #c98500;
+  --g1: #9ec5f4; --g2: #5598e7; --g3: #256abf; --g4: #184f95;
+  --ok: #5fc98a; --caution: #e0b050; --stop: #f08a80;
+  color-scheme: dark;
+}
+:root.big { font-size: 20px; }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: var(--fs-0); line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.18; margin: 0; text-wrap: balance; letter-spacing: -0.005em; }
+h1 { font-size: var(--fs-3); } h2 { font-size: var(--fs-2); } h3 { font-size: var(--fs-1); }
+p { margin: 0; } ul, ol { margin: 0; padding: 0; list-style: none; }
+a { color: var(--accent); text-underline-offset: 0.15em; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+canvas { display: block; width: 100%; }
+.num { font-variant-numeric: tabular-nums; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- frame ---------- */
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+.rail { background: var(--surface); border-right: 1px solid var(--line); padding: 22px 16px 18px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 18px; position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; overflow-y: auto; }
+.rail .title { font-family: var(--font-head); font-weight: 600; font-size: 1.12rem; line-height: 1.2; padding: 0 8px; }
+.rail .title small { display: block; font-family: var(--font-body); font-weight: 400; font-size: var(--fs--1); color: var(--ink-3); margin-top: 3px; }
+.rail nav { display: flex; flex-direction: column; gap: 14px; }
+.rail .grp { font-size: 0.74rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 0 8px 4px; }
+.rail a { display: block; padding: 7px 8px; border-radius: 7px; color: var(--ink-2); text-decoration: none; line-height: 1.25; }
+.rail a:hover { background: var(--well); color: var(--ink); }
+.rail a[aria-current="page"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.rail .foot { margin-top: auto; font-size: 0.8rem; color: var(--ink-3); line-height: 1.4; padding: 0 8px; }
+.main { min-width: 0; padding-block: 14px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--gap); }
+.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bar .where { margin-right: auto; color: var(--ink-3); font-size: var(--fs--1); min-width: 0; }
+:root.nomenu .app { grid-template-columns: minmax(0, 1fr); }
+:root.nomenu .rail { display: none; }
+
+/* ---------- controls ---------- */
+.btn { min-height: 40px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; line-height: 1.2; }
+.btn:hover { border-color: var(--ink-3); }
+.btn[aria-pressed="true"], .btn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ink-2); font-weight: 500; }
+.btn.quiet:hover { background: var(--well); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.seg > .lab, .lab { font-size: 0.74rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.seg > .lab { margin-right: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+
+/* ---------- module ---------- */
+.mod { display: flex; flex-direction: column; gap: var(--gap); }
+.mod > header { display: flex; flex-direction: column; gap: 6px; max-width: 46rem; }
+.eyebrow { font-size: 0.74rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.lede { font-size: var(--fs-1); color: var(--ink-2); line-height: 1.4; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: clamp(14px, 1.6vw, 22px); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel > h2, .panel > h3 { margin-bottom: -4px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
+.cols.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.prose { display: flex; flex-direction: column; gap: 10px; max-width: 44rem; }
+.prose p, .prose li { color: var(--ink-2); }
+.prose strong, .prose b { color: var(--ink); font-weight: 600; }
+.cap { font-size: var(--fs--1); color: var(--ink-3); }
+.note { background: var(--well); border-radius: var(--r); padding: 12px 16px; color: var(--ink-2); }
+.note b, .note strong { color: var(--ink); }
+.note.care { background: var(--accent-soft); }
+.points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
+.points li { border-top: 2px solid var(--ink); padding-top: 10px; color: var(--ink-2); }
+.points li b { display: block; color: var(--ink); font-family: var(--font-head); font-size: var(--fs-1); font-weight: 600; margin-bottom: 4px; line-height: 1.2; }
+.dots { display: flex; flex-direction: column; gap: 7px; }
+.dots li { position: relative; padding-left: 18px; color: var(--ink-2); }
+.dots li::before { content: ""; position: absolute; left: 3px; top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; }
+.kv dt { color: var(--ink-3); font-size: var(--fs--1); padding-top: 2px; } .kv dd { margin: 0; color: var(--ink-2); }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; background: var(--surface); }
+.tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c, var(--ink-3)); flex: none; }
+details.src { border-top: 1px solid var(--line); padding-top: 10px; color: var(--ink-3); font-size: var(--fs--1); }
+details.src summary { cursor: pointer; font-weight: 600; color: var(--ink-2); width: fit-content; }
+details.src ol { list-style: decimal; padding-left: 1.4em; display: flex; flex-direction: column; gap: 5px; margin-top: 8px; max-width: 60rem; }
+details.src p { margin-top: 8px; max-width: 60rem; }
+.scroll-x { overflow-x: auto; }
+
+/* ---------- step flows and pick lists ---------- */
+.flow { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 0; counter-reset: step; }
+.flow li { position: relative; padding: 12px 18px 4px 0; border-top: 2px solid var(--ink); color: var(--ink-2); counter-increment: step; }
+.flow li::before { content: counter(step); font-family: var(--font-head); font-size: var(--fs-1); color: var(--ink-3); display: block; line-height: 1; margin-bottom: 6px; }
+.flow li b { display: block; color: var(--ink); font-weight: 600; line-height: 1.25; margin-bottom: 3px; }
+.pick { display: flex; flex-direction: column; gap: 4px; }
+.pick .lab { padding: 8px 8px 2px; }
+.pick button { text-align: left; background: none; border: 1px solid transparent; border-radius: 7px; padding: 7px 10px; cursor: pointer; color: var(--ink-2); line-height: 1.25; min-height: 36px; }
+.pick button:hover { background: var(--well); color: var(--ink); }
+.pick button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; border-color: var(--line); }
+.sure { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs--1); font-weight: 600; color: var(--ink-2); }
+.sure i { display: inline-flex; gap: 3px; } .sure i u { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink-2); } .sure i u.f { background: var(--ink-2); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- trace rows (rhythms, state) ---------- */
+.rows { display: flex; flex-direction: column; }
+.rows li { display: grid; grid-template-columns: 132px minmax(0, 1fr) 84px; gap: 12px; align-items: center; border-top: 1px solid var(--line-2); padding: 3px 0; }
+.rows li:first-child { border-top: 0; }
+.rows canvas { height: 58px; }
+.rows .rl { text-align: left; background: none; border: 0; padding: 6px 8px; border-radius: 7px; cursor: pointer; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; line-height: 1.2; }
+.rows .rl b { font-weight: 600; } .rows .rl span { grid-column: 2; font-size: 0.8rem; color: var(--ink-3); }
+.rows .rl:hover, .rows li.sel .rl { background: var(--well); }
+.meter { height: 8px; background: var(--well); border-radius: 4px; position: relative; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--c); width: 0; }
+.meter u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink-2); border-radius: 1px; }
+.rows .chg { font-size: 0.8rem; color: var(--ink-3); margin-top: 5px; min-height: 1.1em; font-weight: 600; }
+
+@media (max-width: 1080px) { .cols, .cols.even, .cols.three { grid-template-columns: minmax(0, 1fr); } .points { grid-template-columns: minmax(0, 1fr); } .flow { grid-template-columns: minmax(0, 1fr); } .flow li { padding-bottom: 12px; } }
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); gap: 8px; }
+  .rail nav { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  .rail nav > div { display: flex; gap: 4px; }
+  .rail .grp, .rail .foot { display: none; }
+  .rail a { white-space: nowrap; border: 1px solid var(--line); }
+  .rail .title { padding: 0; }
+  .rows li { grid-template-columns: 104px minmax(0, 1fr) 44px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+</style>
+<script>
+/* Shared helpers: routing between sections, theme, canvases, and the simulated EEG used by every figure. */
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const root = document.documentElement;
+  const NF = (window.NF = { $, $$, mods: {}, current: null });
+
+  // ---- small utilities -------------------------------------------------
+  NF.rng = seed => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  NF.clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  NF.reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const store = {
+    get(k) { try { return localStorage.getItem('nfg.' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('nfg.' + k, v); } catch (e) { /* private window: fine */ } },
+  };
+  NF.store = store;
+  { const th = store.get('theme'); if (th && !root.dataset.theme) root.dataset.theme = th; }
+  // Web fonts load without holding up the page; offline, the fallback fonts are used.
+  $$('link[data-async]').forEach(l => { const on = () => { l.media = 'all'; }; if (l.sheet) on(); else l.addEventListener('load', on); });
+  // Source links open in a new tab so the guide stays put during a session.
+  document.addEventListener('click', e => { const a = e.target.closest?.('a[href^="http"]'); if (a) { a.target = '_blank'; a.rel = 'noopener'; } });
+
+  // ---- theme tokens for canvas drawing ----------------------------------
+  let tokens = {};
+  NF.css = name => (tokens[name] ??= getComputedStyle(root).getPropertyValue(name).trim());
+  NF.font = (px, weight = 400) => `${weight} ${px}px ${NF.css('--font-body') || 'system-ui, sans-serif'}`;
+  const themeChanged = () => { tokens = {}; NF.current?.redraw?.(); };
+  new MutationObserver(themeChanged).observe(root, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', themeChanged);
+  if (document.fonts?.ready) document.fonts.ready.then(themeChanged);
+
+  // ---- canvas + animation ------------------------------------------------
+  // draw(ctx, w, h) works in CSS pixels; the helper handles device pixel ratio and resizing.
+  NF.canvas = (el, draw) => {
+    const ctx = el.getContext('2d');
+    let w = 0, h = 0, dpr = 1;
+    const fit = () => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = r.width; h = r.height;
+      el.width = Math.round(w * dpr); el.height = Math.round(h * dpr);
+      return true;
+    };
+    const api = {
+      el, ctx,
+      render() {
+        if (!w && !fit()) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        draw(ctx, w, h);
+      },
+    };
+    new ResizeObserver(() => { if (fit()) api.render(); }).observe(el);
+    return api;
+  };
+
+  // A clock that only advances while playing, so "Pause" freezes every trace in place.
+  NF.loop = tick => {
+    let raf = 0, last = 0, t = 0, playing = !NF.reduced;
+    const frame = now => {
+      raf = requestAnimationFrame(frame);
+      const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+      last = now;
+      if (playing) t += dt;
+      tick(playing ? dt : 0, t, dt);
+    };
+    return {
+      start() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } },
+      stop() { cancelAnimationFrame(raf); raf = 0; },
+      get playing() { return playing; },
+      set playing(v) { playing = v; },
+      get t() { return t; },
+    };
+  };
+  // Wire a Pause/Play button to a loop.
+  NF.playButton = (btn, loop) => {
+    const paint = () => { btn.textContent = loop.playing ? 'Pause' : 'Play'; btn.setAttribute('aria-pressed', String(!loop.playing)); };
+    btn.addEventListener('click', () => { loop.playing = !loop.playing; paint(); });
+    paint();
+  };
+  // Segmented single-choice buttons: container holds <button data-v="...">.
+  NF.choice = (box, onPick, initial) => {
+    const btns = $$('button[data-v]', box);
+    const set = v => { btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); };
+    box.addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b) return; set(b.dataset.v); onPick(b.dataset.v, b); });
+    if (initial !== undefined) set(initial);
+    return { set };
+  };
+
+  // ---- the simulated EEG --------------------------------------------------
+  // Six bands. Edges vary a little between labs and software; these are the common textbook ones.
+  NF.BANDS = [
+    { id: 'isf',   name: 'Infra-slow', hz: 'below 0.1 Hz', lo: 0.012, hi: 0.09, amp: 1.25, c: '--b-isf' },
+    { id: 'delta', name: 'Delta',      hz: '1–4 Hz',       lo: 1,     hi: 4,    amp: 1.0,  c: '--b-delta' },
+    { id: 'theta', name: 'Theta',      hz: '4–8 Hz',       lo: 4,     hi: 8,    amp: 0.72, c: '--b-theta' },
+    { id: 'alpha', name: 'Alpha',      hz: '8–12 Hz',      lo: 8,     hi: 12,   amp: 0.9,  c: '--b-alpha' },
+    { id: 'beta',  name: 'Beta',       hz: '12–30 Hz',     lo: 13,    hi: 28,   amp: 0.46, c: '--b-beta' },
+    { id: 'gamma', name: 'Gamma',      hz: '30 Hz and up', lo: 32,    hi: 44,   amp: 0.24, c: '--b-gamma' },
+  ];
+  NF.band = id => NF.BANDS.find(b => b.id === id);
+  // Each band is three nearby sine waves whose strength waxes and wanes, which gives the bursty look of real rhythms.
+  NF.synth = (seed = 11) => {
+    const r = NF.rng(seed);
+    const comps = NF.BANDS.map(b => [0, 1, 2].map(i => ({
+      f: b.lo + (b.hi - b.lo) * (0.15 + 0.33 * i + 0.08 * r()),
+      p: r() * 6.283,
+      ef: (0.07 + 0.2 * r()) * (b.id === 'isf' ? 0.04 : 1),
+      ep: r() * 6.283,
+    })));
+    const val = (k, t) => { let s = 0; for (const c of comps[k]) s += (0.55 + 0.45 * Math.sin(6.283 * c.ef * t + c.ep)) * Math.sin(6.283 * c.f * t + c.p); return s / 2.1; };
+    const env = (k, t) => { let s = 0; for (const c of comps[k]) s += 0.55 + 0.45 * Math.sin(6.283 * c.ef * t + c.ep); return s / 2.4; };
+    return { val, env };
+  };
+  // Draw one band (index k) across a time window ending at t. Rhythms too fast to resolve at this
+  // zoom are drawn as their envelope instead of a misleading jagged line.
+  NF.drawBand = (ctx, w, h, syn, k, t, win, level, color, o = {}) => {
+    const b = NF.BANDS[k], mid = h / 2, A = (o.scale ?? 0.42) * h * b.amp * level;
+    const pxPerCycle = w / (win * b.hi);
+    ctx.lineWidth = o.width ?? 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = color; ctx.fillStyle = color;
+    if (pxPerCycle < 4) {
+      const n = Math.max(2, Math.round(w / 3));
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) { const u = i / n, e = syn.env(k, t - win + win * u) * A; i ? ctx.lineTo(u * w, mid - e) : ctx.moveTo(u * w, mid - e); }
+      for (let i = n; i >= 0; i--) { const u = i / n, e = syn.env(k, t - win + win * u) * A; ctx.lineTo(u * w, mid + e); }
+      ctx.closePath(); ctx.globalAlpha = o.ghost ? 0.25 : 0.55; ctx.fill(); ctx.globalAlpha = 1;
+      return;
+    }
+    const n = Math.round(w * 2);
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) { const u = i / n, y = mid - syn.val(k, t - win + win * u) * A; i ? ctx.lineTo(u * w, y) : ctx.moveTo(u * w, y); }
+    ctx.stroke();
+  };
+  // The summed signal: what one sensor actually records.
+  NF.drawSum = (ctx, w, h, syn, t, win, levels, color, o = {}) => {
+    const mid = h / 2, sc = (o.scale ?? 0.2) * h, n = Math.round(w * 2);
+    ctx.lineWidth = o.width ?? 1.6; ctx.lineJoin = 'round'; ctx.strokeStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, tt = t - win + win * u; let s = 0;
+      for (let k = 0; k < NF.BANDS.length; k++) if (levels[k] > 0.001) s += levels[k] * NF.BANDS[k].amp * syn.val(k, tt);
+      const y = mid - s * sc; i ? ctx.lineTo(u * w, y) : ctx.moveTo(u * w, y);
+    }
+    ctx.stroke();
+  };
+
+  // ---- sections and navigation ------------------------------------------
+  NF.register = (id, mod) => { NF.mods[id] = mod; };
+  const sections = () => $$('section.mod');
+  const ids = () => sections().map(s => s.id);
+  const show = id => {
+    if (!ids().includes(id)) id = ids()[0];
+    if (NF.current && NF.current.id !== id) NF.current.stop?.();
+    sections().forEach(s => { s.hidden = s.id !== id; });
+    $$('.rail a').forEach(a => a.getAttribute('href') === '#' + id ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+    const sec = document.getElementById(id), mod = NF.mods[id] || {};
+    if (!mod._ready) { mod.init?.(sec); mod._ready = true; }
+    mod.id = id; NF.current = mod;
+    mod.start?.();
+    const i = ids().indexOf(id);
+    $('#where').textContent = `${sec.dataset.group} · ${i + 1} of ${ids().length}`;
+    $('#prev').disabled = i === 0; $('#next').disabled = i === ids().length - 1;
+    window.scrollTo(0, 0);
+  };
+  const go = d => { const all = ids(), i = all.indexOf(NF.current?.id); const n = all[i + d]; if (n) location.hash = n; };
+  NF.go = id => { location.hash = id; };
+
+  const buildRail = () => {
+    const nav = $('.rail nav'); let grp = null, box = null;
+    sections().forEach(s => {
+      if (s.dataset.group !== grp) { grp = s.dataset.group; box = document.createElement('div'); const g = document.createElement('div'); g.className = 'grp'; g.textContent = grp; box.append(g); nav.append(box); }
+      const a = document.createElement('a'); a.href = '#' + s.id; a.textContent = s.dataset.nav; box.append(a);
+    });
+  };
+
+  const boot = () => {
+    buildRail();
+    $('#prev').addEventListener('click', () => go(-1));
+    $('#next').addEventListener('click', () => go(1));
+    $('#menuBtn').addEventListener('click', () => { const off = root.classList.toggle('nomenu'); $('#menuBtn').setAttribute('aria-pressed', String(off)); store.set('nomenu', off ? '1' : ''); });
+    $('#sizeBtn').addEventListener('click', () => { const on = root.classList.toggle('big'); $('#sizeBtn').setAttribute('aria-pressed', String(on)); store.set('big', on ? '1' : ''); });
+    $('#themeBtn').addEventListener('click', () => {
+      const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
+    });
+    $('#fullBtn').addEventListener('click', () => {
+      const el = document.documentElement;
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {});
+    });
+    if (store.get('big')) { root.classList.add('big'); $('#sizeBtn').setAttribute('aria-pressed', 'true'); }
+    if (store.get('nomenu')) { root.classList.add('nomenu'); $('#menuBtn').setAttribute('aria-pressed', 'true'); }
+    addEventListener('keydown', e => {
+      if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1);
+    });
+    addEventListener('hashchange', () => show(location.hash.slice(1)));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) NF.current?.stop?.(); else NF.current?.start?.(); });
+    show(location.hash.slice(1));
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+
+</script>
+
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="title">Neurofeedback<small>A guided walk-through</small></div>
+    <nav aria-label="Sections"></nav>
+    <p class="foot">Educational illustrations. Waveforms are simulated. Nothing here is a diagnosis or medical advice.</p>
+  </aside>
+  <main class="main">
+    <div class="wrap">
+      <div class="bar">
+        <span class="where" id="where"></span>
+        <button class="btn quiet" id="prev" type="button" aria-label="Previous section"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Back</button>
+        <button class="btn quiet" id="next" type="button" aria-label="Next section">Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button class="btn quiet" id="menuBtn" type="button" aria-pressed="false">Hide menu</button>
+        <button class="btn quiet" id="sizeBtn" type="button" aria-pressed="false">Larger text</button>
+        <button class="btn quiet" id="themeBtn" type="button">Light / dark</button>
+        <button class="btn quiet" id="fullBtn" type="button">Full screen</button>
+      </div>
+<section class="mod" id="start" data-nav="Start here" data-group="Overview" hidden>
+  <header>
+    <div class="eyebrow">Overview</div>
+    <h1>What neurofeedback is, and what to expect</h1>
+    <p class="lede">Neurofeedback is training for the brain's own activity. Sensors read your brain's rhythms, software turns them into picture and sound, and your brain uses that information to practise steadier, more flexible patterns.</p>
+  </header>
+
+  <ul class="points">
+    <li><b>The sensors only listen</b>Nothing is sent into your head. The sensors read tiny electrical signals your brain already produces, the same kind a hospital EEG records.</li>
+    <li><b>It is learning, not a procedure</b>Change comes from repetition, the way any skill does. That is why sessions are regular and why what you notice between them matters.</li>
+    <li><b>It sits alongside your other care</b>Therapy, medication, sleep, movement and anything else that supports you are welcome at the same time. Medication decisions stay with your prescriber.</li>
+  </ul>
+
+  <div class="panel">
+    <h2>Questions this guide answers</h2>
+    <ol class="toc" id="toc"></ol>
+  </div>
+
+  <p class="note">Research on neurofeedback is active and its results are mixed: stronger for some concerns than others, and still debated in places. The section called <a href="#research">What research says</a> lays that out plainly so you can decide with clear information.</p>
+</section>
+<style>
+  .toc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--gap); }
+  .toc li { border-top: 1px solid var(--line-2); }
+  .toc a { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 2px 8px; padding: 12px 6px; text-decoration: none; color: var(--ink-2); border-radius: 7px; }
+  .toc a:hover { background: var(--well); }
+  .toc .n { grid-row: span 2; font-family: var(--font-head); font-size: var(--fs-2); color: var(--ink-3); line-height: 1; padding-top: 2px; }
+  .toc b { color: var(--ink); font-weight: 600; font-size: var(--fs-1); font-family: var(--font-head); line-height: 1.2; }
+  @media (max-width: 760px) { .toc { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<script>
+NF.register('start', {
+  init(sec) {
+    const Q = [
+      ['rhythms', 'What are brain rhythms?', 'How one tangled signal separates into slow and fast rhythms.'],
+      ['sensors', 'Where do the sensors go, and why sit still?', 'The sensor map, and how a blink or a clenched jaw shows up.'],
+      ['state', 'What shifts my brain rhythms day to day?', 'Sleep, caffeine, medication and practice, and why I ask about them.'],
+      ['loop', 'How does the training actually work?', 'The feedback loop, with a version you can try yourself.'],
+      ['approaches', 'What kinds of training are there?', 'The approaches I use, from very slow rhythms to fast ones.'],
+      ['sessions', 'What will my sessions be like?', 'The hour, the weekly rhythm, and your part in it.'],
+      ['research', 'What does the research say?', 'Where the evidence is solid, where it is early, and what is debated.'],
+      ['heart', 'What about the heart and breathing?', 'Heart-rate variability, shown live with a paced-breathing guide.'],
+    ];
+    NF.$('#toc', sec).innerHTML = Q.map(([id, q, d], i) => `<li><a href="#${id}"><span class="n">${i + 1}</span><b>${q}</b><span>${d}</span></a></li>`).join('');
+  },
+});
+</script>
+
+<section class="mod" id="rhythms" data-nav="Brain rhythms" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>Brain rhythms</h1>
+    <p class="lede">A sensor on the scalp picks up one tangled signal. Software separates it by speed, the way a prism separates white light into colours.</p>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="rhyState"><span class="lab">State</span>
+        <button class="btn" type="button" data-v="closed">Eyes closed, relaxed</button>
+        <button class="btn" type="button" data-v="open">Eyes open, focused</button>
+        <button class="btn" type="button" data-v="drowsy">Drowsy</button>
+        <button class="btn" type="button" data-v="sleep">Deep sleep</button>
+      </div>
+      <div class="seg" id="rhyWin"><span class="lab">Time shown</span>
+        <button class="btn" type="button" data-v="2">2 seconds</button>
+        <button class="btn" type="button" data-v="20">20 seconds</button>
+        <button class="btn" type="button" data-v="120">2 minutes</button>
+      </div>
+      <button class="btn" type="button" id="rhyPlay">Pause</button>
+    </div>
+
+    <div class="rhy">
+      <div class="rhy-raw">
+        <div><b>What one sensor records</b><div class="cap">Every rhythm at once, added together</div></div>
+        <canvas id="rhyRaw" aria-label="Simulated raw EEG trace"></canvas>
+      </div>
+      <svg class="rhy-prism" viewBox="0 0 64 360" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 180H24" stroke="var(--trace)" stroke-width="2" vector-effect="non-scaling-stroke" fill="none"/>
+        <g id="rhyFan" fill="none" stroke-width="2"></g>
+        <path d="M12 216 L52 216 L32 146 Z" fill="var(--surface)" stroke="var(--ink-2)" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      </svg>
+      <div class="rhy-out">
+        <ol class="rows" id="rhyRows"></ol>
+      </div>
+    </div>
+    <div class="cap" id="rhyCap"></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel" id="rhyCard" aria-live="polite"></div>
+    <div class="note"><b>About this picture.</b> The traces are simulated and sized for the screen, and the bars show relative level only. A real recording is messier, differs from person to person, and looks different at each spot on the head. Band edges also vary a little between labs and software.</div>
+  </div>
+
+  <ul class="points">
+    <li><b>All of them, all the time</b>Every brain produces every one of these rhythms around the clock. What changes from moment to moment is the mix.</li>
+    <li><b>Where and when matter</b>The same rhythm means different things at the front or the back of the head, with eyes open or closed, at rest or on a task.</li>
+    <li><b>No good or bad waves</b>No rhythm is good or bad, and no pattern diagnoses a condition. What matters is flexibility: shifting gear when the moment calls for it.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Hiltunen et al. Infra-slow EEG fluctuations are correlated with resting-state network dynamics in fMRI. <i>J Neurosci</i>, 2014. <a href="https://consensus.app/papers/details/304ef86ef8875e7b8c421adb41068533/?utm_source=claude_desktop">link</a></li>
+      <li>Watson. Cognitive and physiologic impacts of the infraslow oscillation. <i>Front Syst Neurosci</i>, 2018. <a href="https://consensus.app/papers/details/fa7ca98c81635e19963224ec6b7d8091/?utm_source=claude_desktop">link</a></li>
+      <li>Snipes et al. The theta paradox: 4-8 Hz EEG oscillations reflect both sleep pressure and cognitive control. <i>J Neurosci</i>, 2022. <a href="https://consensus.app/papers/details/a7e63dc4f76156faad5a9fce39b92258/?utm_source=claude_desktop">link</a></li>
+      <li>Newson et al. EEG frequency bands in psychiatric disorders: a review of resting state studies. <i>Front Hum Neurosci</i>, 2019 (184 studies; the same patterns recur across different conditions). <a href="https://consensus.app/papers/details/aca3c48e849d54a9bfe315f269cedc23/?utm_source=claude_desktop">link</a></li>
+      <li>Szponar et al. Brainwaves under medication: class-specific neural signatures of psychotropic medication from 24,000 EEGs. <i>eBioMedicine</i>, 2026. <a href="https://consensus.app/papers/details/d5c9adafdfdb538381b335156d11191d/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The state presets are textbook illustrations (alpha with eyes closed, faster activity on task, theta with drowsiness, delta in deep sleep), not measurements.</p>
+  </details>
+</section>
+<style>
+  .rhy { display: grid; grid-template-columns: minmax(0, 0.85fr) 64px minmax(0, 2.1fr); gap: 0; align-items: stretch; }
+  .rhy-raw { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .rhy-raw canvas { height: 150px; }
+  .rhy-prism { width: 64px; height: 100%; min-height: 300px; }
+  .rhy-out { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  #rhyCard h3 span { font-family: var(--font-body); font-weight: 400; font-size: var(--fs-0); color: var(--ink-3); margin-left: 8px; }
+  @media (max-width: 900px) { .rhy { grid-template-columns: minmax(0, 1fr); gap: 12px; } .rhy-prism { display: none; } .rhy-raw canvas { height: 90px; } }
+</style>
+<script>
+NF.register('rhythms', {
+  init(sec) {
+    const { $, $$, BANDS } = NF, syn = NF.synth(11), N = BANDS.length;
+    // relative levels per band: infra-slow, delta, theta, alpha, beta, gamma
+    const PRE = { closed: [0.6, 0.22, 0.3, 0.92, 0.3, 0.2], open: [0.6, 0.18, 0.24, 0.34, 0.62, 0.36], drowsy: [0.6, 0.4, 0.78, 0.44, 0.2, 0.12], sleep: [0.7, 0.96, 0.34, 0.12, 0.08, 0.05] };
+    const INFO = {
+      isf: ['Very slow shifts in how excitable the cortex is. One wave can last from ten seconds to many minutes.', 'Research links these slow shifts to the brain\'s resting networks and to arousal. They are invisible in a two-second view: set <b>Time shown</b> to 2 minutes and they appear while the fast rhythms blur into bands. This is the range infra-low frequency training works with.'],
+      delta: ['The dominant rhythm of deep sleep.', 'Some delta is always present when you are awake. Slow activity rises during waking hours after real sleep loss. Eye and body movement also produce slow, delta-like signals, which is one reason stillness matters during a recording.'],
+      theta: ['Rises with drowsiness and with the pressure to sleep.', 'Theta also appears over the front-middle of the head during concentration and memory work. So more theta is not simply a problem: where it shows up and what you are doing both matter.'],
+      alpha: ['Strongest at the back of the head when you are awake, relaxed and have your eyes closed. It drops when you open your eyes or concentrate.', 'Often called the brain\'s idling rhythm. Everyone has their own preferred alpha speed, usually close to 10 waves a second in adults.'],
+      beta: ['Present during active thinking, focused attention and readiness to move.', 'The low end, about 12 to 15 Hz over the strip that handles movement and touch, is called SMR and goes with a still body and a calm, alert mind. It is a common training target. Some medications add beta, and muscle tension can look like fast beta.'],
+      gamma: ['Brief bursts during demanding processing, when distant brain areas coordinate.', 'Gamma is very small at the scalp and easily swamped by muscle activity from the jaw, forehead and neck, so it is interpreted with care.'],
+    };
+    let lv = [...PRE.closed], target = [...lv], win = 2, sel = 'alpha';
+
+    const rowsEl = $('#rhyRows', sec);
+    rowsEl.innerHTML = BANDS.map(b => `<li data-id="${b.id}"><button class="rl" type="button"><i class="sw" style="--c:var(${b.c})"></i><b>${b.name}</b><span>${b.hz}</span></button><canvas aria-hidden="true"></canvas><div class="meter" style="--c:var(${b.c})" role="img"><i></i></div></li>`).join('');
+    $('#rhyFan', sec).innerHTML = BANDS.map((b, i) => `<path d="M42 182 L64 ${(i + 0.5) / N * 360}" stroke="var(${b.c})" vector-effect="non-scaling-stroke"/>`).join('');
+    const rows = $$('li', rowsEl), meters = rows.map(r => $('.meter i', r));
+    let now = 0;
+    const strips = rows.map((r, k) => NF.canvas($('canvas', r), (ctx, w, h) => NF.drawBand(ctx, w, h, syn, k, now, win, lv[k], NF.css(BANDS[k].c))));
+    const raw = NF.canvas($('#rhyRaw', sec), (ctx, w, h) => NF.drawSum(ctx, w, h, syn, now, Math.min(win, 4), lv, NF.css('--trace'), { scale: 0.17 }));
+    const paint = () => { strips.forEach(s => s.render()); raw.render(); meters.forEach((m, k) => { m.style.width = Math.round(lv[k] * 100) + '%'; }); };
+
+    const card = () => {
+      const b = NF.band(sel), [when, know] = INFO[sel];
+      $('#rhyCard', sec).innerHTML = `<h3><i class="sw" style="--c:var(${b.c})"></i> ${b.name}<span>${b.hz}</span></h3><dl class="kv"><dt>Seen when</dt><dd>${when}</dd><dt>Worth knowing</dt><dd>${know}</dd></dl>`;
+      rows.forEach(r => r.classList.toggle('sel', r.dataset.id === sel));
+    };
+    rowsEl.addEventListener('click', e => { const li = e.target.closest('li'); if (li) { sel = li.dataset.id; card(); } });
+    const cap = () => { $('#rhyCap', sec).textContent = `Showing the last ${win === 120 ? '2 minutes' : win + ' seconds'}, newest on the right.` + (win > 2 ? ' Rhythms too fast to draw at this zoom appear as shaded bands.' : ' Choose a rhythm for details.'); };
+    NF.choice($('#rhyState', sec), v => { target = [...PRE[v]]; }, 'closed');
+    NF.choice($('#rhyWin', sec), v => { win = +v; cap(); paint(); }, '2');
+    this.loop = NF.loop((dt, t, real) => { now = t + 400; for (let k = 0; k < N; k++) lv[k] += (target[k] - lv[k]) * Math.min(1, real * 3); paint(); });
+    NF.playButton($('#rhyPlay', sec), this.loop);
+    this.redraw = paint;
+    card(); cap();
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>
+
+<section class="mod" id="sensors" data-nav="Sensors and signal" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>Where the sensors go, and why stillness helps</h1>
+    <p class="lede">Sensor positions follow a worldwide map of the head. The brain's signal is tiny, so a blink or a tight jaw can drown it out.</p>
+  </header>
+
+  <div class="cols even">
+    <div class="panel">
+      <div class="controls">
+        <div class="seg" id="senMode"><span class="lab">Show</span>
+          <button class="btn" type="button" data-v="train">A training pair</button>
+          <button class="btn" type="button" data-v="map">A full brain map</button>
+        </div>
+      </div>
+      <svg id="senHead" viewBox="0 0 400 420" role="group" aria-label="Sensor positions seen from above, nose at the top"></svg>
+      <p class="cap">Seen from above, nose at the top, your left on the left. Choose any position.</p>
+    </div>
+    <div class="stack">
+      <div class="panel" id="senInfo" aria-live="polite"></div>
+      <div class="panel">
+        <h3>Reading the names</h3>
+        <dl class="kv">
+          <dt>Letter</dt><dd>The region underneath: <b>F</b> frontal, <b>C</b> central, <b>T</b> temporal, <b>P</b> parietal, <b>O</b> occipital. <b>Fp</b> is the very front.</dd>
+          <dt>Number</dt><dd>Odd numbers are on the left, even numbers on the right. A <b>z</b> means the midline.</dd>
+          <dt>Spacing</dt><dd>Positions are measured as 10% and 20% steps between landmarks on your own head, so the map fits every head size. It is called the 10-20 system.</dd>
+        </dl>
+        <p class="cap">T3, T4, T5 and T6 are written T7, T8, P7 and P8 in the newer naming.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Brain signal, and everything else</h2>
+    <div class="controls">
+      <div class="seg" id="senArt"><span class="lab">Try</span>
+        <button class="btn" type="button" data-a="blink">Blink</button>
+        <button class="btn" type="button" data-a="look">Look sideways</button>
+        <button class="btn" type="button" data-a="jaw">Clench the jaw</button>
+        <button class="btn" type="button" data-a="move">Shift in the chair</button>
+        <button class="btn" type="button" data-a="pop">Loose sensor</button>
+      </div>
+      <button class="btn" type="button" id="senPlay">Pause</button>
+    </div>
+    <div class="cols">
+      <ol class="rows sen-rows" id="senRows"></ol>
+      <div class="stack" id="senWhy" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <ul class="points">
+    <li><b>The signal is tiny</b>Brain activity at the scalp is measured in millionths of a volt. Eyes, muscles and movement produce signals many times larger.</li>
+    <li><b>Software cannot always tell</b>Left alone, a blink can read as slow brain activity and a tight jaw as fast activity. That would reward the wrong thing.</li>
+    <li><b>So we keep it clean</b>Feedback pauses during blinks and movement, I check the signal during set-up, and for a brain map the noisy stretches are removed before analysis.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Marcuse, Fields &amp; Yoo. <i>Rowan's Primer of EEG</i>, 2nd ed. Chapter 1: origin of the EEG signal, eye, muscle, movement and electrode artifacts.</li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed. Chapter 5: the 10-20 system and brain maps.</li>
+    </ol>
+    <p>Region descriptions are broad associations. Every task draws on networks spanning many regions, and a sensor picks up activity from a wide area beneath it.</p>
+  </details>
+</section>
+<style>
+  #senHead { width: 100%; max-width: 420px; margin: 0 auto; display: block; }
+  #senHead .site { cursor: pointer; }
+  #senHead .site circle { fill: var(--surface); stroke: var(--ink-3); stroke-width: 1.5; }
+  #senHead .site text { font: 600 11px var(--font-body); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  #senHead .site:hover circle { stroke: var(--ink); }
+  #senHead .site.all circle { fill: var(--accent-soft); stroke: var(--accent); }
+  #senHead .site.on circle { fill: var(--accent); stroke: var(--accent); }
+  #senHead .site.on text { fill: var(--accent-ink); }
+  #senHead .site:focus-visible circle { stroke: var(--accent); stroke-width: 3; }
+  #senHead .site:focus { outline: none; }
+  .sen-rows li { grid-template-columns: 110px minmax(0, 1fr); }
+  .sen-rows canvas { height: 84px; }
+  .sen-rows .nm { line-height: 1.2; padding-left: 4px; } .sen-rows .nm span { display: block; font-size: 0.8rem; color: var(--ink-3); }
+</style>
+<script>
+NF.register('sensors', {
+  init(sec) {
+    const { $, $$ } = NF, R = 150, CX = 200, CY = 215;
+    const SITES = { Fp1: [-0.25, -0.77], Fp2: [0.25, -0.77], F7: [-0.65, -0.47], F3: [-0.33, -0.4], Fz: [0, -0.4], F4: [0.33, -0.4], F8: [0.65, -0.47], T3: [-0.8, 0], C3: [-0.4, 0], Cz: [0, 0], C4: [0.4, 0], T4: [0.8, 0], T5: [-0.65, 0.47], P3: [-0.33, 0.4], Pz: [0, 0.4], P4: [0.33, 0.4], T6: [0.65, 0.47], O1: [-0.25, 0.77], O2: [0.25, 0.77] };
+    const REGION = {
+      Fp: ['Front of the forehead', 'Planning, decisions, and steadying emotion and impulses. Closest to the eyes, so blinks show up most strongly here.'],
+      F: ['Frontal', 'Attention, holding things in mind, organising, and mood.'],
+      C: ['Central', 'The strip that handles movement and body sensation. Home of the SMR rhythm that often features in training.'],
+      T: ['Temporal, above the ear', 'Hearing, language (more on the left), memory and emotional tone. Close to the jaw muscles, so clenching shows up here.'],
+      P: ['Parietal', 'Body awareness, attention to space, and bringing the senses together.'],
+      O: ['Back of the head', 'Vision. Eyes-closed alpha is strongest here.'],
+    };
+    const side = n => /z$/.test(n) ? 'midline' : (+n.slice(-1) % 2 ? 'left side' : 'right side');
+    const xy = n => [CX + SITES[n][0] * R, CY + SITES[n][1] * R];
+    let mode = 'train', pair = ['T4', 'P4'], last = 'T4';
+
+    const svg = $('#senHead', sec);
+    svg.innerHTML = `
+      <path d="M${CX - 16} ${CY - R + 3} L${CX} ${CY - R - 20} L${CX + 16} ${CY - R + 3}" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M${CX - R - 1} ${CY - 22} q-16 22 0 44 M${CX + R + 1} ${CY - 22} q16 22 0 44" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="var(--well)" stroke="var(--ink-3)" stroke-width="1.5"/>
+      <line id="senLink" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+      ${Object.keys(SITES).map(n => { const [x, y] = xy(n); return `<g class="site" data-n="${n}" tabindex="0" role="button" aria-label="${n}"><circle cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y}">${n}</text></g>`; }).join('')}
+      <text x="${CX}" y="${CY + R + 28}" text-anchor="middle" style="font:500 12px var(--font-body);fill:var(--ink-3)">back of the head</text>`;
+
+    const paint = () => {
+      $$('.site', svg).forEach(g => { g.classList.toggle('on', mode === 'train' ? pair.includes(g.dataset.n) : g.dataset.n === last); g.classList.toggle('all', mode === 'map'); });
+      const link = $('#senLink', svg);
+      if (mode === 'train' && pair.length === 2) { const [a, b] = pair.map(xy); link.setAttribute('x1', a[0]); link.setAttribute('y1', a[1]); link.setAttribute('x2', b[0]); link.setAttribute('y2', b[1]); link.style.display = ''; } else link.style.display = 'none';
+      const key = last.startsWith('Fp') ? 'Fp' : last[0], [where, what] = REGION[key];
+      const extra = (last === 'F7' || last === 'F8') ? ' F7 and F8 sit low on the side, over the front of the temporal region.' : '';
+      const modeText = mode === 'train'
+        ? `<p><b>A training pair${pair.length === 2 ? ': ' + pair.join(' and ') : ''}.</b> Training needs only a few sensors: one or two on the sites being trained, plus one or two more that act as reference and ground. With a pair like this the software works with the difference between the two sites, so what gets trained is how those two areas relate. Which sites we use depends on your goals and how you respond. Choose two positions to show a pair.</p>`
+        : `<p><b>A full brain map.</b> A cap records all 19 positions at the same moment, with eyes closed and then eyes open, plus references on the earlobes. That gives a picture of the whole surface at once.</p>`;
+      $('#senInfo', sec).innerHTML = `<h3>${last} <span style="font:400 var(--fs-0) var(--font-body);color:var(--ink-3)">${where}, ${side(last)}</span></h3><p style="color:var(--ink-2)">${what}${extra}</p><div class="prose" style="border-top:1px solid var(--line-2);padding-top:12px">${modeText}</div>`;
+    };
+    const pickSite = n => { last = n; if (mode === 'train') { if (pair.includes(n)) pair = pair.filter(x => x !== n); else { pair.push(n); if (pair.length > 2) pair.shift(); } } paint(); };
+    svg.addEventListener('click', e => { const g = e.target.closest('.site'); if (g) pickSite(g.dataset.n); });
+    svg.addEventListener('keydown', e => { const g = e.target.closest('.site'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pickSite(g.dataset.n); } });
+    NF.choice($('#senMode', sec), v => { mode = v; paint(); }, 'train');
+    paint();
+
+    // ---- signal and artifact demo ----
+    const CH = [
+      { n: 'Front', s: 'Fp1, near the eyes', lv: [0, 0.3, 0.34, 0.3, 0.42, 0.2], syn: NF.synth(3) },
+      { n: 'Side', s: 'T4, near the jaw', lv: [0, 0.24, 0.3, 0.36, 0.46, 0.24], syn: NF.synth(5) },
+      { n: 'Back', s: 'O2', lv: [0, 0.2, 0.24, 0.85, 0.3, 0.14], syn: NF.synth(8) },
+    ];
+    const WHY = {
+      none: ['A clean signal', 'Three sensors, five seconds. The back of the head shows the bigger, regular alpha rhythm. Press a button to see what each kind of interference does.', ''],
+      blink: ['Blink', 'The front of the eye carries a small electrical charge. In a blink the eyeball rolls, and the frontal sensors see a wave many times larger than brain activity.', 'Blink as you need to. The software pauses for blinks, and during a brain map I will ask for stretches with eyes closed or a soft gaze.'],
+      look: ['Looking sideways', 'Moving the eyes swings that same charge toward one side, which produces a slow step at the front and side sensors.', 'Rest your gaze on one spot on the screen.'],
+      jaw: ['Clenched jaw', 'Jaw and forehead muscles make fast, fuzzy electrical activity right under the side and front sensors. It can pass for fast brain rhythms.', 'Teeth slightly apart, tongue resting, shoulders down. When the jaw softens the fuzz disappears.'],
+      move: ['Shifting position', 'Movement tugs the wires and shifts the sensors on the skin, sending large slow swings through every channel at once.', 'Get comfortable before we start. If you need to move, go ahead; I will wait for the signal to settle.'],
+      pop: ['A loose sensor', 'A sensor that loses contact shows sudden jumps in that one channel only.', 'Nothing for you to do. This is my cue to re-seat it, and it is part of why set-up takes a few minutes.'],
+    };
+    const WIN = 5, sm = (x, a, b) => { const u = NF.clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+    const fuzz = t => Math.sin(t * 913.7) * Math.sin(t * 1291.3 + 1.7) + 0.5 * Math.sin(t * 2113.1);
+    const SHAPE = {
+      blink: (c, x) => [0.85, 0.12, 0][c] * Math.exp(-((x - 0.3) ** 2) / 0.012),
+      look: (c, x) => [0.34, -0.55, 0][c] * (sm(x, 0.05, 0.16) - sm(x, 0.8, 0.95)),
+      jaw: (c, x, t) => x < 0 || x > 1.3 ? 0 : [0.22, 0.5, 0.12][c] * sm(x, 0, 0.1) * (1 - sm(x, 1.15, 1.3)) * fuzz(t),
+      move: (c, x) => x < 0 ? 0 : [0.7, 0.8, 0.75][c] * Math.exp(-x * 1.7) * Math.sin(6.283 * 1.25 * x + c * 0.6),
+      pop: (c, x) => c !== 2 || x < 0 ? 0 : 0.9 * Math.exp(-x * 6) - (x > 0.45 ? 0.6 * Math.exp(-(x - 0.45) * 7) : 0),
+    };
+    let events = [], now = 0, shown = 'none';
+    const rowsEl = $('#senRows', sec);
+    rowsEl.innerHTML = CH.map(c => `<li><div class="nm"><b>${c.n}</b><span>${c.s}</span></div><canvas aria-hidden="true"></canvas></li>`).join('');
+    const strips = $$('canvas', rowsEl).map((cv, ci) => NF.canvas(cv, (ctx, w, h) => {
+      const c = CH[ci], mid = h / 2, n = Math.round(w * 2);
+      ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.strokeStyle = NF.css('--trace'); ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const u = i / n, t = now - WIN + WIN * u; let v = 0;
+        for (let k = 1; k < 6; k++) v += c.lv[k] * NF.BANDS[k].amp * c.syn.val(k, t) * 0.2;
+        for (const e of events) v += SHAPE[e.type](ci, t - e.t0, t);
+        const y = mid - NF.clamp(v, -1, 1) * h * 0.46; i ? ctx.lineTo(u * w, y) : ctx.moveTo(u * w, y);
+      }
+      ctx.stroke();
+    }));
+    const paintSig = () => strips.forEach(s => s.render());
+    const why = () => { const [h, w, a] = WHY[shown]; $('#senWhy', sec).innerHTML = `<h3>${h}</h3><p style="color:var(--ink-2)">${w}</p>${a ? `<p class="note"><b>What I will ask.</b> ${a}</p>` : ''}`; $$('#senArt button', sec).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.a === shown))); };
+    $('#senArt', sec).addEventListener('click', e => {
+      const b = e.target.closest('button[data-a]'); if (!b) return;
+      shown = b.dataset.a; events.push({ type: shown, t0: now - (this.loop.playing ? 0.2 : 2.6) }); why(); paintSig();
+    });
+    this.loop = NF.loop((dt, t) => { now = t + 100; events = events.filter(e => now - e.t0 < WIN + 3); paintSig(); });
+    NF.playButton($('#senPlay', sec), this.loop);
+    this.redraw = paintSig;
+    why();
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>
+
+<section class="mod" id="state" data-nav="What shifts them" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>What shifts your brain rhythms</h1>
+    <p class="lede">Sleep, caffeine, medication and practice all nudge the mix of rhythms. That is why I ask about them, and why a recording is read in the context of your day.</p>
+  </header>
+
+  <div class="sta">
+    <div class="panel pick" id="staPick"></div>
+    <div class="panel">
+      <div class="controls">
+        <span class="cap"><b style="color:var(--ink)">Colour</b> is the selected situation. <b style="color:var(--ink)">Grey</b> is rested and relaxed, for comparison.</span>
+        <button class="btn" type="button" id="staPlay" style="margin-left:auto">Pause</button>
+      </div>
+      <ol class="rows sta-rows" id="staRows"></ol>
+      <p class="cap">Typical direction of change at the group level, drawn to be visible. Real effects depend on dose, timing, tolerance and the person. A question mark means studies disagree.</p>
+    </div>
+    <div class="panel" id="staCard" aria-live="polite"></div>
+  </div>
+
+  <p class="note care"><b>About medication.</b> Please do not skip, stop or change a prescribed medication for a recording or a session. Those decisions belong with you and your prescriber. What helps me is knowing what you take and hearing when anything changes, so I can read your recordings and your responses correctly.</p>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol id="staSrc"></ol>
+    <p>Each item was checked against published reviews or controlled studies in November 2026. Several popular claims did not hold up and are shown here as mixed or uncertain: for example that caffeine raises beta, that cannabis raises theta, that nicotine lowers alpha, or that screen use leaves a lasting brainwave pattern.</p>
+  </details>
+</section>
+<style>
+  .sta { display: grid; grid-template-columns: 220px minmax(0, 1.45fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
+  .sta-rows li { grid-template-columns: 104px minmax(0, 1fr) 96px; }
+  .sta-rows canvas { height: 62px; }
+  .sta-rows .nm { padding-left: 4px; line-height: 1.2; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; }
+  .sta-rows .nm span { grid-column: 2; font-size: 0.8rem; color: var(--ink-3); }
+  @media (max-width: 1180px) { .sta { grid-template-columns: 210px minmax(0, 1fr); } .sta > :last-child { grid-column: 1 / -1; } }
+  @media (max-width: 700px) { .sta { grid-template-columns: minmax(0, 1fr); } .sta-rows li { grid-template-columns: 84px minmax(0, 1fr) 60px; } }
+</style>
+<script>
+NF.register('state', {
+  init(sec) {
+    const { $, $$ } = NF, B = NF.BANDS.slice(1), K = [1, 2, 3, 4, 5], syn = NF.synth(21);
+    const BASE = [0.25, 0.3, 0.7, 0.35, 0.15]; // delta, theta, alpha, beta, gamma
+    const SRC = [
+      ['Poethke et al. Electroencephalographic correlates of sleepiness: a meta-analysis and narrative review. <i>Sleep Med</i>, 2026.', 'f87c04bba5d1577e8d37687ed219d5d4'],
+      ['Chmiel et al. The effect of caffeine on EEG during wakefulness: a systematic and mechanistic review (48 studies). <i>Nutrients</i>, 2026.', 'a97b4f0af45e5ff0bb345b8181cf7282'],
+      ['Ehlers et al. EEG spectral characteristics following ethanol administration in young men. <i>Electroencephalogr Clin Neurophysiol</i>, 1989.', '4f71ab3cd2725cfb8e2aac7f8c5784ca'],
+      ['Rangaswamy et al. Beta power in the EEG of alcoholics (n=614). <i>Biol Psychiatry</i>, 2002.', '57dd222150d25d1abb41a5e4669aaa4f'],
+      ['Fisher et al. Effects of acute nicotine administration on resting EEG in nonsmokers. <i>Exp Clin Psychopharmacol</i>, 2012.', '9c2970c2e5675decbf6282f73afa3f98'],
+      ['Schiemer et al. Identifying EEG markers related to acute cannabis consumption: a systematic review (16 studies). <i>Neurosci Biobehav Rev</i>, 2025.', '6c7e8cce35545a009676261e954a37b0'],
+      ['Chang et al. Evening use of light-emitting eReaders negatively affects sleep, circadian timing, and next-morning alertness. <i>PNAS</i>, 2014.', '5ea40fc101125bed89f540322d8c056b'],
+      ['Quinn et al. Electroencephalographic signatures of methylphenidate in ADHD: a systematic review (44 studies). <i>J Atten Disord</i>, 2026.', '826cdb7f089a5c44ace80e0694efed2c'],
+      ['Szponar et al. Brainwaves under medication: class-specific neural signatures of psychotropic medication from 24,000 EEGs. <i>eBioMedicine</i>, 2026.', 'd5c9adafdfdb538381b335156d11191d'],
+      ['Le et al. EEG spectral signatures of SSRIs, SNRIs and vortioxetine in major depressive disorder: a systematic review (15 studies). <i>J Affect Disord</i>, 2024.', '3d79f02a95315620be35128d7da89e19'],
+      ['Zaccaro et al. How breath-control can change your life: a systematic review on psycho-physiological correlates of slow breathing. <i>Front Hum Neurosci</i>, 2018.', '4f213fd6e8d25cff8c8fa79ef7a93ac0'],
+      ['Lomas et al. A systematic review of the neurophysiology of mindfulness on EEG oscillations (56 studies). <i>Neurosci Biobehav Rev</i>, 2015.', '1bbb704657ab53cc8764b9387c5de1f2'],
+      ['Liu et al. Effects of exercise interventions on EEG alpha power: a systematic review and meta-analysis (13 trials). <i>Front Psychol</i>, 2026.', 'f94b9986d2955540a844842f2207b56c'],
+    ];
+    // lv: relative level per band; q: bands where studies disagree (drawn at baseline with "?"); sure: 3 solid, 2 mixed, 1 thin
+    const ITEMS = [
+      { g: 'Reference', n: 'Rested and relaxed', lv: BASE, sure: 0, pills: ['Comparison state'],
+        what: 'Awake, eyes closed, nothing pressing. Alpha leads, with a little of everything else. Every other choice is compared with this.',
+        why: 'This is roughly the state a resting recording aims to capture, which is why I ask you to come as rested and as much on your normal routine as you can.' },
+      { g: 'Daily life', n: 'A short night', lv: [0.42, 0.6, 0.7, 0.35, 0.15], sure: 3, pills: ['More theta', 'More delta after real sleep loss'], src: [0],
+        what: 'Sleepiness shows up as extra slow activity while you are awake: theta first, and delta after real sleep loss.',
+        why: 'A brain map taken after a bad night can look slower than your usual self. Tell me how you slept. If it was a rough night we can reschedule a map.' },
+      { g: 'Daily life', n: 'Caffeine', lv: [0.22, 0.25, 0.48, 0.35, 0.15], q: [3], sure: 3, pills: ['Less alpha', 'Beta: studies disagree'], src: [1],
+        what: 'Caffeine usually turns down the relaxed alpha rhythm, and drowsy slow activity if you are tired. Its effect on beta is inconsistent, so there is no single caffeine signature.',
+        why: 'Have your usual amount at your usual time before a recording. Skipping it or doubling it both make the recording less like a normal day.' },
+      { g: 'Daily life', n: 'Alcohol', lv: [0.28, 0.46, 0.84, 0.33, 0.14], sure: 3, pills: ['More theta', 'More slow alpha'], src: [2, 3],
+        what: 'A drink or two raises the slower rhythms and slows alpha slightly. With long-term heavy drinking the best-replicated finding is different: extra beta at rest.',
+        why: 'Alcohol the evening before affects both that night\'s sleep and the next day\'s recording. It helps me to know.' },
+      { g: 'Daily life', n: 'Nicotine', lv: [0.22, 0.2, 0.82, 0.38, 0.15], sure: 2, pills: ['Faster, stronger alpha', 'Less theta'], src: [4],
+        what: 'Nicotine speeds alpha up and reduces theta. In people who smoke, part of that is relief from withdrawal. The studies are small.',
+        why: 'Keep to your usual pattern before a recording and tell me roughly when you last had some.' },
+      { g: 'Daily life', n: 'Cannabis', lv: BASE, q: [1, 2], sure: 1, pills: ['Changes theta', 'Direction varies'], src: [5],
+        what: 'THC alters theta activity and blunts the brain\'s attention responses, but the direction depends on dose and tolerance, and findings in regular users are inconsistent.',
+        why: 'Let me know about recent use so a recording is not misread. No judgement comes with the question.' },
+      { g: 'Daily life', n: 'Screens late at night', lv: BASE, q: [1, 2, 3], sure: 1, pills: ['No established brainwave pattern', 'Delays sleep'], src: [6],
+        what: 'No lasting screen-specific brainwave pattern has been established. What is solid is the effect on sleep: light-emitting screens before bed suppress melatonin, delay sleep and dull next-morning alertness.',
+        why: 'Through sleep, late screens can still shape how you feel and how a recording looks the next day.' },
+      { g: 'Medication', n: 'Stimulant medication', lv: [0.24, 0.26, 0.68, 0.46, 0.15], q: [1], sure: 2, pills: ['Can raise beta', 'Sometimes less theta'], src: [7],
+        what: 'Stimulant medication for ADHD can raise beta and sometimes lowers theta, but the changes are modest and vary between studies and people.',
+        why: 'An EEG cannot tell whether a dose is right for you. That is a conversation for you and your prescriber. I only need to know what you take and when.' },
+      { g: 'Medication', n: 'Benzodiazepines', lv: [0.25, 0.22, 0.5, 0.78, 0.18], sure: 3, pills: ['More fast beta', 'Less theta and alpha'], src: [8],
+        what: 'Benzodiazepines, used for anxiety and sleep, reliably add fast beta and reduce theta and alpha. This is one of the clearest medication effects on the EEG.',
+        why: 'On a brain map that extra beta reflects the medication. Knowing you take it lets me read the map correctly.' },
+      { g: 'Medication', n: 'Antidepressants', lv: BASE, q: [1, 2, 3, 4], sure: 1, pills: ['Changes vary by medication'], src: [9, 8],
+        what: 'Antidepressants do change the EEG, but differently from one medication to another and from person to person. No single direction applies.',
+        why: 'Tell me what you take so I can read a recording in context.' },
+      { g: 'Practices', n: 'Slow, paced breathing', lv: [0.25, 0.3, 0.84, 0.35, 0.15], q: [1, 3], sure: 2, pills: ['Alpha often rises', 'Theta and beta: studies disagree'], src: [10],
+        what: 'Breathing at about six breaths a minute reliably increases heart-rate variability. The brainwave picture is less settled: alpha often rises, while theta and beta go either way across studies.',
+        why: 'It is a practice you can use between sessions. The Heart and breath section shows it live.' },
+      { g: 'Practices', n: 'Mindfulness meditation', lv: [0.25, 0.44, 0.86, 0.33, 0.15], sure: 2, pills: ['More alpha', 'More theta'], src: [11],
+        what: 'Mindfulness practice is often accompanied by more alpha and theta, a relaxed and alert pattern, though results vary with the type of practice. Findings for gamma are inconsistent.',
+        why: 'Any practice that helps you settle is welcome alongside training.' },
+      { g: 'Practices', n: 'After aerobic exercise', lv: [0.33, 0.38, 0.86, 0.43, 0.17], sure: 2, pills: ['More alpha on average', 'Other rhythms rise too'], src: [12],
+        what: 'After exercise alpha is higher on average, and other rhythms rise as well. Results vary widely between studies.',
+        why: 'Regular movement supports sleep and mood, which in turn support training. If you exercised hard just before a recording, mention it.' },
+    ];
+    const SURE = ['', 'Thin or conflicting evidence', 'Reasonably supported, with mixed details', 'Well established'];
+    let sel = 0, lv = [...BASE], now = 0;
+
+    const pick = $('#staPick', sec); let g = null, html = '';
+    ITEMS.forEach((it, i) => { if (it.g !== g) { g = it.g; html += `<div class="lab">${g}</div>`; } html += `<button type="button" data-i="${i}">${it.n}</button>`; });
+    pick.innerHTML = html;
+
+    const rowsEl = $('#staRows', sec);
+    rowsEl.innerHTML = B.map(b => `<li><div class="nm"><i class="sw" style="--c:var(${b.c})"></i><b>${b.name}</b><span>${b.hz}</span></div><canvas aria-hidden="true"></canvas><div><div class="meter" style="--c:var(${b.c})"><i></i><u></u></div><div class="chg"></div></div></li>`).join('');
+    const rows = $$('li', rowsEl), fill = rows.map(r => $('.meter i', r)), tick = rows.map(r => $('.meter u', r)), chg = rows.map(r => $('.chg', r));
+    tick.forEach((u, j) => { u.style.left = `calc(${BASE[j] * 100}% - 1px)`; });
+    const strips = rows.map((r, j) => NF.canvas($('canvas', r), (ctx, w, h) => {
+      NF.drawBand(ctx, w, h, syn, K[j], now, 1.2, BASE[j], NF.css('--ghost'), { width: 2, ghost: true });
+      NF.drawBand(ctx, w, h, syn, K[j], now, 1.2, lv[j], NF.css(B[j].c), { width: 2.2 });
+    }));
+    const paint = () => { strips.forEach(s => s.render()); fill.forEach((f, j) => { f.style.width = Math.round(lv[j] * 100) + '%'; }); };
+    const choose = i => {
+      sel = i; const it = ITEMS[i];
+      $$('button', pick).forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+      chg.forEach((c, j) => { const d = it.lv[j] - BASE[j]; c.textContent = it.q?.includes(j) ? '? varies' : d > 0.07 ? '▲ more' : d < -0.07 ? '▼ less' : i ? 'about the same' : ''; });
+      const dots = it.sure ? `<span class="sure"><i>${[1, 2, 3].map(n => `<u class="${n <= it.sure ? 'f' : ''}"></u>`).join('')}</i>${SURE[it.sure]}</span>` : '';
+      $('#staCard', sec).innerHTML = `<div class="lab">${it.g}</div><h2>${it.n}</h2><div class="pills">${it.pills.map(p => `<span class="tag">${p}</span>`).join('')}</div>${dots}
+        <dl class="kv" style="grid-template-columns:minmax(0,1fr)"><dt>What studies show</dt><dd>${it.what}</dd><dt style="margin-top:6px">Why I ask</dt><dd>${it.why}</dd></dl>
+        ${it.src ? `<p class="cap">Sources: ${it.src.map(s => `<a href="#state" data-src="${s}">${s + 1}</a>`).join(', ')} in the list below.</p>` : ''}`;
+    };
+    pick.addEventListener('click', e => { const b = e.target.closest('button'); if (b) choose(+b.dataset.i); });
+    $('#staCard', sec).addEventListener('click', e => { const a = e.target.closest('a[data-src]'); if (!a) return; e.preventDefault(); const d = $('details.src', sec); d.open = true; d.scrollIntoView({ behavior: NF.reduced ? 'auto' : 'smooth', block: 'center' }); });
+    $('#staSrc', sec).innerHTML = SRC.map(([t, id]) => `<li>${t} <a href="https://consensus.app/papers/details/${id}/?utm_source=claude_desktop">link</a></li>`).join('');
+    this.loop = NF.loop((dt, t, real) => { now = t + 250; const tg = ITEMS[sel].lv; for (let j = 0; j < 5; j++) lv[j] += (tg[j] - lv[j]) * Math.min(1, real * 3); paint(); });
+    NF.playButton($('#staPlay', sec), this.loop);
+    this.redraw = paint;
+    choose(0);
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>
+
+<section class="mod" id="loop" data-nav="How training works" data-group="The training" hidden>
+  <header>
+    <div class="eyebrow">The training</div>
+    <h1>How the training works</h1>
+    <p class="lede">Your brain's activity is measured, turned into picture and sound within a fraction of a second, and shown back to you. With that information, the brain adjusts itself.</p>
+  </header>
+
+  <ol class="flow" style="--n:5">
+    <li><b>Your brain</b>produces its rhythms, as it always does.</li>
+    <li><b>Sensors</b>pick the signal up at the scalp. They only read.</li>
+    <li><b>Amplifier and software</b>measure the part of the signal we are training, many times a second.</li>
+    <li><b>Picture and sound</b>change with that measurement: brighter, clearer, fuller.</li>
+    <li><b>Your brain, again</b>takes in the change and adjusts, mostly without effort. Then the loop repeats.</li>
+  </ol>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="lpMode"><span class="lab">Kind of feedback</span>
+        <button class="btn" type="button" data-v="band">A target to reach</button>
+        <button class="btn" type="button" data-v="ilf">A continuous mirror</button>
+      </div>
+      <button class="btn" type="button" id="lpSound" aria-pressed="false">Sound off</button>
+      <button class="btn" type="button" id="lpPlay">Pause</button>
+    </div>
+    <div class="cols">
+      <div class="stack">
+        <div class="cap" id="lpChartCap"></div>
+        <canvas id="lpChart" style="height:230px" aria-label="Simulated training signal over time"></canvas>
+        <div class="controls" id="lpBandCtl">
+          <button class="btn primary" type="button" id="lpHold">Hold to settle</button>
+          <label class="seg" for="lpTarget"><span class="lab">Target</span><input type="range" id="lpTarget" min="30" max="85" value="55" style="width:150px"></label>
+          <span class="cap num" id="lpStat"></span>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="lp-screen" id="lpScreen" aria-hidden="true">
+          <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+            <rect width="320" height="200" fill="#9fc4e8"/>
+            <circle cx="232" cy="62" r="26" fill="#ffe9a8"/>
+            <path d="M0 132 Q60 92 128 122 T260 108 T320 118 V200 H0Z" fill="#6f9f86"/>
+            <path d="M0 152 Q80 126 170 148 T320 140 V200 H0Z" fill="#4f7f6a"/>
+            <path d="M0 172 Q110 160 200 170 T320 166 V200 H0Z" fill="#3d6a8a"/>
+          </svg>
+          <span id="lpScreenTag">what you watch</span>
+        </div>
+        <div class="cap">The picture stands in for the film, game or sounds used in a real session.</div>
+      </div>
+    </div>
+    <div class="prose" id="lpText" aria-live="polite"></div>
+  </div>
+
+  <ul class="points">
+    <li><b>It is not a test</b>There is nothing to get right. Trying hard tends to get in the way. Comfortable, curious attention is all that is asked.</li>
+    <li><b>Feedback only ever rewards</b>When the signal drifts, the picture and sound simply ease off. Nothing is punished and nothing is pushed into the brain.</li>
+    <li><b>Repetition does the work</b>One session is practice. Change builds across many sessions, which is why regular attendance matters.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Sitaram et al. Closed-loop brain training: the science of neurofeedback. <i>Nat Rev Neurosci</i>, 2017. <a href="https://consensus.app/papers/details/fcea36026b4a5af6950eed08508bb06b/?utm_source=claude_desktop">link</a></li>
+      <li>Dessy et al. Train your brain? Can we really selectively train specific EEG frequencies with neurofeedback training. <i>Front Hum Neurosci</i>, 2020. <a href="https://consensus.app/papers/details/25dd977d5fcf544eb52e4fab64c3d7b9/?utm_source=claude_desktop">link</a></li>
+      <li>Weber et al. Predictors of neurofeedback training outcome: a systematic review. <i>NeuroImage Clin</i>, 2020. <a href="https://consensus.app/papers/details/71b81161696b50ebb64e16097c76e5bb/?utm_source=claude_desktop">link</a></li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed., chapters 1 and 6 (reward and inhibit thresholds). Collura. <i>Technical Foundations of Neurofeedback</i>, chapter 1.</li>
+      <li>Kirk (ed.). <i>Restoring the Brain</i>, 2nd ed., chapters 2 and 3 (infra-low frequency training described by its developers as continuous feedback without thresholds).</li>
+    </ol>
+    <p>The standard scientific account is learning inside a closed loop. Studies show many people can learn to change a trained rhythm, though not everyone does, and how specific the change is to the trained rhythm is still debated. The signal on this page is simulated.</p>
+  </details>
+</section>
+<style>
+  .lp-screen { position: relative; border-radius: 12px; overflow: hidden; background: var(--screen); aspect-ratio: 16 / 10; max-width: 100%; border: 6px solid var(--screen); }
+  .lp-screen svg { width: 100%; height: 100%; display: block; filter: brightness(var(--fb-b, 0.4)) saturate(var(--fb-s, 0.3)) blur(var(--fb-x, 3px)); transform: scale(var(--fb-z, 1)); }
+  .lp-screen span { position: absolute; left: 10px; bottom: 8px; font-size: 0.75rem; color: var(--screen-ink); background: rgba(13, 20, 26, 0.6); padding: 1px 8px; border-radius: 999px; }
+  #lpHold { touch-action: none; user-select: none; -webkit-user-select: none; }
+</style>
+<script>
+NF.register('loop', {
+  init(sec) {
+    const { $ } = NF, clamp = NF.clamp;
+    const TEXT = {
+      band: `<p><b>A target to reach.</b> This is how frequency-band training works. The software watches one rhythm we want more of. When it rises above the target line, the picture brightens and the sound plays. When it drifts below, they fade. Rhythms we want less of work the same way in reverse: the reward simply waits while they are too high.</p>
+        <p>The target is set so that you succeed much of the time, and it is adjusted as you go. <b>Try it:</b> hold the button to stand in for your brain settling into the pattern, then let go. In a real session there is no button. You watch and listen, and the brain works it out largely by itself.</p>`,
+      ilf: `<p><b>A continuous mirror.</b> This is how infra-low frequency training works. There is no target line and nothing to earn. Picture and sound follow a very slow signal from your brain continuously, rising and falling with it.</p>
+        <p>The developers of this method compare it to practising in front of a dance-studio mirror: the brain recognises its own activity in what it sees and hears, and steadies itself. I tune the training frequency to you, based on how you feel during and after sessions, which is why your reports matter so much.</p>`,
+    };
+    let mode = 'band', hold = false, u = 0, T = 0.55, fb = 0, hist = [], now = 0, sound = false, audio = null;
+    const wander = t => 0.5 * Math.sin(t * 0.61) + 0.3 * Math.sin(t * 0.23 + 1.3) + 0.2 * Math.sin(t * 1.37 + 0.4);
+    const rest = t => 0.46 + 0.17 * wander(t) + 0.018 * Math.sin(t * 5.3) + 0.012 * Math.sin(t * 8.7 + 1);
+    const slow = t => 0.5 + 0.34 * Math.sin(6.283 * t / 15) + 0.1 * Math.sin(6.283 * t / 5.7 + 1);
+    const SPAN = 24;
+    const chart = NF.canvas($('#lpChart', sec), (ctx, w, h) => {
+      const padL = 8, padR = 8, padT = 12, padB = 22, X = t => padL + (w - padL - padR) * (1 - (now - t) / SPAN), Y = v => padT + (h - padT - padB) * (1 - clamp(v, 0, 1.15) / 1.15);
+      ctx.font = NF.font(12); ctx.fillStyle = NF.css('--ink-3'); ctx.textBaseline = 'alphabetic';
+      ctx.strokeStyle = NF.css('--line-2'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, h - padB + 0.5); ctx.lineTo(w - padR, h - padB + 0.5); ctx.stroke();
+      ctx.textAlign = 'left'; ctx.fillText(`${SPAN} seconds ago`, padL, h - 5); ctx.textAlign = 'right'; ctx.fillText('now', w - padR, h - 5);
+      const pts = hist.filter(p => now - p.t <= SPAN);
+      if (mode === 'band') {
+        // shade time spent in target
+        ctx.fillStyle = NF.css('--accent-soft');
+        for (let i = 1; i < pts.length; i++) if (pts[i].v >= T) ctx.fillRect(X(pts[i - 1].t), padT, Math.max(1, X(pts[i].t) - X(pts[i - 1].t) + 0.5), h - padT - padB);
+        ctx.strokeStyle = NF.css('--ink-2'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(padL, Y(T)); ctx.lineTo(w - padR, Y(T)); ctx.stroke();
+        ctx.fillStyle = NF.css('--ink-2'); ctx.textAlign = 'left'; ctx.fillText('target', padL + 4, Y(T) - 5);
+      }
+      if (pts.length > 1) {
+        ctx.strokeStyle = NF.css(mode === 'band' ? '--b-theta' : '--b-isf'); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+        pts.forEach((p, i) => { i ? ctx.lineTo(X(p.t), Y(p.v)) : ctx.moveTo(X(p.t), Y(p.v)); }); ctx.stroke();
+        const p = pts[pts.length - 1]; ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 5, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = NF.css('--surface'); ctx.lineWidth = 2; ctx.stroke();
+      }
+    });
+    const screen = $('#lpScreen', sec);
+    const show = () => {
+      screen.style.setProperty('--fb-b', (0.35 + 0.75 * fb).toFixed(3));
+      screen.style.setProperty('--fb-s', (0.25 + 0.85 * fb).toFixed(3));
+      screen.style.setProperty('--fb-x', (3.5 * (1 - fb)).toFixed(2) + 'px');
+      screen.style.setProperty('--fb-z', (1 + 0.06 * fb).toFixed(3));
+      if (audio) audio.gain.gain.setTargetAtTime(sound ? 0.02 + 0.09 * fb : 0, audio.ctx.currentTime, 0.08);
+    };
+    const setMode = v => {
+      mode = v; hold = false; hist = []; for (let t = now - SPAN; t < now; t += 0.05) hist.push({ t, v: v === 'band' ? rest(t) : slow(t) });
+      $('#lpBandCtl', sec).hidden = v !== 'band';
+      $('#lpText', sec).innerHTML = TEXT[v];
+      $('#lpChartCap', sec).textContent = v === 'band' ? 'Strength of the rhythm being trained. Shaded stretches are time spent above the target.' : 'A very slow signal from the brain, sped up here so you can watch it move. Real infra-low signals are slower still.';
+    };
+    NF.choice($('#lpMode', sec), setMode, 'band'); setMode('band');
+    const holdBtn = $('#lpHold', sec), down = e => { hold = true; holdBtn.setPointerCapture?.(e.pointerId); }, up = () => { hold = false; };
+    holdBtn.addEventListener('pointerdown', down); holdBtn.addEventListener('pointerup', up); holdBtn.addEventListener('pointercancel', up); holdBtn.addEventListener('lostpointercapture', up);
+    holdBtn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); hold = true; } });
+    holdBtn.addEventListener('keyup', up); holdBtn.addEventListener('blur', up);
+    $('#lpTarget', sec).addEventListener('input', e => { T = e.target.value / 100; });
+    $('#lpSound', sec).addEventListener('click', e => {
+      sound = !sound; e.currentTarget.setAttribute('aria-pressed', String(sound)); e.currentTarget.textContent = sound ? 'Sound on' : 'Sound off';
+      if (sound && !audio) {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)(), gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination);
+          [196, 294, 392].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = [1, 0.5, 0.25][i]; o.connect(g).connect(gain); o.start(); });
+          audio = { ctx, gain };
+        } catch (err) { sound = false; e.currentTarget.textContent = 'Sound unavailable'; }
+      }
+      audio?.ctx.resume?.(); show();
+    });
+    this.loop = NF.loop((dt, t) => {
+      now = t;
+      if (dt > 0) {
+        let v;
+        if (mode === 'band') { u += ((hold ? 1 : 0) - u) * Math.min(1, dt * 1.4); v = rest(t) + 0.4 * u; fb += (clamp((v - T) / 0.1 + 0.5, 0, 1) - fb) * Math.min(1, dt * 6); }
+        else { v = slow(t); fb += (clamp((v - 0.1) / 0.85, 0, 1) - fb) * Math.min(1, dt * 6); }
+        hist.push({ t, v }); while (hist.length && t - hist[0].t > 32) hist.shift();
+        if (mode === 'band') { const r = hist.filter(p => t - p.t <= 30); $('#lpStat', sec).textContent = `Above target ${Math.round(100 * r.filter(p => p.v >= T).length / Math.max(1, r.length))}% of the last ${Math.min(30, Math.round(t - r[0].t))} seconds`; }
+      }
+      show(); chart.render();
+    });
+    NF.playButton($('#lpPlay', sec), this.loop);
+    this.redraw = () => chart.render();
+    this.quiet = () => { if (audio) audio.gain.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.05); };
+    // a static first frame when motion is reduced
+    for (let t = -SPAN; t < 0; t += 0.05) hist.push({ t, v: rest(t) });
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); this.quiet?.(); },
+});
+</script>
+
+<section class="mod" id="approaches" data-nav="Kinds of training" data-group="The training" hidden>
+  <header>
+    <div class="eyebrow">The training</div>
+    <h1>Kinds of training</h1>
+    <p class="lede">The approaches I use differ mainly in how fast or slow the rhythms are that they work with, and in whether you are reaching a target or simply being shown your own signal.</p>
+  </header>
+
+  <div class="panel">
+    <div class="seg" id="apPick"><span class="lab">Approach</span></div>
+    <div class="scroll-x"><svg id="apLadder" viewBox="0 0 1000 318" role="img" aria-label="Where each approach sits on a scale from very slow to fast brain rhythms"></svg></div>
+    <p class="cap">Each step to the right is ten times faster. The left end is one wave in nearly three hours; the right end is a hundred waves a second.</p>
+  </div>
+
+  <div class="cols">
+    <div class="panel" id="apCard" aria-live="polite"></div>
+    <div class="stack">
+      <div class="note"><b>How they fit together.</b> We begin with what suits your goals and how settled your system is, usually the steadier foundation work first. Other approaches are added only if and when they fit. Not everyone uses all of them.</div>
+      <div class="note"><b>How I choose.</b> From our assessment interview, from a brain map if you have one, and above all from how you respond. Your reports during and between sessions guide every adjustment.</div>
+    </div>
+  </div>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Kirk (ed.). <i>Restoring the Brain</i>, 2nd ed., chapters 2 and 3: infra-low frequency training, its frequency range, and tuning to the individual's response.</li>
+      <li>Othmer. In Budzynski et al. (eds.), <i>Introduction to Quantitative EEG and Neurofeedback</i>, 2nd ed., chapter 1: synchrony training and the place of Alpha-Theta after stabilisation.</li>
+      <li>Martins-Mourao (ed.). <i>Alpha Theta Neurofeedback in the 21st Century</i>, chapter 1: the session, crossover, and cautions.</li>
+      <li>Demos. <i>Getting Started with EEG Neurofeedback</i>, 2nd ed., chapters 5 and 6: brain maps; reward and inhibit training.</li>
+      <li>Bazzana et al. Infra-low frequency neurofeedback: a systematic mixed studies review. <i>Front Hum Neurosci</i>, 2022. <a href="https://consensus.app/papers/details/813c9d127fe45f05af30f84082a76dcb/?utm_source=claude_desktop">link</a></li>
+      <li>Hammond. The need for individualization in neurofeedback: heterogeneity in QEEG patterns associated with diagnoses and symptoms. <i>Appl Psychophysiol Biofeedback</i>, 2010. <a href="https://consensus.app/papers/details/96b89da30de85e7980b7b997b4aa3eb4/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The evidence line on each card is a short summary. The section What research says gives the detail and the studies behind it.</p>
+  </details>
+</section>
+<style>
+  #apLadder { width: 100%; min-width: 760px; display: block; }
+  #apLadder text { font-family: var(--font-body); fill: var(--ink-3); font-size: 13px; }
+  #apLadder .lane { cursor: pointer; }
+  #apLadder .lane .bar { fill: var(--well); stroke: var(--line); stroke-width: 1; }
+  #apLadder .lane .dot { fill: var(--surface); stroke: var(--ink-3); stroke-width: 2; }
+  #apLadder .lane text.nm { fill: var(--ink-2); font-size: 14px; font-weight: 600; }
+  #apLadder .lane.on .bar { fill: var(--accent); stroke: var(--accent); }
+  #apLadder .lane.on .dot { fill: var(--accent); stroke: var(--accent); }
+  #apLadder .lane.on text.nm { fill: var(--ink); }
+  #apLadder .lane.read .bar { fill: none; stroke-width: 2; stroke: var(--ink-3); }
+  #apLadder .lane.read.on .bar { fill: var(--accent-soft); stroke: var(--accent); }
+  #apCard h2 { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+  #apCard h2 small { font: 400 var(--fs-0) var(--font-body); color: var(--ink-3); }
+</style>
+<script>
+NF.register('approaches', {
+  init(sec) {
+    const { $, $$ } = NF, X = f => 60 + (Math.log10(f) + 4) / 6 * 900;
+    // span: [from Hz, to Hz]; marks: single frequencies
+    const A = [
+      { id: 'map', n: 'Brain map (qEEG)', kind: 'Assessment, not training', span: [1, 45], read: true, rows: [
+        ['What it is', 'A recording from 19 positions at once using a cap, with eyes closed and then eyes open. Software compares your rhythms with a reference database of people your age and draws the differences as colour maps.'],
+        ['Your part', 'Sit quietly while it records. Come rested, with your usual caffeine and your medication as prescribed.'],
+        ['What it gives us', 'A picture of where your patterns differ from typical, which helps me choose where and what to train.'],
+        ['What it is not', 'A diagnosis. The same patterns turn up across different conditions, and a difference from average is sometimes the brain compensating. A map is read alongside your history and what you tell me.'],
+        ['Is it required?', 'No. I suggest one when it is appropriate and you want it. Some people are not ready for one yet, or prefer not to, and training can be planned without it.'],
+        ['The evidence', 'Choosing training from a map is supported by clinic studies without comparison groups. No trial yet shows it works better than standard protocols.']] },
+      { id: 'ilf', n: 'Infra-low frequency training', kind: 'A continuous mirror', span: [0.0001, 0.1], rows: [
+        ['What it is', 'Training on the brain\'s slowest shifts, below 0.1 Hz. Two sensors are used, and the signal is the difference between them.'],
+        ['Your part', 'Watch a film or game while picture and sound follow the slow signal. There is no target to reach.'],
+        ['How it is tuned', 'The training frequency is set for you, from how you feel during and after sessions. Calmer, clearer and more even means we are close. Edgy, heavy or sleepy means I adjust it.'],
+        ['How it tends to feel', 'When well tuned, people often describe feeling calm and alert at the same time.'],
+        ['The evidence', 'Early. Mostly clinic reports and a few small trials with mixed results. Because it is tuned person by person, it is hard to test in standard group trials.']] },
+      { id: 'band', n: 'Frequency-band training', kind: 'A target to reach', span: [4, 30], rows: [
+        ['What it is', 'Encouraging more of one rhythm and less of others at a chosen position. A common example is more SMR (12 to 15 Hz) with less theta and less fast beta. Also called amplitude training.'],
+        ['Your part', 'Watch and listen. Picture and sound respond whenever your rhythms are in the target zone.'],
+        ['How it is tuned', 'Targets are set so that you succeed much of the time, and I adjust them as you go.'],
+        ['How it tends to feel', 'Usually like quiet, absorbed attention. Some people feel pleasantly tired afterwards.'],
+        ['The evidence', 'The most studied form. People reliably learn to shift the trained rhythm. How much of the symptom change comes from the feedback signal itself, beyond the overall training experience, is still debated.']] },
+      { id: 'sync', n: 'Synchrony training', kind: 'Two sites in step', marks: [0.01, 10, 40], rows: [
+        ['What it is', 'Two positions are rewarded for rising and falling together, in step, at a chosen speed: very slow (0.01 Hz), alpha (about 10 Hz) or gamma (40 Hz).'],
+        ['Your part', 'Usually eyes closed or softly focused, listening.'],
+        ['When it comes in', 'After the foundation training is settled, as a complement to it.'],
+        ['How it tends to feel', 'Described as calming and alerting. It leans toward rest and letting go, where the foundation training leans toward engagement. Each speed feels a little different.'],
+        ['The evidence', 'Early. Laboratory studies show that synchrony can be trained. Clinical outcome trials of these protocols have not been done yet.']] },
+      { id: 'at', n: 'Alpha-Theta', kind: 'A deeply relaxed state', span: [4, 12], rows: [
+        ['What it is', 'Eyes-closed training in which different sounds signal alpha and theta. As you settle, theta rises over alpha: a twilight state between waking and sleep. The aim is the experience of that state more than training a rhythm.'],
+        ['Your part', 'Recline, close your eyes, let go and listen. Afterwards we talk through anything that came up, at your pace.'],
+        ['What can come up', 'Imagery, memories and emotion sometimes surface. That is expected.'],
+        ['When it comes in', 'Only after steadier regulation is in place, so that what comes up can be met from a settled footing. It is not the right fit for everyone, and I suggest it only when it suits you.'],
+        ['The evidence', 'A long clinical history in trauma and addiction work, and controlled studies in performing artists. Modern controlled trials are few and small.']] },
+    ];
+    const BANDX = [['isf', 0.0001, 0.1, 'Infra-slow', 0], ['delta', 1, 4, 'Delta', 0], ['theta', 4, 8, 'Theta', 1], ['alpha', 8, 12, 'Alpha', 0], ['beta', 12, 30, 'Beta', 1], ['gamma', 30, 100, 'Gamma', 0]];
+    const TICKS = [[0.0001, '0.0001 Hz', 'one wave in 2¾ hours'], [0.001, '0.001', '17 minutes'], [0.01, '0.01', '100 seconds'], [0.1, '0.1', '10 seconds'], [1, '1 Hz', '1 second'], [10, '10', 'a tenth of a second'], [100, '100 Hz', 'a hundredth']];
+    const LY = i => 26 + i * 36, AX = 252;
+    let sel = 'ilf';
+    const lanes = A.map((a, i) => {
+      const y = LY(i);
+      if (a.marks) {
+        const xs = a.marks.map(X);
+        return `<g class="lane" data-id="${a.id}"><rect x="40" y="${y - 15}" width="930" height="30" fill="transparent"/><path d="M${xs[0]} ${y}H${xs[xs.length - 1]}" stroke="var(--line)" stroke-width="1"/>
+          ${a.marks.map((f, j) => `<circle class="dot" cx="${xs[j]}" cy="${y}" r="7"/><text x="${xs[j]}" y="${y - 13}" text-anchor="middle">${f} Hz</text>`).join('')}
+          <text class="nm" x="${xs[0] - 16}" y="${y + 5}" text-anchor="end">${a.n}</text></g>`;
+      }
+      const x0 = X(a.span[0]), x1 = X(a.span[1]), left = x0 > 500;
+      return `<g class="lane${a.read ? ' read' : ''}" data-id="${a.id}"><rect x="40" y="${y - 15}" width="930" height="30" fill="transparent"/><rect class="bar" x="${x0}" y="${y - 9}" width="${x1 - x0}" height="18" rx="4"/>
+        <text class="nm" x="${left ? x0 - 12 : x1 + 12}" y="${y + 5}" text-anchor="${left ? 'end' : 'start'}">${a.n}</text></g>`;
+    }).join('');
+    const bands = BANDX.map(([id, lo, hi, nm, up]) => { const x0 = X(lo), x1 = X(hi), cx = (x0 + x1) / 2, ty = up ? AX - 28 : AX - 12; return `<rect x="${x0 + 1}" y="${AX}" width="${x1 - x0 - 2}" height="12" fill="var(--b-${id})"/><text x="${cx}" y="${ty}" text-anchor="middle" style="fill:var(--ink-2)">${nm}</text>${up ? `<path d="M${cx} ${ty + 4}V${AX - 2}" stroke="var(--ink-3)" stroke-width="1"/>` : ''}`; }).join('');
+    const ticks = TICKS.map(([f, a, b]) => `<path d="M${X(f)} ${AX + 12}v7" stroke="var(--ink-3)" stroke-width="1"/><text x="${X(f)}" y="${AX + 34}" text-anchor="middle" style="fill:var(--ink-2)">${a}</text><text x="${X(f)}" y="${AX + 52}" text-anchor="middle" style="font-size:12px">${b}</text>`).join('');
+    $('#apLadder', sec).innerHTML = `${TICKS.map(([f]) => `<path d="M${X(f)} 8V${AX}" stroke="var(--line-2)" stroke-width="1"/>`).join('')}${lanes}<rect x="${X(0.1) + 1}" y="${AX}" width="${X(1) - X(0.1) - 2}" height="12" fill="var(--well)"/>${bands}${ticks}`;
+
+    const pick = $('#apPick', sec);
+    pick.insertAdjacentHTML('beforeend', A.map(a => `<button class="btn" type="button" data-v="${a.id}">${a.n}</button>`).join(''));
+    const choose = id => {
+      sel = id; const a = A.find(x => x.id === id);
+      $$('#apLadder .lane', sec).forEach(g => g.classList.toggle('on', g.dataset.id === id));
+      // on a narrow screen the scale scrolls sideways: bring the chosen approach into view
+      const box = $('.scroll-x', sec), mark = $('#apLadder .lane.on .bar, #apLadder .lane.on .dot', sec);
+      if (mark && box.scrollWidth > box.clientWidth + 2) { const r = mark.getBoundingClientRect(), b = box.getBoundingClientRect(); box.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2); }
+      $('#apCard', sec).innerHTML = `<h2>${a.n}<small>${a.kind}</small></h2><dl class="kv">${a.rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    };
+    const ctl = NF.choice(pick, choose, sel);
+    $('#apLadder', sec).addEventListener('click', e => { const g = e.target.closest('.lane'); if (g) { ctl.set(g.dataset.id); choose(g.dataset.id); } });
+    choose(sel);
+  },
+});
+</script>
+
+<section class="mod" id="sessions" data-nav="Your sessions" data-group="The training" hidden>
+  <header>
+    <div class="eyebrow">The training</div>
+    <h1>What your sessions will be like</h1>
+    <p class="lede">Each visit is about an hour, with 30 to 45 minutes of actual training. Two or three visits a week works best when your schedule allows.</p>
+  </header>
+
+  <!-- Practice details live in this section's text. Edit the wording here if your routine changes. -->
+  <div class="panel">
+    <h2>The hour</h2>
+    <div class="hour" role="img" aria-label="A one hour session: check-in, set-up, 30 to 45 minutes of training, wrap-up">
+      <span style="flex:8">Check-in</span><span style="flex:8">Set-up</span><span class="main" style="flex:37">Training · 30 to 45 minutes</span><span style="flex:7">Wrap-up</span>
+    </div>
+    <ol class="hour-notes">
+      <li><b>Check-in</b>How you have been since last time: sleep, mood, energy, focus, anything new. We update your symptom tracking.</li>
+      <li><b>Set-up</b>Sensors go on with a little paste. I check the signal and sort out any trouble spots before we start.</li>
+      <li><b>Training</b>You sit comfortably and watch and listen while the feedback runs. I stay with you, watch the signal, and adjust as needed.</li>
+      <li><b>Wrap-up</b>Sensors off and clean-up, how the session felt, anything to look out for, and scheduling.</li>
+    </ol>
+  </div>
+
+  <div class="panel">
+    <h2>From first meeting onward</h2>
+    <ol class="flow" style="--n:4">
+      <li><b>Assessment interview</b>Your history, current concerns, sleep, health, medications, and what you hope will change.</li>
+      <li><b>Brain map, if it fits</b>Offered when it is appropriate and you want one. Some people are not ready for one yet or prefer not to have one, and we can plan without it.</li>
+      <li><b>Regular training</b>About an hour a visit, ideally two or three times a week, with your reports steering each session.</li>
+      <li><b>Review as we go</b>We look at your tracking together at regular points and decide whether to continue, change approach, space sessions out, or stop.</li>
+    </ol>
+  </div>
+
+  <div class="cols even">
+    <div class="panel">
+      <h2>Planning a block</h2>
+      <div class="controls">
+        <div class="seg" id="seN"><span class="lab">Sessions</span>
+          <button class="btn" type="button" data-v="10">10</button><button class="btn" type="button" data-v="20">20</button><button class="btn" type="button" data-v="30">30</button><button class="btn" type="button" data-v="40">40</button>
+        </div>
+        <div class="seg" id="seW"><span class="lab">A week</span>
+          <button class="btn" type="button" data-v="1">1</button><button class="btn" type="button" data-v="2">2</button><button class="btn" type="button" data-v="3">3</button>
+        </div>
+      </div>
+      <p class="plan" id="seOut" aria-live="polite"></p>
+      <p class="cap">For planning only. Studies have typically used about 15 to 40 sessions. Your number depends on your goals and how you respond, and we review it together as we go.</p>
+      <p class="cap">Evidence on spacing is limited. One trial in athletes, and a pooled analysis of ADHD studies, favoured three sessions a week over fewer.</p>
+    </div>
+    <div class="panel">
+      <h2>What you might notice</h2>
+      <div class="prose">
+        <p>Most reactions are mild and pass within a day: feeling tired, wired, headachy, spacey or more emotional than usual, or a change in sleep or dreams. Some people notice nothing at first.</p>
+        <p>In large trials no serious harm from training has been reported, and passing reactions like these are common even in comparison groups given sham feedback.</p>
+        <p><b>Tell me about all of it, pleasant or not.</b> A reaction is information. It tells me how to adjust the training, and the adjustment usually settles it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Your part</h2>
+    <ul class="dots">
+      <li><b>Notice and report.</b> What changes during and between sessions, for better or worse, is the main thing that guides the training.</li>
+      <li><b>Keep taking medication as prescribed.</b> Any change is for you and your prescriber to decide. Please tell me when one happens, so I can read your responses correctly.</li>
+      <li><b>Keep up everything else that helps.</b> Therapy, exercise, sleep routines and other treatments are all welcome alongside this.</li>
+      <li><b>Come as you are.</b> If you slept badly or the day has been hard, say so. It shapes the session and nothing is wasted.</li>
+    </ul>
+  </div>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Rogel et al. Transient adverse side effects during neurofeedback training: a randomized, sham-controlled, double blind study. <i>Appl Psychophysiol Biofeedback</i>, 2015. <a href="https://consensus.app/papers/details/03af749932b85e6ba3baa32ed5cd2e5b/?utm_source=claude_desktop">link</a></li>
+      <li>Rahmani et al. Are there any possible side effects of neurofeedback? A systematic literature review and meta-analysis (17 trials). <i>Iran J Psychiatry Behav Sci</i>, 2023. <a href="https://consensus.app/papers/details/a3f8bf99d6a152e39b3e2383b3f2c582/?utm_source=claude_desktop">link</a></li>
+      <li>Schönenberg et al. Neurofeedback, sham neurofeedback, and cognitive-behavioural group therapy in adults with ADHD: a triple-blind, randomised, controlled trial. <i>Lancet Psychiatry</i>, 2017. <a href="https://consensus.app/papers/details/e6710951a570525ca98a6730fcf4638f/?utm_source=claude_desktop">link</a></li>
+      <li>Domingos et al. Session frequency matters in neurofeedback training of athletes. <i>Appl Psychophysiol Biofeedback</i>, 2021. <a href="https://consensus.app/papers/details/3d232a4039c75f0c824313fd14b55473/?utm_source=claude_desktop">link</a></li>
+      <li>Chiu et al. Surface electroencephalographic neurofeedback improves sustained attention in ADHD: a meta-analysis of randomized controlled trials. <i>Child Adolesc Psychiatry Ment Health</i>, 2022. <a href="https://consensus.app/papers/details/16c6a7d34a965b1a8ba6c3e73422c157/?utm_source=claude_desktop">link</a></li>
+    </ol>
+  </details>
+</section>
+<style>
+  .hour { display: flex; gap: 3px; border-radius: 8px; overflow: hidden; }
+  .hour span { background: var(--well); color: var(--ink-2); padding: 12px 10px; font-weight: 600; font-size: var(--fs--1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; text-align: center; }
+  .hour span.main { background: var(--accent); color: var(--accent-ink); }
+  .hour-notes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+  .hour-notes li { color: var(--ink-2); } .hour-notes b { display: block; color: var(--ink); }
+  .plan { font-family: var(--font-head); font-size: var(--fs-2); line-height: 1.2; }
+  @media (max-width: 900px) { .hour-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hour span:not(.main) { font-size: 0; padding: 12px 4px; } }
+</style>
+<script>
+NF.register('sessions', {
+  init(sec) {
+    const { $ } = NF; let n = 20, w = 2;
+    const out = () => { const weeks = Math.ceil(n / w), months = weeks / 4.345; $('#seOut', sec).textContent = `${n} sessions at ${w} a week takes about ${weeks} weeks${weeks >= 9 ? `, roughly ${months < 2.75 ? '2' : Math.round(months)} months` : ''}.`; };
+    NF.choice($('#seN', sec), v => { n = +v; out(); }, n);
+    NF.choice($('#seW', sec), v => { w = +v; out(); }, w);
+    out();
+  },
+});
+</script>
+
+<section class="mod" id="research" data-nav="What research says" data-group="The evidence" hidden>
+  <header>
+    <div class="eyebrow">The evidence</div>
+    <h1>What the research says</h1>
+    <p class="lede">A plain summary of where neurofeedback research stands, including what is still unsettled. Reviewed against published studies in November 2026.</p>
+  </header>
+
+  <ul class="points">
+    <li><b>Most people who train improve</b>Across trials, people who complete neurofeedback usually report meaningful improvement, often large. Where studies followed people up, the gains generally held.</li>
+    <li><b>Why they improve is debated</b>In the most rigorous trials, people given sham feedback often improve about as much. Part of the benefit may come from the whole experience: regular sessions, focused practice, support and expectation.</li>
+    <li><b>It appears safe</b>Large trials report no serious harm from training. Reactions are usually mild and short-lived.</li>
+  </ul>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="rsView"><span class="lab">Show</span>
+        <button class="btn" type="button" data-v="concern">By concern</button>
+        <button class="btn" type="button" data-v="method">By method</button>
+      </div>
+      <div class="rs-key" aria-label="Key to the four levels">
+        <span><i class="lvl l4"><u></u><u></u><u></u><u></u></i>Well supported</span>
+        <span><i class="lvl l3"><u></u><u></u><u></u><u></u></i>Promising, debated</span>
+        <span><i class="lvl l2"><u></u><u></u><u></u><u></u></i>Emerging</span>
+        <span><i class="lvl l1"><u></u><u></u><u></u><u></u></i>Early</span>
+      </div>
+    </div>
+    <div class="rs-list" id="rsList"></div>
+    <p class="cap">The levels are a reading of the published evidence for adults, not a prediction for any one person. Choose a row for the detail and the studies.</p>
+  </div>
+
+  <div class="cols even">
+    <div class="panel">
+      <h2>Where the research is heading</h2>
+      <ul class="dots">
+        <li>Larger, better-controlled trials, reported to an agreed checklist so that studies can be compared.</li>
+        <li>Rethinking comparison conditions. Sham feedback turns out to be partly active, which makes "real versus sham" harder to interpret than it sounds.</li>
+        <li>Working out who learns and who benefits. Many participants do not show the trained change, and early learning seems to predict the rest.</li>
+        <li>More personalised protocols, guided by a person's own rhythms or brain map.</li>
+        <li>Brain-imaging studies of what changes with training, and well-tested home devices.</li>
+      </ul>
+    </div>
+    <div class="note care">
+      <h3 style="margin-bottom:8px">What this means for us</h3>
+      <div class="prose">
+        <p>I offer neurofeedback as one part of your care, alongside whatever else is helping you, and not in place of treatments with stronger evidence.</p>
+        <p>We track your own response from the start: your goals, your symptom ratings and what you notice. If training is helping, we will see it. If it is not, we will see that too and change course.</p>
+      </div>
+    </div>
+  </div>
+
+  <details class="src">
+    <summary>All sources</summary>
+    <ol id="rsSrc"></ol>
+    <p>Sources were gathered with Consensus and checked against each paper's abstract. Effect sizes are group averages from the cited analyses. An SMD or g near 0.2 is conventionally small, 0.5 moderate and 0.8 large.</p>
+  </details>
+</section>
+<style>
+  .rs-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--fs--1); color: var(--ink-2); margin-left: auto; }
+  .rs-key span { display: inline-flex; align-items: center; gap: 6px; }
+  .lvl { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .lvl u { width: 5px; border-radius: 1px; background: var(--line); }
+  .lvl u:nth-child(1) { height: 5px; } .lvl u:nth-child(2) { height: 8px; } .lvl u:nth-child(3) { height: 11px; } .lvl u:nth-child(4) { height: 14px; }
+  .lvl.l1 u:nth-child(-n+1), .lvl.l2 u:nth-child(-n+2), .lvl.l3 u:nth-child(-n+3), .lvl.l4 u { background: var(--g1); }
+  .rs-list details { border-top: 1px solid var(--line-2); }
+  .rs-list details:first-child { border-top: 0; }
+  .rs-list summary { display: grid; grid-template-columns: 200px 170px minmax(0, 1fr); gap: 6px 16px; align-items: baseline; padding: 12px 6px; cursor: pointer; list-style: none; border-radius: 7px; }
+  .rs-list summary::-webkit-details-marker { display: none; }
+  .rs-list summary:hover { background: var(--well); }
+  .rs-list summary b { font-family: var(--font-head); font-size: var(--fs-1); font-weight: 600; line-height: 1.2; }
+  .rs-list summary .g { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--fs--1); color: var(--ink-2); white-space: nowrap; }
+  .rs-list summary .s { color: var(--ink-2); }
+  .rs-list .more { padding: 2px 6px 16px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; }
+  .rs-list .more .prose { grid-column: 2; }
+  .rs-list .more .cap a { white-space: nowrap; }
+  @media (max-width: 900px) { .rs-list summary { grid-template-columns: minmax(0, 1fr); } .rs-list .more { grid-template-columns: minmax(0, 1fr); } .rs-list .more .prose { grid-column: 1; } .rs-key { margin-left: 0; } }
+</style>
+<script>
+NF.register('research', {
+  init(sec) {
+    const { $ } = NF;
+    const S = {
+      westwood: ['Westwood et al. Neurofeedback for attention-deficit/hyperactivity disorder: a systematic review and meta-analysis (38 trials). <i>JAMA Psychiatry</i>, 2024.', '782136bbd3225363b74c678ad538663c'],
+      cortese: ['Cortese et al. Neurofeedback for ADHD: meta-analysis of clinical and neuropsychological outcomes from randomized controlled trials. <i>J Am Acad Child Adolesc Psychiatry</i>, 2016.', '7a4a8ed393725b269cab887d96a10c3d'],
+      arnold: ['Arnold et al. Double-blind placebo-controlled randomized clinical trial of neurofeedback for ADHD with 13-month follow-up (n=144). <i>J Am Acad Child Adolesc Psychiatry</i>, 2020.', '799a17eed94453da852e36cb063ad706'],
+      schonenberg: ['Schönenberg et al. Neurofeedback, sham neurofeedback, and cognitive-behavioural group therapy in adults with ADHD: a triple-blind, randomised, controlled trial (n=118). <i>Lancet Psychiatry</i>, 2017.', 'e6710951a570525ca98a6730fcf4638f'],
+      vandoren: ['Van Doren et al. Sustained effects of neurofeedback in ADHD: a systematic review and meta-analysis. <i>Eur Child Adolesc Psychiatry</i>, 2018.', 'e325ccc021165f26a74996c96bbfd3c1'],
+      rotkiewicz: ['Rotkiewicz et al. Effects of EEG neurofeedback in adults with ADHD: a systematic review of randomised and non-randomised studies (7 studies, n=390). <i>J Neurodev Disord</i>, 2026.', 'f55c24ffd43f5ee28e4cd171cbafead7'],
+      askovic: ['Askovic et al. Neurofeedback for post-traumatic stress disorder: systematic review and meta-analysis of clinical and neurophysiological outcomes. <i>Eur J Psychotraumatol</i>, 2023.', '466ab13b3ace572585c2c05907c33cc3'],
+      vdk: ['van der Kolk et al. A randomized controlled study of neurofeedback for chronic PTSD (n=52). <i>PLoS ONE</i>, 2016.', '2fe524cf9cab510c8be1ae4867e9942c'],
+      berman: ['Berman et al. Systematic review and meta-analysis of neurofeedback training efficacy and neural mechanisms in the treatment of posttraumatic stress disorder. <i>Front Neurosci</i>, 2025.', 'd8503f6fd81455a9966f18b116502bf5'],
+      nicholson: ['Nicholson et al. A randomized, controlled trial of alpha-rhythm EEG neurofeedback in posttraumatic stress disorder. <i>NeuroImage Clin</i>, 2020.', '2225c4c169e6523599c0986d781df5c7'],
+      tolin: ['Tolin et al. Biofeedback and neurofeedback for anxiety disorders: a quantitative and qualitative systematic review. <i>Adv Exp Med Biol</i>, 2020.', 'a90f33dab96451eca147abff438b3bc7'],
+      goessl: ['Goessl et al. The effect of heart rate variability biofeedback training on stress and anxiety: a meta-analysis (24 studies). <i>Psychol Med</i>, 2017.', 'a8d0cad142835fce9e193560f8930a06'],
+      fernandez: ['Fernández-Álvarez et al. Efficacy of bio- and neurofeedback for depression: a meta-analysis. <i>Psychol Med</i>, 2021.', 'c7d549cc6e465c0494fd69f4faa30bae'],
+      oprea: ['Oprea et al. EEG neurofeedback for major depressive disorder: a scoping review (11 studies). <i>Alpha Psychiatry</i>, 2026.', '925e0ca260345736bc70a8fdc99beda5'],
+      schabus: ['Schabus et al. Better than sham? A double-blind placebo-controlled neurofeedback study in primary insomnia. 2017.', '80e397d2ef9854d3a8daf99a7e2737c8'],
+      recio: ['Recio-Rodríguez et al. Neurofeedback to enhance sleep quality and insomnia: a systematic review and meta-analysis of randomized clinical trials. <i>Front Neurosci</i>, 2024.', 'b7f1f277de4658a0827160475b0f0bac'],
+      walker: ['Walker. QEEG-guided neurofeedback for recurrent migraine headaches (n=71, not randomised). <i>Clin EEG Neurosci</i>, 2011.', '302a4059f97a5c54910fa2e607725605'],
+      nestoriuc: ['Nestoriuc &amp; Martin. Efficacy of biofeedback for migraine: a meta-analysis (55 studies). <i>Pain</i>, 2007.', 'df1b4af333ea5570b44783f476610c65'],
+      kimura: ['Kimura et al. Efficacy of neurofeedback training for improving attentional performance in healthy adults: a systematic review and meta-analysis (15 trials). <i>Imaging Neurosci</i>, 2023.', 'f79dc05936fb506f9828e108b6e8df3f'],
+      yu: ['Yu et al. The effect of EEG neurofeedback training on sport performance: a systematic review and meta-analysis (21 trials). <i>Scand J Med Sci Sports</i>, 2025.', '0e57ae0a4b08552b98d3b209e327315b'],
+      ros: ['Ros et al. Consensus on the reporting and experimental design of clinical and cognitive-behavioural neurofeedback studies (CRED-nf checklist). <i>Brain</i>, 2020.', '2fea0b3a9eba551caa0bab40acde4ef9'],
+      pigott: ['Pigott et al. The fallacy of sham-controlled neurofeedback trials: a reply to Thibault and colleagues. <i>J Atten Disord</i>, 2018.', '38d44135f13b50f5a5d7220456dc5d79'],
+      rogel: ['Rogel et al. Transient adverse side effects during neurofeedback training: a randomized, sham-controlled, double blind study. <i>Appl Psychophysiol Biofeedback</i>, 2015.', '03af749932b85e6ba3baa32ed5cd2e5b'],
+      weber: ['Weber et al. Predictors of neurofeedback training outcome: a systematic review. <i>NeuroImage Clin</i>, 2020.', '71b81161696b50ebb64e16097c76e5bb'],
+      raj: ['Raj et al. Neurofeedback in psychiatry: a decade of clinical and neuroimaging insights, a systematic review (45 studies). <i>Arch Biol Psychiatry</i>, 2026.', '31131dad14a95aee94a73e3d73f21e0e'],
+      bazzana: ['Bazzana et al. Infra-low frequency neurofeedback: a systematic mixed studies review (18 studies). <i>Front Hum Neurosci</i>, 2022.', '813c9d127fe45f05af30f84082a76dcb'],
+      carlson: ['Carlson et al. Infra-low frequency neurofeedback impact on post-concussive symptoms of headache, insomnia and attention disorder: results of a randomized control trial (n=87). <i>Explore</i>, 2025.', '60ebc5eaf7685662ad1a5e95ea068c65'],
+      gabrielsen: ['Gabrielsen et al. Infralow neurofeedback in the treatment of substance use disorders: a randomized controlled trial (n=93). <i>J Psychiatry Neurosci</i>, 2022.', 'd2ec5ffcb8875052ba3f5a845ee06453'],
+      schmidt: ['Schmidt. The potential of infra-low frequency neurofeedback training in peak performance: the first double-blinded placebo-controlled longitudinal study in healthy adults (n=42). <i>J Psychiatr Res</i>, 2024.', '6aed0ab0ba5e5492af4645da54bd9e1c'],
+      gruzelier: ['Gruzelier. A theory of alpha/theta neurofeedback, creative performance enhancement, long distance functional connectivity and psychological integration. <i>Cogn Process</i>, 2009.', 'b2400438d86750db9e11c806645be564'],
+      graap: ['Graap &amp; Freides. Regarding the database for the Peniston alpha-theta EEG biofeedback protocol. <i>Appl Psychophysiol Biofeedback</i>, 1998.', 'ca24cf374ec4589c8e42f034885e0af6'],
+      dinc: ['Dinc et al. The effects of alpha/theta neurofeedback on mood, anxiety, emotion regulation and trait impulsivity (n=25). <i>Brain Res</i>, 2025.', 'e47d6963908a504d9cce35cada0a4756'],
+      andrade: ['Andrade et al. Self-modulation of gamma-band synchronization through EEG-neurofeedback training in the elderly. <i>J Integr Neurosci</i>, 2024.', '3c8fecfa4ab9516a9c21298137196a0d'],
+      hoedlmoser: ['Hoedlmoser et al. Instrumental conditioning of human sensorimotor rhythm (12-15 Hz) and its impact on sleep as well as declarative learning. <i>Sleep</i>, 2008.', '7da9e7bdf1205b8d8175c201f7376c39'],
+      krepel: ['Krepel et al. A multicenter effectiveness trial of QEEG-informed neurofeedback in ADHD: replication and treatment prediction (n=114, no control group). <i>NeuroImage Clin</i>, 2020.', '73587094f28d51b89b7ff4e18f3965b4'],
+      lehrer: ['Lehrer et al. Heart rate variability biofeedback improves emotional and physical health and performance: a systematic review and meta analysis (58 studies). <i>Appl Psychophysiol Biofeedback</i>, 2020.', '3470bb70b74350e087806c2e03f2ba6a'],
+      pizzoli: ['Pizzoli et al. A meta-analysis on heart rate variability biofeedback and depressive symptoms (14 trials). <i>Sci Rep</i>, 2021.', '30a1c56e08e75ab08a023b70400c1b0d'],
+    };
+    const LEVEL = { 4: 'Well supported', 3: 'Promising, debated', 2: 'Emerging', 1: 'Early' };
+    const ROWS = {
+      concern: [
+        { n: 'Trauma and PTSD', l: 3, s: 'The most consistently positive area, from small trials.', src: ['askovic', 'vdk', 'berman', 'nicholson'],
+          d: ['Seven randomized trials in 215 adults found large reductions in PTSD symptoms, and far more people no longer met criteria for PTSD after training than in comparison groups.', 'Most of those trials compared training with a waiting list. Against sham feedback or other active treatments the results are weaker, and reviewers rate overall confidence as low.'] },
+        { n: 'ADHD', l: 3, s: 'The most studied. People improve, but blinded trials have not shown a clear edge over sham.', src: ['westwood', 'cortese', 'arnold', 'schonenberg', 'vandoren', 'rotkiewicz'],
+          d: ['People improve substantially, and in children the gains reported by parents held for up to a year after training.', 'When the people rating symptoms did not know who received real training, the advantage largely disappeared. A 2024 analysis of 38 trials found no meaningful benefit overall on blinded ratings, and a small benefit when only well-established protocols were counted. A sham-controlled trial in adults found real training, sham training and group therapy all helped about equally.', 'Clinic-based and personalised studies in adults report large gains, but they lack blinded comparison groups.'] },
+        { n: 'Anxiety', l: 2, s: 'Better than a waiting list. Not yet shown better than other active approaches.', src: ['tolin', 'goessl'],
+          d: ['In diagnosed anxiety disorders, biofeedback approaches including EEG neurofeedback beat waiting lists, but have not been shown superior to active comparison treatments, and most studies were rated as weak.', 'Heart-rate variability biofeedback has the stronger data for anxiety and stress, with a large average effect across 24 studies.'] },
+        { n: 'Depression', l: 2, s: 'Sizeable improvements in small studies, few of them sham-controlled.', src: ['fernandez', 'oprea'],
+          d: ['A meta-analysis of bio- and neurofeedback in major depression reports large average effects, drawn from small and varied studies.', 'Reviews of EEG neurofeedback specifically describe symptom reductions alongside substantial weaknesses in study design, so how much is specific to the training is unknown.'] },
+        { n: 'Sleep and insomnia', l: 1, s: 'People often report better sleep, but not more than with sham feedback.', src: ['schabus', 'recio'],
+          d: ['The key double-blind trial found that SMR neurofeedback neither changed the EEG nor improved measured sleep, and that reported improvements matched placebo feedback. A 2024 meta-analysis of randomized trials found no added benefit for insomnia.', 'Sleep often improves as other difficulties ease, and we will track it. For insomnia itself, guidelines recommend cognitive behavioural therapy for insomnia as the first step.'] },
+        { n: 'Headache and migraine', l: 1, s: 'Thin for EEG neurofeedback. Strong for other kinds of biofeedback.', src: ['walker', 'nestoriuc', 'carlson'],
+          d: ['The main EEG neurofeedback study let 71 patients choose training or continued medication, so it was not randomized. It reported that most of those who trained had a large drop in migraine frequency.', 'Hand-warming, muscle and pulse biofeedback have decades of good evidence for migraine: a moderate effect across 55 studies that held for more than a year.', 'One 2025 trial of infra-low frequency training in veterans after concussion found improvement in headache, sleep and attention compared with a health-discussion group.'] },
+        { n: 'Focus and performance', l: 3, s: 'Positive on average in healthy adults, less so against sham.', src: ['kimura', 'yu'],
+          d: ['For attention in healthy adults, 15 trials show a small average benefit, with no significant benefit in the 8 sham-controlled ones.', 'For sport skills, 21 trials show a larger benefit, and the better-quality studies showed the bigger effects.'] },
+      ],
+      method: [
+        { n: 'Frequency-band training', l: 3, s: 'The most studied form, including SMR and theta-beta protocols.', src: ['hoedlmoser', 'westwood', 'weber'],
+          d: ['Healthy adults reliably learn to increase the 12 to 15 Hz SMR rhythm over about ten sessions compared with sham or random feedback, with gains in memory and sleep measures in small trials.', 'Whether that learning carries over into lasting symptom change is where the debate sits. Not everyone learns the trained change.'] },
+        { n: 'Infra-low frequency training', l: 1, s: 'Mostly clinic reports. A few small trials with mixed results.', src: ['bazzana', 'carlson', 'gabrielsen', 'schmidt'],
+          d: ['The one systematic review (18 studies of mixed design) calls the approach promising and notes that tuning it person by person makes controlled research difficult.', 'Controlled results are mixed: a trial in veterans after concussion was positive, a trial in substance use found no added benefit for quality of life, and a double-blind sham-controlled study in healthy adults found no difference.'] },
+        { n: 'Alpha-Theta', l: 3, s: 'Long clinical use. Older small trials, few modern ones.', src: ['gruzelier', 'graap', 'dinc'],
+          d: ['The founding studies in alcohol dependence and combat PTSD were small, and their methods were later questioned. Controlled work in musicians and dancers supports gains in performance and mood.', 'A recent mock-feedback-controlled study found reduced anxiety after nine sessions.'] },
+        { n: 'Synchrony training', l: 1, s: 'Shown to be trainable in the laboratory. No clinical outcome trials yet.', src: ['andrade'],
+          d: ['A double-blind study in older adults showed that gamma-band synchrony rose with real feedback and not with sham, though thinking skills did not change.', 'Support for the two-site synchrony protocols used in clinics currently rests on clinical experience.'] },
+        { n: 'Brain-map-guided training', l: 2, s: 'Supported by clinic studies. Not yet shown better than standard protocols.', src: ['krepel', 'rotkiewicz'],
+          d: ['In an open study of 114 people with ADHD, training chosen from a brain map led to remission in just over half, without a comparison group.', 'A brain map guides the choice of training. It does not diagnose.'] },
+        { n: 'Heart-rate variability biofeedback', l: 4, s: 'Consistent small-to-moderate benefits across many trials.', src: ['lehrer', 'goessl', 'pizzoli'],
+          d: ['Across 58 randomized trials the benefits are small to moderate: largest for anxiety, depression, anger and performance, smaller for sleep.', 'It works as an addition to other care, and it is something you can practise at home.'] },
+      ],
+    };
+    const used = [], cite = k => { let i = used.indexOf(k); if (i < 0) { used.push(k); i = used.length - 1; } return i + 1; };
+    const render = view => {
+      $('#rsList', sec).innerHTML = ROWS[view].map(r => `<details><summary><b>${r.n}</b><span class="g"><i class="lvl l${r.l}"><u></u><u></u><u></u><u></u></i>${LEVEL[r.l]}</span><span class="s">${r.s}</span></summary>
+        <div class="more"><div class="prose">${r.d.map(p => `<p>${p}</p>`).join('')}<p class="cap">Studies: ${r.src.map(k => `<a href="https://consensus.app/papers/details/${S[k][1]}/?utm_source=claude_desktop">${S[k][0].split('.')[0].replace(/,? et al$/, ' et al.')} [${cite(k)}]</a>`).join(' · ')}</p></div></div></details>`).join('');
+    };
+    // number every source once, in the order a reader meets them
+    ['concern', 'method'].forEach(v => ROWS[v].forEach(r => r.src.forEach(cite)));
+    ['ros', 'pigott', 'rogel', 'raj'].forEach(cite);
+    $('#rsSrc', sec).innerHTML = used.map(k => `<li>${S[k][0]} <a href="https://consensus.app/papers/details/${S[k][1]}/?utm_source=claude_desktop">link</a></li>`).join('');
+    NF.choice($('#rsView', sec), render, 'concern'); render('concern');
+  },
+});
+</script>
+
+<section class="mod" id="heart" data-nav="Heart and breath" data-group="The body" hidden>
+  <header>
+    <div class="eyebrow">The body</div>
+    <h1>Heart and breath</h1>
+    <p class="lede">Your heart does not tick like a clock. It speeds up a little as you breathe in and slows as you breathe out. Slow, gentle breathing makes that swing larger, and practising it is called heart-rate variability biofeedback.</p>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="hrSrc"><span class="lab">Signal</span>
+        <button class="btn" type="button" data-v="demo">Demonstration</button>
+        <button class="btn" type="button" data-v="strap">Chest strap</button>
+      </div>
+      <span class="cap" id="hrStatus" role="status"></span>
+    </div>
+    <div class="cols">
+      <div class="stack">
+        <div class="hr-stats">
+          <div class="hr-big"><svg id="hrIcon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.4 1.1 4.3 2.4.9-1.3 2.3-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg><span id="hrNow">--</span><small>beats a minute</small></div>
+          <dl class="hr-tiles">
+            <div><dt>Swing with the breath</dt><dd><span id="hrSwing">--</span> <small>beats a minute</small></dd></div>
+            <div><dt>Beat-to-beat variation (RMSSD, last minute)</dt><dd><span id="hrRmssd">--</span> <small>ms</small></dd></div>
+          </dl>
+        </div>
+        <canvas id="hrChart" style="height:270px" aria-label="Heart rate over the last minute"></canvas>
+        <p class="cap">Heart rate, beat by beat, over the last minute. Shaded stretches are in-breaths on the pacer. Look for a smooth wave that rises with each in-breath and falls with each out-breath.</p>
+      </div>
+      <div class="stack">
+        <canvas id="hrPacer" style="height:250px" aria-label="Breathing pacer"></canvas>
+        <div class="seg" id="hrRate"><span class="lab">Breaths a minute</span>
+          <button class="btn" type="button" data-v="7">7</button><button class="btn" type="button" data-v="6.5">6.5</button><button class="btn" type="button" data-v="6">6</button><button class="btn" type="button" data-v="5.5">5.5</button><button class="btn" type="button" data-v="5">5</button><button class="btn" type="button" data-v="4.5">4.5</button>
+        </div>
+        <div class="seg" id="hrRatio"><span class="lab">Rhythm</span>
+          <button class="btn" type="button" data-v="0.5">Even</button><button class="btn" type="button" data-v="0.4">Longer out-breath</button>
+        </div>
+        <div><button class="btn" type="button" id="hrPacerBtn" aria-pressed="true">Pacer on</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols even">
+    <div class="panel">
+      <h2>Finding your pace</h2>
+      <p class="cap">Most adults get their largest swing somewhere between 4.5 and 6.5 breaths a minute. Stay at each pace for a minute or two and compare. Each pace you try is logged here.</p>
+      <div class="scroll-x"><table class="hr-log"><thead><tr><th>Breaths a minute</th><th>Breaths counted</th><th>Average swing</th></tr></thead><tbody id="hrLog"></tbody></table></div>
+      <div class="controls"><button class="btn" type="button" id="hrClear">Clear the log</button><span class="cap">Near enough is good enough: in a four-week trial, training at a personal pace and at a fixed 6 a minute worked about equally well.</span></div>
+    </div>
+    <div class="stack">
+      <div class="note care"><b>Breathe gently.</b> Slower, not bigger. If you feel light-headed, tingly or short of air, you are over-breathing: take smaller, softer breaths, or go back to breathing normally.</div>
+      <div class="note"><b>A small swing is not a bad sign.</b> The swing naturally gets smaller with age and varies with fitness and some medications. In one study, healthy but inactive men in their sixties swung about 10 beats a minute during slow breathing, compared with about 22 in young men. What matters is how your own pattern changes with practice.</div>
+      <div class="note"><b>What practice does.</b> Across 58 randomized trials, this kind of training showed small-to-moderate benefits, largest for anxiety, low mood, anger and performance. Programmes usually ask for short daily practice, often under 20 minutes.</div>
+      <p class="cap">For learning only. This is not a medical device and cannot detect heart problems. If your rhythm looks irregular, or you have a heart or breathing condition, talk with your physician before practising.</p>
+    </div>
+  </div>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Lehrer et al. Heart rate variability biofeedback improves emotional and physical health and performance: a systematic review and meta analysis (58 studies). <i>Appl Psychophysiol Biofeedback</i>, 2020. <a href="https://consensus.app/papers/details/3470bb70b74350e087806c2e03f2ba6a/?utm_source=claude_desktop">link</a></li>
+      <li>Goessl et al. The effect of heart rate variability biofeedback training on stress and anxiety: a meta-analysis. <i>Psychol Med</i>, 2017. <a href="https://consensus.app/papers/details/a8d0cad142835fce9e193560f8930a06/?utm_source=claude_desktop">link</a></li>
+      <li>Lehrer et al. Response to: Resonance frequency assessment. <i>Biofeedback</i>, 2021 (adult resonance rates of 4.5 to 6.5 breaths a minute). <a href="https://consensus.app/papers/details/35fdf5b5fc82527fbaa61ba02144aa10/?utm_source=claude_desktop">link</a></li>
+      <li>Sumińska et al. Resonance frequency versus fixed 0.1 Hz breathing in HRV biofeedback: a four-week randomized comparison (n=88). <i>Sci Rep</i>, 2026. <a href="https://consensus.app/papers/details/bec6492d46c35467bffb9f4e966266d6/?utm_source=claude_desktop">link</a></li>
+      <li>Meehan &amp; Shaffer. Do longer exhalations increase HRV during slow-paced breathing? <i>Appl Psychophysiol Biofeedback</i>, 2024 (a longer out-breath made no difference). <a href="https://consensus.app/papers/details/13a9f0a052e25a15b9ddeedbe94cf98a/?utm_source=claude_desktop">link</a></li>
+      <li>Szulczewski. An anti-hyperventilation instruction decreases the drop in end-tidal CO2 and symptoms of hyperventilation during breathing at 0.1 Hz. <i>Appl Psychophysiol Biofeedback</i>, 2019. <a href="https://consensus.app/papers/details/f79d45d48001545e8d031e639f7a8014/?utm_source=claude_desktop">link</a></li>
+      <li>Melo et al. Effects of age and physical activity on the autonomic control of heart rate in healthy men. <i>Braz J Med Biol Res</i>, 2005. <a href="https://consensus.app/papers/details/6769ea9fc4c4504582a0123650eeacc7/?utm_source=claude_desktop">link</a></li>
+      <li>Vann-Adibe et al. Efficacy and methodology of remote heart rate variability biofeedback interventions for mental health: a systematic review and meta-analysis. <i>Appl Psychophysiol Biofeedback</i>, 2025. <a href="https://consensus.app/papers/details/2662255c4cf95fca8a05412e95644597/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The demonstration signal is simulated and is built to swing most near 5.5 breaths a minute, to show what finding a pace looks like. A chest strap that sends beat-to-beat intervals over Bluetooth (the standard heart-rate profile) works in Chrome or Edge on a computer when this page is opened from the saved file.</p>
+  </details>
+</section>
+<style>
+  .hr-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; }
+  .hr-big { display: flex; align-items: baseline; gap: 8px; font-size: 3.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  .hr-big svg { width: 26px; height: 26px; color: var(--b-beta); align-self: center; transform-origin: center; }
+  .hr-big small, .hr-tiles small { font-size: var(--fs--1); font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
+  .hr-tiles { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; }
+  .hr-tiles dt { font-size: var(--fs--1); color: var(--ink-3); } .hr-tiles dd { margin: 0; font-size: var(--fs-2); font-weight: 600; line-height: 1.15; }
+  #hrRate .lab, #hrRatio .lab { flex-basis: 100%; }
+  #hrRate .btn { min-width: 52px; justify-content: center; padding-inline: 8px; }
+  .hr-log { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  .hr-log th { text-align: left; font-size: var(--fs--1); color: var(--ink-3); font-weight: 600; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
+  .hr-log td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-2); }
+  .hr-log tr.best td { color: var(--ink); font-weight: 600; }
+  .hr-log td.empty { color: var(--ink-3); }
+</style>
+<script>
+NF.register('heart', {
+  init(sec) {
+    const { $, $$ } = NF, clock = () => performance.now() / 1000, med = a => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+    let samples = [];                 // { t, rr, hr, bad }
+    let src = 'demo', hasRR = true, beatClock = null, demoTimer = 0, device = null;
+    const pacer = { on: !NF.reduced, rate: 6, fi: 0.5, t0: clock(), base: 0 };
+    let filling = false;              // true while the demonstration's first minute is being generated
+    let breaths = [];                 // { id, t0, dur, fi, rate, min, max, n, first }
+    const log = new Map();            // rate -> [swing per completed breath]
+    const status = (msg, tone) => { const el = $('#hrStatus', sec); el.textContent = msg; el.style.color = tone ? `var(--${tone})` : ''; };
+
+    // ---- pacer timing ----
+    const cyc = t => pacer.base + (t - pacer.t0) * pacer.rate / 60;      // cycle number, fractional
+    const phase = t => { const c = cyc(t); return c - Math.floor(c); };
+    const rebase = () => { const t = clock(); pacer.base = Math.floor(cyc(t)) + 1; pacer.t0 = t; if (breaths.length) breaths[breaths.length - 1].cut = true; };
+    const breathAt = t => {
+      const id = Math.floor(cyc(t)); let b = breaths[breaths.length - 1];
+      if (!b || b.id !== id) {
+        if (b && !b.cut && !b.first && !b.pre && b.n >= 3) { const a = log.get(b.rate) || []; a.push(b.max - b.min); log.set(b.rate, a); paintLog(); }
+        const dur = 60 / pacer.rate; b = { id, t0: pacer.t0 + (id - pacer.base) * dur, dur, fi: pacer.fi, rate: pacer.rate, min: 1e9, max: -1e9, n: 0, first: !b || b.cut, pre: filling };
+        breaths.push(b); if (breaths.length > 40) breaths.shift();
+      }
+      return b;
+    };
+
+    // ---- beats in ----
+    const addRR = (rr, at) => {
+      const now = clock();
+      if (!(rr >= 300 && rr <= 2000)) { beatClock = null; return; }
+      let t = at ?? (beatClock == null ? now : beatClock + rr / 1000);   // rebuild beat times from the intervals themselves
+      if (at == null && Math.abs(t - now) > 1.5) t = now;
+      beatClock = t;
+      const recent = samples.slice(-5).filter(s => !s.bad).map(s => s.rr);
+      const bad = recent.length >= 3 && Math.abs(rr - med(recent)) > 0.3 * med(recent);   // skipped or extra beat, or a strap glitch
+      const s = { t, rr, hr: 60000 / rr, bad }; samples.push(s);
+      while (samples.length && now - samples[0].t > 70) samples.shift();
+      if (!bad) {
+        $('#hrNow', sec).textContent = Math.round(s.hr);
+        if (pacer.on) { const b = breathAt(t); b.min = Math.min(b.min, s.hr); b.max = Math.max(b.max, s.hr); b.n++; }
+        if (!NF.reduced) { const ic = $('#hrIcon', sec); ic.style.transition = 'none'; ic.style.transform = 'scale(1.3)'; requestAnimationFrame(() => { ic.style.transition = 'transform .25s ease-out'; ic.style.transform = 'scale(1)'; }); }
+      }
+    };
+
+    // ---- demonstration signal: the swing is largest near 5.5 breaths a minute ----
+    const demoRR = t => {
+      let osc, amp;
+      if (pacer.on) { const p = phase(t), fi = pacer.fi; osc = p < fi ? -Math.cos(Math.PI * p / fi) : Math.cos(Math.PI * (p - fi) / (1 - fi)); amp = 3 + 6.5 * Math.exp(-(((pacer.rate - 5.5) / 1.1) ** 2)); }
+      else { osc = Math.sin(6.283 * 0.24 * t); amp = 2.2; }
+      return 60000 / (66 + amp * osc + 1.2 * Math.sin(t * 0.21) + (Math.random() - 0.5) * 1.6);
+    };
+    const demoBeat = () => { if (src !== 'demo') return; const rr = demoRR(clock()); addRR(rr); demoTimer = setTimeout(demoBeat, rr); };
+    // start the demonstration with a minute already on screen, so the wave is visible at once
+    const demoFill = () => { const now = clock(); samples = []; breaths = []; pacer.base = 0; pacer.t0 = now - 60; filling = true; for (let t = now - 60; t < now;) { const rr = demoRR(t); addRR(rr, t); t += rr / 1000; } filling = false; beatClock = null; };
+    const stopDemo = () => { clearTimeout(demoTimer); demoTimer = 0; };
+
+    // ---- chest strap over Bluetooth (standard Heart Rate service) ----
+    const onHR = e => {
+      const v = e.target.value, flags = v.getUint8(0), wide = flags & 1; let i = wide ? 3 : 2;
+      if (flags & 0x08) i += 2;                                     // skip the energy field when present
+      if (flags & 0x10) { hasRR = true; for (; i + 1 < v.byteLength; i += 2) addRR(v.getUint16(i, true) / 1024 * 1000); }
+      else { hasRR = false; const hr = wide ? v.getUint16(1, true) : v.getUint8(1); if (hr > 0) addRR(60000 / hr); status('Connected, but this strap sends heart rate only, not beat-to-beat timing. The wave will look smoothed and beat-to-beat variation is not shown.', 'caution'); }
+    };
+    const subscribe = async () => {
+      const server = await device.gatt.connect(), svc = await server.getPrimaryService('heart_rate'), ch = await svc.getCharacteristic('heart_rate_measurement');
+      ch.addEventListener('characteristicvaluechanged', onHR); await ch.startNotifications();
+      samples = []; beatClock = null; hasRR = true; status(`Connected to ${device.name || 'the strap'}. Breathe with the circle.`, 'ok');
+    };
+    const connect = async () => {
+      if (!navigator.bluetooth) { status('A chest strap needs Chrome or Edge on a computer, with this page opened from the saved file. The demonstration signal works everywhere.', 'caution'); return false; }
+      try {
+        status('Choose your strap in the browser pop-up.');
+        device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
+        device.addEventListener('gattserverdisconnected', async () => {
+          if (src !== 'strap') return; status('The strap disconnected. Trying to reconnect.', 'caution');
+          for (let k = 0; k < 4 && src === 'strap'; k++) { await new Promise(r => setTimeout(r, 1500)); try { await subscribe(); return; } catch (err) { /* try again */ } }
+          if (src === 'strap') status('Lost the strap. Check that it is on and the contacts are damp, then choose Chest strap again.', 'stop');
+        });
+        await subscribe(); return true;
+      } catch (err) { status(err && err.name === 'NotFoundError' ? 'No strap was chosen.' : 'Could not connect to a strap here. If this page is open inside another site, open the saved file in Chrome or Edge instead.', 'caution'); return false; }
+    };
+    const srcCtl = NF.choice($('#hrSrc', sec), async v => {
+      if (v === 'strap') { stopDemo(); src = 'strap'; samples = []; $('#hrNow', sec).textContent = '--'; if (!(await connect())) { src = 'demo'; srcCtl.set('demo'); hasRR = true; demoFill(); demoBeat(); } }
+      else { src = 'demo'; try { device?.gatt?.disconnect(); } catch (err) { /* already gone */ } samples = []; beatClock = null; hasRR = true; status('Simulated heart rate that follows the pacer. Not a real person.'); stopDemo(); demoFill(); demoBeat(); }
+    }, 'demo');
+    status('Simulated heart rate that follows the pacer. Not a real person.');
+    demoFill();
+
+    // ---- numbers ----
+    const stats = () => {
+      const now = clock(), good = samples.filter(s => !s.bad);
+      // the last few complete breaths at the pace now showing
+      const done = breaths.filter(b => b.n >= 3 && !b.cut && b.rate === pacer.rate && b.fi === pacer.fi && b.id < Math.floor(cyc(now))).slice(-3);
+      let swing = NaN;
+      if (pacer.on && done.length) swing = done.reduce((a, b) => a + b.max - b.min, 0) / done.length;
+      else if (!pacer.on) { const w = good.filter(s => now - s.t <= 12).map(s => s.hr); if (w.length > 5) swing = Math.max(...w) - Math.min(...w); }
+      let rmssd = NaN; const w = samples.filter(s => now - s.t <= 60);
+      if (hasRR && w.length > 8) { let sum = 0, n = 0; for (let i = 1; i < w.length; i++) if (!w[i].bad && !w[i - 1].bad) { const d = w[i].rr - w[i - 1].rr; sum += d * d; n++; } if (n > 5) rmssd = Math.sqrt(sum / n); }
+      $('#hrSwing', sec).textContent = isNaN(swing) ? '--' : Math.round(swing);
+      $('#hrRmssd', sec).textContent = isNaN(rmssd) ? '--' : Math.round(rmssd);
+      if (samples.length && now - samples[samples.length - 1].t > 4) $('#hrNow', sec).textContent = '--';
+    };
+    function paintLog() {
+      const rows = [...log.entries()].filter(([, a]) => a.length).map(([r, a]) => [r, a.length, a.reduce((x, y) => x + y, 0) / a.length]).sort((a, b) => b[0] - a[0]);
+      const best = rows.filter(r => r[1] >= 3).sort((a, b) => b[2] - a[2])[0];
+      $('#hrLog', sec).innerHTML = rows.length ? rows.map(r => `<tr class="${best && rows.length > 1 && r === best ? 'best' : ''}"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(1)} beats a minute${best && rows.length > 1 && r === best ? ' · largest so far' : ''}</td></tr>`).join('') : '<tr><td class="empty" colspan="3">Nothing logged yet. The first full breath at each pace starts the count.</td></tr>';
+    }
+    $('#hrClear', sec).addEventListener('click', () => { log.clear(); paintLog(); });
+    paintLog();
+
+    // ---- drawing ----
+    const chart = NF.canvas($('#hrChart', sec), (ctx, w, h) => {
+      const now = clock(), WIN = 60, pL = 40, pR = 10, pT = 10, pB = 24, X = t => pL + (w - pL - pR) * (1 - (now - t) / WIN);
+      const vis = samples.filter(s => !s.bad && now - s.t <= WIN);
+      let lo = 55, hi = 85; if (vis.length > 2) { const hs = vis.map(s => s.hr), a = Math.min(...hs), b = Math.max(...hs), mid = (a + b) / 2, span = Math.max(24, (b - a) * 1.4); lo = mid - span / 2; hi = mid + span / 2; }
+      const Y = v => pT + (h - pT - pB) * (1 - (v - lo) / (hi - lo));
+      if (pacer.on) { ctx.fillStyle = NF.css('--accent-soft'); for (const b of breaths) { const x0 = Math.max(pL, X(b.t0)), x1 = Math.min(w - pR, X(b.t0 + b.dur * b.fi), X(now)); if (x1 > x0) ctx.fillRect(x0, pT, x1 - x0, h - pT - pB); } }
+      ctx.font = NF.font(12); ctx.fillStyle = NF.css('--ink-3'); ctx.strokeStyle = NF.css('--line-2'); ctx.lineWidth = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const step = hi - lo > 45 ? 20 : 10; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { const y = Math.round(Y(v)) + 0.5; ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(w - pR, y); ctx.stroke(); ctx.fillText(v, pL - 8, y); }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; [[60, '1 minute ago'], [30, '30 seconds'], [0, 'now']].forEach(([s, l], i) => { ctx.textAlign = i === 0 ? 'left' : i === 2 ? 'right' : 'center'; ctx.fillText(l, X(now - s), h - 6); });
+      if (vis.length < 2) { ctx.textAlign = 'center'; ctx.font = NF.font(15); ctx.fillText(src === 'demo' ? 'starting…' : 'waiting for heartbeats', w / 2, h / 2); return; }
+      ctx.strokeStyle = NF.css('--b-beta'); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath(); vis.forEach((s, i) => { i ? ctx.lineTo(X(s.t), Y(s.hr)) : ctx.moveTo(X(s.t), Y(s.hr)); }); ctx.stroke();
+      const last = vis[vis.length - 1]; ctx.fillStyle = NF.css('--b-beta'); ctx.beginPath(); ctx.arc(X(last.t), Y(last.hr), 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = NF.css('--surface'); ctx.lineWidth = 2; ctx.stroke();
+    });
+    const pacerCv = NF.canvas($('#hrPacer', sec), (ctx, w, h) => {
+      const S = Math.min(w, h), cx = w / 2, cy = h / 2, p = pacer.on ? phase(clock()) : pacer.fi, inh = p < pacer.fi;
+      const u = inh ? p / pacer.fi : 1 - (p - pacer.fi) / (1 - pacer.fi), e = u * u * (3 - 2 * u), r = S * (0.2 + 0.26 * e), dur = 60 / pacer.rate;
+      ctx.strokeStyle = NF.css('--line'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, S * 0.46, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = NF.css('--accent-soft'); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = NF.css('--accent'); ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = NF.css('--ink'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = NF.font(Math.round(S * 0.085), 600);
+      ctx.fillText(pacer.on ? (inh ? 'Breathe in' : 'Breathe out') : 'Pacer off', cx, cy - S * 0.03);
+      ctx.fillStyle = NF.css('--ink-2'); ctx.font = NF.font(Math.round(S * 0.055));
+      ctx.fillText(`${(dur * pacer.fi).toFixed(1)} s in · ${(dur * (1 - pacer.fi)).toFixed(1)} s out`, cx, cy + S * 0.07);
+    });
+    NF.choice($('#hrRate', sec), v => { pacer.rate = +v; rebase(); }, '6');
+    NF.choice($('#hrRatio', sec), v => { pacer.fi = +v; rebase(); }, '0.5');
+    const pb = $('#hrPacerBtn', sec), paintPb = () => { pb.textContent = pacer.on ? 'Pacer on' : 'Pacer off'; pb.setAttribute('aria-pressed', String(pacer.on)); };
+    pb.addEventListener('click', () => { pacer.on = !pacer.on; rebase(); paintPb(); }); paintPb();
+
+    let raf = 0, lastStat = 0;
+    const frame = () => { raf = requestAnimationFrame(frame); if (pacer.on) breathAt(clock()); chart.render(); pacerCv.render(); const n = clock(); if (n - lastStat > 0.5) { lastStat = n; stats(); } };
+    this.begin = () => { if (!raf) { raf = requestAnimationFrame(frame); if (src === 'demo' && !demoTimer) { demoFill(); demoBeat(); } } };
+    this.end = () => { cancelAnimationFrame(raf); raf = 0; stopDemo(); };
+    this.redraw = () => { chart.render(); pacerCv.render(); };
+  },
+  start() { this.begin(); },
+  stop() { this.end(); },
+});
+</script>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,115 @@
+<section class="mod" id="rhythms" data-nav="Brain rhythms" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>Brain rhythms</h1>
+    <p class="lede">A sensor on the scalp picks up one tangled signal. Software separates it by speed, the way a prism separates white light into colours.</p>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" id="rhyState"><span class="lab">State</span>
+        <button class="btn" type="button" data-v="closed">Eyes closed, relaxed</button>
+        <button class="btn" type="button" data-v="open">Eyes open, focused</button>
+        <button class="btn" type="button" data-v="drowsy">Drowsy</button>
+        <button class="btn" type="button" data-v="sleep">Deep sleep</button>
+      </div>
+      <div class="seg" id="rhyWin"><span class="lab">Time shown</span>
+        <button class="btn" type="button" data-v="2">2 seconds</button>
+        <button class="btn" type="button" data-v="20">20 seconds</button>
+        <button class="btn" type="button" data-v="120">2 minutes</button>
+      </div>
+      <button class="btn" type="button" id="rhyPlay">Pause</button>
+    </div>
+
+    <div class="rhy">
+      <div class="rhy-raw">
+        <div><b>What one sensor records</b><div class="cap">Every rhythm at once, added together</div></div>
+        <canvas id="rhyRaw" aria-label="Simulated raw EEG trace"></canvas>
+      </div>
+      <svg class="rhy-prism" viewBox="0 0 64 360" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 180H24" stroke="var(--trace)" stroke-width="2" vector-effect="non-scaling-stroke" fill="none"/>
+        <g id="rhyFan" fill="none" stroke-width="2"></g>
+        <path d="M12 216 L52 216 L32 146 Z" fill="var(--surface)" stroke="var(--ink-2)" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      </svg>
+      <div class="rhy-out">
+        <ol class="rows" id="rhyRows"></ol>
+      </div>
+    </div>
+    <div class="cap" id="rhyCap"></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel" id="rhyCard" aria-live="polite"></div>
+    <div class="note"><b>About this picture.</b> The traces are simulated and sized for the screen, and the bars show relative level only. A real recording is messier, differs from person to person, and looks different at each spot on the head. Band edges also vary a little between labs and software.</div>
+  </div>
+
+  <ul class="points">
+    <li><b>All of them, all the time</b>Every brain produces every one of these rhythms around the clock. What changes from moment to moment is the mix.</li>
+    <li><b>Where and when matter</b>The same rhythm means different things at the front or the back of the head, with eyes open or closed, at rest or on a task.</li>
+    <li><b>No good or bad waves</b>No rhythm is good or bad, and no pattern diagnoses a condition. What matters is flexibility: shifting gear when the moment calls for it.</li>
+  </ul>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol>
+      <li>Hiltunen et al. Infra-slow EEG fluctuations are correlated with resting-state network dynamics in fMRI. <i>J Neurosci</i>, 2014. <a href="https://consensus.app/papers/details/304ef86ef8875e7b8c421adb41068533/?utm_source=claude_desktop">link</a></li>
+      <li>Watson. Cognitive and physiologic impacts of the infraslow oscillation. <i>Front Syst Neurosci</i>, 2018. <a href="https://consensus.app/papers/details/fa7ca98c81635e19963224ec6b7d8091/?utm_source=claude_desktop">link</a></li>
+      <li>Snipes et al. The theta paradox: 4-8 Hz EEG oscillations reflect both sleep pressure and cognitive control. <i>J Neurosci</i>, 2022. <a href="https://consensus.app/papers/details/a7e63dc4f76156faad5a9fce39b92258/?utm_source=claude_desktop">link</a></li>
+      <li>Newson et al. EEG frequency bands in psychiatric disorders: a review of resting state studies. <i>Front Hum Neurosci</i>, 2019 (184 studies; the same patterns recur across different conditions). <a href="https://consensus.app/papers/details/aca3c48e849d54a9bfe315f269cedc23/?utm_source=claude_desktop">link</a></li>
+      <li>Szponar et al. Brainwaves under medication: class-specific neural signatures of psychotropic medication from 24,000 EEGs. <i>eBioMedicine</i>, 2026. <a href="https://consensus.app/papers/details/d5c9adafdfdb538381b335156d11191d/?utm_source=claude_desktop">link</a></li>
+    </ol>
+    <p>The state presets are textbook illustrations (alpha with eyes closed, faster activity on task, theta with drowsiness, delta in deep sleep), not measurements.</p>
+  </details>
+</section>
+<style>
+  .rhy { display: grid; grid-template-columns: minmax(0, 0.85fr) 64px minmax(0, 2.1fr); gap: 0; align-items: stretch; }
+  .rhy-raw { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .rhy-raw canvas { height: 150px; }
+  .rhy-prism { width: 64px; height: 100%; min-height: 300px; }
+  .rhy-out { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  #rhyCard h3 span { font-family: var(--font-body); font-weight: 400; font-size: var(--fs-0); color: var(--ink-3); margin-left: 8px; }
+  @media (max-width: 900px) { .rhy { grid-template-columns: minmax(0, 1fr); gap: 12px; } .rhy-prism { display: none; } .rhy-raw canvas { height: 90px; } }
+</style>
+<script>
+NF.register('rhythms', {
+  init(sec) {
+    const { $, $$, BANDS } = NF, syn = NF.synth(11), N = BANDS.length;
+    // relative levels per band: infra-slow, delta, theta, alpha, beta, gamma
+    const PRE = { closed: [0.6, 0.22, 0.3, 0.92, 0.3, 0.2], open: [0.6, 0.18, 0.24, 0.34, 0.62, 0.36], drowsy: [0.6, 0.4, 0.78, 0.44, 0.2, 0.12], sleep: [0.7, 0.96, 0.34, 0.12, 0.08, 0.05] };
+    const INFO = {
+      isf: ['Very slow shifts in how excitable the cortex is. One wave can last from ten seconds to many minutes.', 'Research links these slow shifts to the brain\'s resting networks and to arousal. They are invisible in a two-second view: set <b>Time shown</b> to 2 minutes and they appear while the fast rhythms blur into bands. This is the range infra-low frequency training works with.'],
+      delta: ['The dominant rhythm of deep sleep.', 'Some delta is always present when you are awake. Slow activity rises during waking hours after real sleep loss. Eye and body movement also produce slow, delta-like signals, which is one reason stillness matters during a recording.'],
+      theta: ['Rises with drowsiness and with the pressure to sleep.', 'Theta also appears over the front-middle of the head during concentration and memory work. So more theta is not simply a problem: where it shows up and what you are doing both matter.'],
+      alpha: ['Strongest at the back of the head when you are awake, relaxed and have your eyes closed. It drops when you open your eyes or concentrate.', 'Often called the brain\'s idling rhythm. Everyone has their own preferred alpha speed, usually close to 10 waves a second in adults.'],
+      beta: ['Present during active thinking, focused attention and readiness to move.', 'The low end, about 12 to 15 Hz over the strip that handles movement and touch, is called SMR and goes with a still body and a calm, alert mind. It is a common training target. Some medications add beta, and muscle tension can look like fast beta.'],
+      gamma: ['Brief bursts during demanding processing, when distant brain areas coordinate.', 'Gamma is very small at the scalp and easily swamped by muscle activity from the jaw, forehead and neck, so it is interpreted with care.'],
+    };
+    let lv = [...PRE.closed], target = [...lv], win = 2, sel = 'alpha';
+
+    const rowsEl = $('#rhyRows', sec);
+    rowsEl.innerHTML = BANDS.map(b => `<li data-id="${b.id}"><button class="rl" type="button"><i class="sw" style="--c:var(${b.c})"></i><b>${b.name}</b><span>${b.hz}</span></button><canvas aria-hidden="true"></canvas><div class="meter" style="--c:var(${b.c})" role="img"><i></i></div></li>`).join('');
+    $('#rhyFan', sec).innerHTML = BANDS.map((b, i) => `<path d="M42 182 L64 ${(i + 0.5) / N * 360}" stroke="var(${b.c})" vector-effect="non-scaling-stroke"/>`).join('');
+    const rows = $$('li', rowsEl), meters = rows.map(r => $('.meter i', r));
+    let now = 0;
+    const strips = rows.map((r, k) => NF.canvas($('canvas', r), (ctx, w, h) => NF.drawBand(ctx, w, h, syn, k, now, win, lv[k], NF.css(BANDS[k].c))));
+    const raw = NF.canvas($('#rhyRaw', sec), (ctx, w, h) => NF.drawSum(ctx, w, h, syn, now, Math.min(win, 4), lv, NF.css('--trace'), { scale: 0.17 }));
+    const paint = () => { strips.forEach(s => s.render()); raw.render(); meters.forEach((m, k) => { m.style.width = Math.round(lv[k] * 100) + '%'; }); };
+
+    const card = () => {
+      const b = NF.band(sel), [when, know] = INFO[sel];
+      $('#rhyCard', sec).innerHTML = `<h3><i class="sw" style="--c:var(${b.c})"></i> ${b.name}<span>${b.hz}</span></h3><dl class="kv"><dt>Seen when</dt><dd>${when}</dd><dt>Worth knowing</dt><dd>${know}</dd></dl>`;
+      rows.forEach(r => r.classList.toggle('sel', r.dataset.id === sel));
+    };
+    rowsEl.addEventListener('click', e => { const li = e.target.closest('li'); if (li) { sel = li.dataset.id; card(); } });
+    const cap = () => { $('#rhyCap', sec).textContent = `Showing the last ${win === 120 ? '2 minutes' : win + ' seconds'}, newest on the right.` + (win > 2 ? ' Rhythms too fast to draw at this zoom appear as shaded bands.' : ' Choose a rhythm for details.'); };
+    NF.choice($('#rhyState', sec), v => { target = [...PRE[v]]; }, 'closed');
+    NF.choice($('#rhyWin', sec), v => { win = +v; cap(); paint(); }, '2');
+    this.loop = NF.loop((dt, t, real) => { now = t + 400; for (let k = 0; k < N; k++) lv[k] += (target[k] - lv[k]) * Math.min(1, real * 3); paint(); });
+    NF.playButton($('#rhyPlay', sec), this.loop);
+    this.redraw = paint;
+    card(); cap();
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>

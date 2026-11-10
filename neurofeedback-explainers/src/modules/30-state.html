@@ -1,0 +1,136 @@
+<section class="mod" id="state" data-nav="What shifts them" data-group="The signal" hidden>
+  <header>
+    <div class="eyebrow">The signal</div>
+    <h1>What shifts your brain rhythms</h1>
+    <p class="lede">Sleep, caffeine, medication and practice all nudge the mix of rhythms. That is why I ask about them, and why a recording is read in the context of your day.</p>
+  </header>
+
+  <div class="sta">
+    <div class="panel pick" id="staPick"></div>
+    <div class="panel">
+      <div class="controls">
+        <span class="cap"><b style="color:var(--ink)">Colour</b> is the selected situation. <b style="color:var(--ink)">Grey</b> is rested and relaxed, for comparison.</span>
+        <button class="btn" type="button" id="staPlay" style="margin-left:auto">Pause</button>
+      </div>
+      <ol class="rows sta-rows" id="staRows"></ol>
+      <p class="cap">Typical direction of change at the group level, drawn to be visible. Real effects depend on dose, timing, tolerance and the person. A question mark means studies disagree.</p>
+    </div>
+    <div class="panel" id="staCard" aria-live="polite"></div>
+  </div>
+
+  <p class="note care"><b>About medication.</b> Please do not skip, stop or change a prescribed medication for a recording or a session. Those decisions belong with you and your prescriber. What helps me is knowing what you take and hearing when anything changes, so I can read your recordings and your responses correctly.</p>
+
+  <details class="src">
+    <summary>Sources and notes</summary>
+    <ol id="staSrc"></ol>
+    <p>Each item was checked against published reviews or controlled studies in November 2026. Several popular claims did not hold up and are shown here as mixed or uncertain: for example that caffeine raises beta, that cannabis raises theta, that nicotine lowers alpha, or that screen use leaves a lasting brainwave pattern.</p>
+  </details>
+</section>
+<style>
+  .sta { display: grid; grid-template-columns: 220px minmax(0, 1.45fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
+  .sta-rows li { grid-template-columns: 104px minmax(0, 1fr) 96px; }
+  .sta-rows canvas { height: 62px; }
+  .sta-rows .nm { padding-left: 4px; line-height: 1.2; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; }
+  .sta-rows .nm span { grid-column: 2; font-size: 0.8rem; color: var(--ink-3); }
+  @media (max-width: 1180px) { .sta { grid-template-columns: 210px minmax(0, 1fr); } .sta > :last-child { grid-column: 1 / -1; } }
+  @media (max-width: 700px) { .sta { grid-template-columns: minmax(0, 1fr); } .sta-rows li { grid-template-columns: 84px minmax(0, 1fr) 60px; } }
+</style>
+<script>
+NF.register('state', {
+  init(sec) {
+    const { $, $$ } = NF, B = NF.BANDS.slice(1), K = [1, 2, 3, 4, 5], syn = NF.synth(21);
+    const BASE = [0.25, 0.3, 0.7, 0.35, 0.15]; // delta, theta, alpha, beta, gamma
+    const SRC = [
+      ['Poethke et al. Electroencephalographic correlates of sleepiness: a meta-analysis and narrative review. <i>Sleep Med</i>, 2026.', 'f87c04bba5d1577e8d37687ed219d5d4'],
+      ['Chmiel et al. The effect of caffeine on EEG during wakefulness: a systematic and mechanistic review (48 studies). <i>Nutrients</i>, 2026.', 'a97b4f0af45e5ff0bb345b8181cf7282'],
+      ['Ehlers et al. EEG spectral characteristics following ethanol administration in young men. <i>Electroencephalogr Clin Neurophysiol</i>, 1989.', '4f71ab3cd2725cfb8e2aac7f8c5784ca'],
+      ['Rangaswamy et al. Beta power in the EEG of alcoholics (n=614). <i>Biol Psychiatry</i>, 2002.', '57dd222150d25d1abb41a5e4669aaa4f'],
+      ['Fisher et al. Effects of acute nicotine administration on resting EEG in nonsmokers. <i>Exp Clin Psychopharmacol</i>, 2012.', '9c2970c2e5675decbf6282f73afa3f98'],
+      ['Schiemer et al. Identifying EEG markers related to acute cannabis consumption: a systematic review (16 studies). <i>Neurosci Biobehav Rev</i>, 2025.', '6c7e8cce35545a009676261e954a37b0'],
+      ['Chang et al. Evening use of light-emitting eReaders negatively affects sleep, circadian timing, and next-morning alertness. <i>PNAS</i>, 2014.', '5ea40fc101125bed89f540322d8c056b'],
+      ['Quinn et al. Electroencephalographic signatures of methylphenidate in ADHD: a systematic review (44 studies). <i>J Atten Disord</i>, 2026.', '826cdb7f089a5c44ace80e0694efed2c'],
+      ['Szponar et al. Brainwaves under medication: class-specific neural signatures of psychotropic medication from 24,000 EEGs. <i>eBioMedicine</i>, 2026.', 'd5c9adafdfdb538381b335156d11191d'],
+      ['Le et al. EEG spectral signatures of SSRIs, SNRIs and vortioxetine in major depressive disorder: a systematic review (15 studies). <i>J Affect Disord</i>, 2024.', '3d79f02a95315620be35128d7da89e19'],
+      ['Zaccaro et al. How breath-control can change your life: a systematic review on psycho-physiological correlates of slow breathing. <i>Front Hum Neurosci</i>, 2018.', '4f213fd6e8d25cff8c8fa79ef7a93ac0'],
+      ['Lomas et al. A systematic review of the neurophysiology of mindfulness on EEG oscillations (56 studies). <i>Neurosci Biobehav Rev</i>, 2015.', '1bbb704657ab53cc8764b9387c5de1f2'],
+      ['Liu et al. Effects of exercise interventions on EEG alpha power: a systematic review and meta-analysis (13 trials). <i>Front Psychol</i>, 2026.', 'f94b9986d2955540a844842f2207b56c'],
+    ];
+    // lv: relative level per band; q: bands where studies disagree (drawn at baseline with "?"); sure: 3 solid, 2 mixed, 1 thin
+    const ITEMS = [
+      { g: 'Reference', n: 'Rested and relaxed', lv: BASE, sure: 0, pills: ['Comparison state'],
+        what: 'Awake, eyes closed, nothing pressing. Alpha leads, with a little of everything else. Every other choice is compared with this.',
+        why: 'This is roughly the state a resting recording aims to capture, which is why I ask you to come as rested and as much on your normal routine as you can.' },
+      { g: 'Daily life', n: 'A short night', lv: [0.42, 0.6, 0.7, 0.35, 0.15], sure: 3, pills: ['More theta', 'More delta after real sleep loss'], src: [0],
+        what: 'Sleepiness shows up as extra slow activity while you are awake: theta first, and delta after real sleep loss.',
+        why: 'A brain map taken after a bad night can look slower than your usual self. Tell me how you slept. If it was a rough night we can reschedule a map.' },
+      { g: 'Daily life', n: 'Caffeine', lv: [0.22, 0.25, 0.48, 0.35, 0.15], q: [3], sure: 3, pills: ['Less alpha', 'Beta: studies disagree'], src: [1],
+        what: 'Caffeine usually turns down the relaxed alpha rhythm, and drowsy slow activity if you are tired. Its effect on beta is inconsistent, so there is no single caffeine signature.',
+        why: 'Have your usual amount at your usual time before a recording. Skipping it or doubling it both make the recording less like a normal day.' },
+      { g: 'Daily life', n: 'Alcohol', lv: [0.28, 0.46, 0.84, 0.33, 0.14], sure: 3, pills: ['More theta', 'More slow alpha'], src: [2, 3],
+        what: 'A drink or two raises the slower rhythms and slows alpha slightly. With long-term heavy drinking the best-replicated finding is different: extra beta at rest.',
+        why: 'Alcohol the evening before affects both that night\'s sleep and the next day\'s recording. It helps me to know.' },
+      { g: 'Daily life', n: 'Nicotine', lv: [0.22, 0.2, 0.82, 0.38, 0.15], sure: 2, pills: ['Faster, stronger alpha', 'Less theta'], src: [4],
+        what: 'Nicotine speeds alpha up and reduces theta. In people who smoke, part of that is relief from withdrawal. The studies are small.',
+        why: 'Keep to your usual pattern before a recording and tell me roughly when you last had some.' },
+      { g: 'Daily life', n: 'Cannabis', lv: BASE, q: [1, 2], sure: 1, pills: ['Changes theta', 'Direction varies'], src: [5],
+        what: 'THC alters theta activity and blunts the brain\'s attention responses, but the direction depends on dose and tolerance, and findings in regular users are inconsistent.',
+        why: 'Let me know about recent use so a recording is not misread. No judgement comes with the question.' },
+      { g: 'Daily life', n: 'Screens late at night', lv: BASE, q: [1, 2, 3], sure: 1, pills: ['No established brainwave pattern', 'Delays sleep'], src: [6],
+        what: 'No lasting screen-specific brainwave pattern has been established. What is solid is the effect on sleep: light-emitting screens before bed suppress melatonin, delay sleep and dull next-morning alertness.',
+        why: 'Through sleep, late screens can still shape how you feel and how a recording looks the next day.' },
+      { g: 'Medication', n: 'Stimulant medication', lv: [0.24, 0.26, 0.68, 0.46, 0.15], q: [1], sure: 2, pills: ['Can raise beta', 'Sometimes less theta'], src: [7],
+        what: 'Stimulant medication for ADHD can raise beta and sometimes lowers theta, but the changes are modest and vary between studies and people.',
+        why: 'An EEG cannot tell whether a dose is right for you. That is a conversation for you and your prescriber. I only need to know what you take and when.' },
+      { g: 'Medication', n: 'Benzodiazepines', lv: [0.25, 0.22, 0.5, 0.78, 0.18], sure: 3, pills: ['More fast beta', 'Less theta and alpha'], src: [8],
+        what: 'Benzodiazepines, used for anxiety and sleep, reliably add fast beta and reduce theta and alpha. This is one of the clearest medication effects on the EEG.',
+        why: 'On a brain map that extra beta reflects the medication. Knowing you take it lets me read the map correctly.' },
+      { g: 'Medication', n: 'Antidepressants', lv: BASE, q: [1, 2, 3, 4], sure: 1, pills: ['Changes vary by medication'], src: [9, 8],
+        what: 'Antidepressants do change the EEG, but differently from one medication to another and from person to person. No single direction applies.',
+        why: 'Tell me what you take so I can read a recording in context.' },
+      { g: 'Practices', n: 'Slow, paced breathing', lv: [0.25, 0.3, 0.84, 0.35, 0.15], q: [1, 3], sure: 2, pills: ['Alpha often rises', 'Theta and beta: studies disagree'], src: [10],
+        what: 'Breathing at about six breaths a minute reliably increases heart-rate variability. The brainwave picture is less settled: alpha often rises, while theta and beta go either way across studies.',
+        why: 'It is a practice you can use between sessions. The Heart and breath section shows it live.' },
+      { g: 'Practices', n: 'Mindfulness meditation', lv: [0.25, 0.44, 0.86, 0.33, 0.15], sure: 2, pills: ['More alpha', 'More theta'], src: [11],
+        what: 'Mindfulness practice is often accompanied by more alpha and theta, a relaxed and alert pattern, though results vary with the type of practice. Findings for gamma are inconsistent.',
+        why: 'Any practice that helps you settle is welcome alongside training.' },
+      { g: 'Practices', n: 'After aerobic exercise', lv: [0.33, 0.38, 0.86, 0.43, 0.17], sure: 2, pills: ['More alpha on average', 'Other rhythms rise too'], src: [12],
+        what: 'After exercise alpha is higher on average, and other rhythms rise as well. Results vary widely between studies.',
+        why: 'Regular movement supports sleep and mood, which in turn support training. If you exercised hard just before a recording, mention it.' },
+    ];
+    const SURE = ['', 'Thin or conflicting evidence', 'Reasonably supported, with mixed details', 'Well established'];
+    let sel = 0, lv = [...BASE], now = 0;
+
+    const pick = $('#staPick', sec); let g = null, html = '';
+    ITEMS.forEach((it, i) => { if (it.g !== g) { g = it.g; html += `<div class="lab">${g}</div>`; } html += `<button type="button" data-i="${i}">${it.n}</button>`; });
+    pick.innerHTML = html;
+
+    const rowsEl = $('#staRows', sec);
+    rowsEl.innerHTML = B.map(b => `<li><div class="nm"><i class="sw" style="--c:var(${b.c})"></i><b>${b.name}</b><span>${b.hz}</span></div><canvas aria-hidden="true"></canvas><div><div class="meter" style="--c:var(${b.c})"><i></i><u></u></div><div class="chg"></div></div></li>`).join('');
+    const rows = $$('li', rowsEl), fill = rows.map(r => $('.meter i', r)), tick = rows.map(r => $('.meter u', r)), chg = rows.map(r => $('.chg', r));
+    tick.forEach((u, j) => { u.style.left = `calc(${BASE[j] * 100}% - 1px)`; });
+    const strips = rows.map((r, j) => NF.canvas($('canvas', r), (ctx, w, h) => {
+      NF.drawBand(ctx, w, h, syn, K[j], now, 1.2, BASE[j], NF.css('--ghost'), { width: 2, ghost: true });
+      NF.drawBand(ctx, w, h, syn, K[j], now, 1.2, lv[j], NF.css(B[j].c), { width: 2.2 });
+    }));
+    const paint = () => { strips.forEach(s => s.render()); fill.forEach((f, j) => { f.style.width = Math.round(lv[j] * 100) + '%'; }); };
+    const choose = i => {
+      sel = i; const it = ITEMS[i];
+      $$('button', pick).forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+      chg.forEach((c, j) => { const d = it.lv[j] - BASE[j]; c.textContent = it.q?.includes(j) ? '? varies' : d > 0.07 ? '▲ more' : d < -0.07 ? '▼ less' : i ? 'about the same' : ''; });
+      const dots = it.sure ? `<span class="sure"><i>${[1, 2, 3].map(n => `<u class="${n <= it.sure ? 'f' : ''}"></u>`).join('')}</i>${SURE[it.sure]}</span>` : '';
+      $('#staCard', sec).innerHTML = `<div class="lab">${it.g}</div><h2>${it.n}</h2><div class="pills">${it.pills.map(p => `<span class="tag">${p}</span>`).join('')}</div>${dots}
+        <dl class="kv" style="grid-template-columns:minmax(0,1fr)"><dt>What studies show</dt><dd>${it.what}</dd><dt style="margin-top:6px">Why I ask</dt><dd>${it.why}</dd></dl>
+        ${it.src ? `<p class="cap">Sources: ${it.src.map(s => `<a href="#state" data-src="${s}">${s + 1}</a>`).join(', ')} in the list below.</p>` : ''}`;
+    };
+    pick.addEventListener('click', e => { const b = e.target.closest('button'); if (b) choose(+b.dataset.i); });
+    $('#staCard', sec).addEventListener('click', e => { const a = e.target.closest('a[data-src]'); if (!a) return; e.preventDefault(); const d = $('details.src', sec); d.open = true; d.scrollIntoView({ behavior: NF.reduced ? 'auto' : 'smooth', block: 'center' }); });
+    $('#staSrc', sec).innerHTML = SRC.map(([t, id]) => `<li>${t} <a href="https://consensus.app/papers/details/${id}/?utm_source=claude_desktop">link</a></li>`).join('');
+    this.loop = NF.loop((dt, t, real) => { now = t + 250; const tg = ITEMS[sel].lv; for (let j = 0; j < 5; j++) lv[j] += (tg[j] - lv[j]) * Math.min(1, real * 3); paint(); });
+    NF.playButton($('#staPlay', sec), this.loop);
+    this.redraw = paint;
+    choose(0);
+  },
+  start() { this.loop.start(); },
+  stop() { this.loop.stop(); },
+});
+</script>

@@ -1,0 +1,46 @@
+<section class="mod" id="start" data-nav="Start here" data-group="Overview" hidden>
+  <header>
+    <div class="eyebrow">Overview</div>
+    <h1>What neurofeedback is, and what to expect</h1>
+    <p class="lede">Neurofeedback is training for the brain's own activity. Sensors read your brain's rhythms, software turns them into picture and sound, and your brain uses that information to practise steadier, more flexible patterns.</p>
+  </header>
+
+  <ul class="points">
+    <li><b>The sensors only listen</b>Nothing is sent into your head. The sensors read tiny electrical signals your brain already produces, the same kind a hospital EEG records.</li>
+    <li><b>It is learning, not a procedure</b>Change comes from repetition, the way any skill does. That is why sessions are regular and why what you notice between them matters.</li>
+    <li><b>It sits alongside your other care</b>Therapy, medication, sleep, movement and anything else that supports you are welcome at the same time. Medication decisions stay with your prescriber.</li>
+  </ul>
+
+  <div class="panel">
+    <h2>Questions this guide answers</h2>
+    <ol class="toc" id="toc"></ol>
+  </div>
+
+  <p class="note">Research on neurofeedback is active and its results are mixed: stronger for some concerns than others, and still debated in places. The section called <a href="#research">What research says</a> lays that out plainly so you can decide with clear information.</p>
+</section>
+<style>
+  .toc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--gap); }
+  .toc li { border-top: 1px solid var(--line-2); }
+  .toc a { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 2px 8px; padding: 12px 6px; text-decoration: none; color: var(--ink-2); border-radius: 7px; }
+  .toc a:hover { background: var(--well); }
+  .toc .n { grid-row: span 2; font-family: var(--font-head); font-size: var(--fs-2); color: var(--ink-3); line-height: 1; padding-top: 2px; }
+  .toc b { color: var(--ink); font-weight: 600; font-size: var(--fs-1); font-family: var(--font-head); line-height: 1.2; }
+  @media (max-width: 760px) { .toc { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<script>
+NF.register('start', {
+  init(sec) {
+    const Q = [
+      ['rhythms', 'What are brain rhythms?', 'How one tangled signal separates into slow and fast rhythms.'],
+      ['sensors', 'Where do the sensors go, and why sit still?', 'The sensor map, and how a blink or a clenched jaw shows up.'],
+      ['state', 'What shifts my brain rhythms day to day?', 'Sleep, caffeine, medication and practice, and why I ask about them.'],
+      ['loop', 'How does the training actually work?', 'The feedback loop, with a version you can try yourself.'],
+      ['approaches', 'What kinds of training are there?', 'The approaches I use, from very slow rhythms to fast ones.'],
+      ['sessions', 'What will my sessions be like?', 'The hour, the weekly rhythm, and your part in it.'],
+      ['research', 'What does the research say?', 'Where the evidence is solid, where it is early, and what is debated.'],
+      ['heart', 'What about the heart and breathing?', 'Heart-rate variability, shown live with a paced-breathing guide.'],
+    ];
+    NF.$('#toc', sec).innerHTML = Q.map(([id, q, d], i) => `<li><a href="#${id}"><span class="n">${i + 1}</span><b>${q}</b><span>${d}</span></a></li>`).join('');
+  },
+});
+</script>
