@@ -54,6 +54,7 @@ NF.register('state', {
       ['Zaccaro et al. How breath-control can change your life: a systematic review on psycho-physiological correlates of slow breathing. <i>Front Hum Neurosci</i>, 2018.', '4f213fd6e8d25cff8c8fa79ef7a93ac0'],
       ['Lomas et al. A systematic review of the neurophysiology of mindfulness on EEG oscillations (56 studies). <i>Neurosci Biobehav Rev</i>, 2015.', '1bbb704657ab53cc8764b9387c5de1f2'],
       ['Liu et al. Effects of exercise interventions on EEG alpha power: a systematic review and meta-analysis (13 trials). <i>Front Psychol</i>, 2026.', 'f94b9986d2955540a844842f2207b56c'],
+      ['Bai et al. Effects of social media use on brain dynamics in young male adults: multistage concurrent electroencephalography-functional magnetic resonance imaging study. <i>JMIR Med Inform</i>, 2026.', '15ca31763ddd52f1a9c01e0025b88305'],
     ];
     // lv: relative level per band; q: bands where studies disagree (drawn at baseline with "?"); sure: 3 solid, 2 mixed, 1 thin
     const ITEMS = [
@@ -75,8 +76,8 @@ NF.register('state', {
       { g: 'Daily life', n: 'Cannabis', lv: BASE, q: [1, 2], sure: 1, pills: ['Changes theta', 'Direction varies'], src: [5],
         what: 'THC alters theta activity and blunts the brain\'s attention responses, but the direction depends on dose and tolerance, and findings in regular users are inconsistent.',
         why: 'Let me know about recent use so a recording is not misread. No judgement comes with the question.' },
-      { g: 'Daily life', n: 'Screens late at night', lv: BASE, q: [1, 2, 3], sure: 1, pills: ['No established brainwave pattern', 'Delays sleep'], src: [6],
-        what: 'No lasting screen-specific brainwave pattern has been established. What is solid is the effect on sleep: light-emitting screens before bed suppress melatonin, delay sleep and dull next-morning alertness.',
+      { g: 'Daily life', n: 'Screens late at night', lv: BASE, q: [1, 2, 3], sure: 1, pills: ['No established brainwave pattern', 'Delays sleep'], src: [6, 13],
+        what: 'No lasting screen-specific brainwave pattern has been established. One 2026 study of young men found that heavy and light social-media users differed in brief, split-second brain-state patterns, not in the rhythm bands shown here. What is solid is the effect on sleep: light-emitting screens before bed suppress melatonin, delay sleep and dull next-morning alertness.',
         why: 'Through sleep, late screens can still shape how you feel and how a recording looks the next day.' },
       { g: 'Medication', n: 'Stimulant medication', lv: [0.24, 0.26, 0.68, 0.46, 0.15], q: [1], sure: 2, pills: ['Can raise beta', 'Sometimes less theta'], src: [7],
         what: 'Stimulant medication for ADHD can raise beta and sometimes lowers theta, but the changes are modest and vary between studies and people.',
